@@ -1,0 +1,92 @@
+title: prioriactions
+
+url: https://prioriactions.github.io/prioriactions/
+
+template:
+  params:
+    docsearch:
+      api_key: f00985ff93067595b4da97a65fe69f1a
+      index_name: prioriactions
+    ganalytics: G-6YB8F3838H
+    #bootswatch: litera
+
+
+destination: docs
+
+authors:
+  Jose Salgado-Rojas:
+    href: https://www.researchgate.net/profile/Jose_Salgado-Rojas
+  Irlanda Ceballos-Fuentealba:
+    href: https://www.researchgate.net/profile/Irlanda_Ceballos
+  Virgilio Hermoso:
+    href: https://www.researchgate.net/profile/Virgilio_Hermoso
+  Eduardo Alvarez-Miranda:
+    href: https://www.researchgate.net/profile/Eduardo_Alvarez-Miranda
+  Jordi Garcia-Gonzalo:
+    href: https://www.researchgate.net/profile/Jordi_Garcia-Gonzalo
+
+reference:
+
+  - title: Create and solve problems
+    desc: Functions for creating new problems and solving them
+    contents:
+      - inputData
+      - problem
+      - solve
+      - prioriactions
+
+  - title: Evaluate params
+    desc: Functions for evaluate differents params for a specific problem
+    contents:
+      - evalBlm
+      - evalTarget
+      - evalBudget
+
+  - title: Get input data information
+    desc: Function to obtain information about the maximum benefits to achieve
+    contents:
+      - getPotentialBenefit
+
+  - title: Get mathematical model information
+    desc: Function to obtain information about the mathematical model
+    contents:
+      - getModelInfo
+
+  - title: Get solution information
+    desc: Functions to obtain various information about the solution
+    contents:
+      - getActions
+      - getPerformance
+      - getConnectivityPenalty
+      - getCost
+      - getSolutionBenefit
+
+  - title: Class definitions
+    desc: Classes for handle mathematical problems
+    contents:
+      - Data
+      - OptimizationProblem
+      - Solution
+      - Portfolio
+
+  - title: Data
+    desc: Simulated datasets distributed with the package
+    contents:
+      - simData
+
+  - title: Miscellaneous
+    desc: Various useful functions
+    contents:
+      - print
+      - show
+
+articles:
+
+  - title: Introduction of prioriactions
+    navbar: Introduction
+    contents: [sensitivities, objectives, benchmark]
+
+  - title: Study cases of prioriactions
+    navbar: Study cases
+    contents: [MitchellRiver]
+

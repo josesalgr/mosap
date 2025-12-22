@@ -1,0 +1,13 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+src/*.o
+src/*.so
+src/*.dll
+src-i386
+inst/doc
+doc
+Meta
+/doc/
+/Meta/
