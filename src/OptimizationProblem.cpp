@@ -37,7 +37,13 @@ Rcpp::List rcpp_optimization_problem_as_list(SEXP x) {
     Rcpp::Named("name") = op->_name,
     Rcpp::Named("yvar") = op->_id_pow_variables,
     Rcpp::Named("xvar") = op->_id_variables,
-    Rcpp::Named("boundary_size") = op->_boundary_size);
+    Rcpp::Named("boundary_size") = op->_boundary_size,
+    Rcpp::Named("n_pu") = op->_n_pu,
+    Rcpp::Named("n_x") = op->_n_x,
+    Rcpp::Named("n_z") = op->_n_z,
+    Rcpp::Named("w_offset") = op->_w_offset,
+    Rcpp::Named("x_offset") = op->_x_offset,
+    Rcpp::Named("z_offset") = op->_z_offset);
 }
 
 // [[Rcpp::export]]

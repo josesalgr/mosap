@@ -1,6 +1,6 @@
 Package: prioriactions
 Type: Package
-Version: 0.5.0
+Version: 1.0.1
 Title: Multi-Action Conservation Planning             
 Description: This uses a mixed integer mathematical programming (MIP)
         approach for building and solving multi-action planning problems, 
@@ -62,7 +62,10 @@ Suggests:
     slam,
     tibble,
     methods,
-    reshape2
+    reshape2,
+    terra,
+    sf,
+    cli
 LinkingTo: 
   Rcpp, 
   RcppArmadillo (>= 0.10.1.0.0), 
@@ -71,7 +74,7 @@ Encoding: UTF-8
 LazyData: true
 License: GPL (>= 2)
 Language: en-US
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.3
 URL: https://prioriactions.github.io/prioriactions/, 
   https://github.com/prioriactions/prioriactions
 BugReports: https://github.com/prioriactions/prioriactions/issues
@@ -79,6 +82,12 @@ VignetteBuilder: knitr
 Collate: 
     'RcppExports.R'
     'internal.R'
+    'add_actions.R'
+    'add_area_constraints.R'
+    'add_effects.R'
+    'add_profit.R'
+    'add_targets.R'
+    'build_model.R'
     'data-class.R'
     'writeOutputs.R'
     'optimizationProblem-class.R'
@@ -95,10 +104,14 @@ Collate:
     'getPotentialBenefit.R'
     'getSolutionBenefit.R'
     'inputData.R'
+    'inputDataSpatial.R'
+    'inputData_new.R'
     'package.R'
     'portfolio-class.R'
     'print.R'
     'problem.R'
+    'set_objectives.R'
+    'set_solver.R'
     'show.R'
     'simData.R'
     'solution-class.R'

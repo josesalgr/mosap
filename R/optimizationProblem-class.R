@@ -66,38 +66,114 @@ NULL
 #' @aliases OptimizationProblem
 NULL
 
+# ---- helpers para imprimir (puedes mover a internal.R) ----
+.pa_op_cli_theme <- function() {
+  list(
+    .h     = list("font-weight" = "bold", color = "#569746"),
+    .cls   = list("font-weight" = "bold", color = "blue"),
+    .code  = list(color = "green"),
+    .muted = list(color = "grey60")
+  )
+}
+
+.pa_dim <- function(A, size) {
+  if (!is.null(A) && inherits(A, "Matrix")) {
+    return(c(nrow(A), ncol(A), length(A@x)))
+  }
+  if (!is.null(size)) return(size)
+  c(0, 0, 0)
+}
+
+.pa_safe <- function(x, default = NULL) if (is.null(x)) default else x
+
 #' @export
 OptimizationProblem <- pproto(
   "OptimizationProblem",
   data = list(),
   ConservationClass = NULL,
+
   print = function(self) {
-    if (getModelInfo(self)$n_variables > 0) {
+
+    args <- .pa_safe(self$data$args, list())
+    idx  <- .pa_safe(self$data$index, list())
+
+    modelsense <- .pa_safe(self$data$modelsense, .pa_safe(args$modelsense, NA_character_))
+    model_type <- .pa_safe(args$model_type, NA_character_)
+    objective_id <- .pa_safe(args$objective_id, NA_character_)
+
+    # variables
+    n_w <- if (!is.null(self$data$var_sizes$n_w)) self$data$var_sizes$n_w else if (!is.null(idx$w_index)) length(idx$w_index) else NA_integer_
+    n_x <- if (!is.null(self$data$var_sizes$n_x)) self$data$var_sizes$n_x else if (!is.null(idx$x_index)) length(idx$x_index) else NA_integer_
+    n_z <- if (!is.null(self$data$var_sizes$n_z)) self$data$var_sizes$n_z else if (!is.null(idx$z_index)) length(idx$z_index) else 0L
+
+    # dims
+    A <- self$data$A
+    dims <- .pa_dim(A, self$data$size)
+    n_con <- if (!is.null(self$data$rhs)) length(self$data$rhs) else dims[1]
+    n_var <- if (!is.null(self$data$obj)) length(self$data$obj) else dims[2]
+    nnz   <- dims[3]
+
+    if (!requireNamespace("cli", quietly = TRUE)) {
       message(
         "Optimization Problem",
-        "\n  model sense: ", getModelInfo(self)$model_sense,
-        "\n  dimensions:  ", getModelInfo(self)$n_constraints, ", ", getModelInfo(self)$n_variables, ", ", getModelInfo(self)$size,
-        " (nrow, ncol, size)",
-        "\n  variables:   ", getModelInfo(self)$n_variables
+        "\n  model sense:  ", modelsense,
+        "\n  model type:   ", model_type,
+        "\n  objective:    ", objective_id,
+        "\n  dimensions:   ", n_con, " constraints, ", n_var, " variables, ", nnz, " nonzeros",
+        "\n  variables:    w=", n_w, ", x=", n_x, ", z=", n_z,
+        if (!is.null(args$budget)) paste0("\n  budget:       ", args$budget) else "",
+        if (!is.null(args$blm)) paste0("\n  blm:          ", args$blm) else "",
+        if (!is.null(args$curve)) paste0("\n  curve:        ", args$curve) else "",
+        if (!is.null(args$segments)) paste0("\n  segments:     ", args$segments) else ""
       )
-    } else {
-      message("optimization problem (empty)")
+      return(invisible(TRUE))
     }
+
+    ch <- .pa_cli_box_chars()
+    div_id <- cli::cli_div(theme = .pa_op_cli_theme())
+
+    cli::cli_text("A prioriactions optimization model ({.cls OptimizationProblem})")
+
+    cli::cli_text("{ch$j}{ch$b}{.h model}", .envir = environment())
+    cli::cli_text("{ch$v}{ch$j}{ch$b}model sense:   {.code {modelsense}}", .envir = environment())
+    if (!is.na(model_type))  cli::cli_text("{ch$v}{ch$j}{ch$b}model type:    {.code {model_type}}", .envir = environment())
+    if (!is.na(objective_id)) cli::cli_text("{ch$v}{ch$l}{ch$b}objective:     {.code {objective_id}}", .envir = environment())
+
+    cli::cli_text("{ch$j}{ch$b}{.h dimensions}", .envir = environment())
+    cli::cli_text("{ch$v}{ch$j}{ch$b}constraints:  {n_con}", .envir = environment())
+    cli::cli_text("{ch$v}{ch$j}{ch$b}variables:    {n_var}", .envir = environment())
+    cli::cli_text("{ch$v}{ch$l}{ch$b}nonzeros:     {nnz}", .envir = environment())
+
+    cli::cli_text("{ch$j}{ch$b}{.h variables}", .envir = environment())
+    cli::cli_text("{ch$v}{ch$j}{ch$b}w (PU select):     {n_w}", .envir = environment())
+    cli::cli_text("{ch$v}{ch$j}{ch$b}x (actions):       {n_x}", .envir = environment())
+    cli::cli_text("{ch$v}{ch$l}{ch$b}z (conservation):  {n_z}", .envir = environment())
+
+    cli::cli_text("{ch$l}{ch$b}{.h parameters}", .envir = environment())
+    if (!is.null(args$budget))   cli::cli_text(" {ch$v}{ch$j}{ch$b}budget:   {args$budget}", .envir = environment())
+    if (!is.null(args$blm))      cli::cli_text(" {ch$v}{ch$j}{ch$b}blm:      {args$blm}", .envir = environment())
+    if (!is.null(args$curve))    cli::cli_text(" {ch$v}{ch$j}{ch$b}curve:    {args$curve}", .envir = environment())
+    if (!is.null(args$segments)) cli::cli_text(" {ch$v}{ch$l}{ch$b}segments: {args$segments}", .envir = environment())
+
+    info_sym <- cli::symbol$info
+    if (is.function(info_sym)) info_sym <- info_sym()
+    cli::cli_text(cli::col_grey(
+      paste0("# ", info_sym, " Use {.code model$getDataList()} to inspect matrices/vectors.")
+    ))
+
+    cli::cli_end(div_id)
+    invisible(TRUE)
   },
-  show = function(self) {
-    self$print()
-  },
-  repr = function(self) {
-    "OptimizationProblem object"
-  },
+
+  show = function(self) self$print(),
+
+  repr = function(self) "OptimizationProblem object",
+
   getData = function(self, x) {
     assertthat::assert_that(assertthat::is.string(x))
-    if (!x %in% names(self$data)) {
-      return(paste0("x object do not found"))
-    }
-    return(self$data[[x]])
+    if (!x %in% names(self$data)) return("x object do not found")
+    self$data[[x]]
   },
-  getDataList = function(self) {
-    return(self$data)
-  }
+
+  getDataList = function(self) self$data
 )

@@ -1,156 +1,140 @@
-#' @title Extract action information
+#' @title Get planning unit results from a Solution
 #'
-#' @description Returns the spatial deployment of the actions for each planning unit of
-#' the corresponding solution.
+#' @description
+#' Extracts the planning-unit table from a [solution-class] object returned by [solve()].
+#' The returned table includes a \code{selected} column indicating whether each planning
+#' unit is selected in the solution.
 #'
-#' @param x [solution-class] or [portfolio-class] object.
+#' @param x A [solution-class] object returned by [solve()].
+#' @param only_selected Logical. If \code{TRUE}, return only selected planning units.
+#'   Default \code{FALSE}.
 #'
-#' @param format `character`. Output format of the action matrix; `wide` format
-#' shows one column per action, while `large` format shows four columns: solution_name, pu,
-#' action and solution.
-#'
-#' @details `getActions()` function assumes that actions can be of three types:
-#' 1) **to abate specific threats**: these actions have the *id* corresponding
-#' to the threat to be abate.
-#' 2) **to conservation**: that indicates if the planning unit is selected to
-#' conservative any feature that is not threatened.
-#' 3) **to connectivity**: that indicates if the planning
-#' unit is selected only by connectivity (i.e. without performing conservation actions
-#' or actions against a threat in said unit).
-#'
-#' @return [data.frame].
+#' @return A \code{data.frame} with planning-unit information and a \code{selected} column.
+#' @export
 #'
 #' @examples
-#' \donttest{
-#' # set seed for reproducibility
-#' set.seed(14)
+#' \dontrun{
+#' sol <- solve(hola)
+#' pu_tbl <- get_pu(sol)
+#' pu_sel <- get_pu(sol, only_selected = TRUE)
+#' }
+get_pu <- function(x, only_selected = FALSE) {
+  stopifnot(inherits(x, "Solution"))
+  pu <- x$data$tables$pu %||% NULL
+  if (is.null(pu)) stop("No PU table found in solution (x$data$tables$pu is NULL).", call. = FALSE)
+
+  if (isTRUE(only_selected)) {
+    if (!("selected" %in% names(pu))) stop("PU table has no 'selected' column.", call. = FALSE)
+    pu <- pu[pu$selected == 1L, , drop = FALSE]
+  }
+  pu
+}
+
+#' @title Get action results from a Solution
 #'
-#' ## Load data
-#' data(sim_pu_data, sim_features_data, sim_dist_features_data,
-#' sim_threats_data, sim_dist_threats_data, sim_sensitivity_data,
-#' sim_boundary_data)
+#' @description
+#' Extracts the action-allocation table from a [solution-class] object returned by [solve()].
+#' The returned table includes a \code{selected} column indicating whether each feasible
+#' \code{(pu, action)} pair is selected in the solution.
 #'
-#' ## Create instance
-#' problem_data <- inputData(
-#'   pu = sim_pu_data, features = sim_features_data, dist_features = sim_dist_features_data,
-#'   threats = sim_threats_data, dist_threats = sim_dist_threats_data,
-#'   sensitivity = sim_sensitivity_data, boundary = sim_boundary_data
-#' )
+#' @param x A [solution-class] object returned by [solve()].
+#' @param only_selected Logical. If \code{TRUE}, return only selected actions
+#'   (\code{selected == 1}). Default \code{FALSE}.
 #'
-#' ## Create optimization model
-#' problem_model <- problem(x = problem_data)
+#' @return A \code{data.frame} with action allocation information and a \code{selected} column.
+#' @export
 #'
-#' ## Solve the optimization model
-#' s <- solve(a = problem_model, time_limit = 2, output_file = FALSE, cores = 2)
+#' @examples
+#' \dontrun{
+#' sol <- solve(hola)
+#' act_tbl <- get_actions(sol)
+#' act_sel <- get_actions(sol, only_selected = TRUE)
+#' }
+get_actions <- function(x, only_selected = FALSE) {
+  stopifnot(inherits(x, "Solution"))
+  a <- x$data$tables$actions %||% NULL
+  if (is.null(a)) stop("No actions table found in solution (x$data$tables$actions is NULL).", call. = FALSE)
+
+  if (isTRUE(only_selected)) {
+    if (!("selected" %in% names(a))) stop("Actions table has no 'selected' column.", call. = FALSE)
+    a <- a[a$selected == 1L, , drop = FALSE]
+  }
+  a
+}
+
+#' @title Get feature achievement summary from a Solution
 #'
-#' # get actions information in large format
-#' actions <- getActions(s, format = "large")
-#' head(actions)
-#'
-#' # get actions information in wide format
-#' actions <- getActions(s, format = "wide")
-#' head(actions)
+#' @description
+#' Extracts the feature achievement table from a [solution-class] object returned by [solve()].
+#' This table typically contains:
+#' \itemize{
+#' \item \code{baseline_contrib}: contribution from baseline / conservation (e.g., z variables)
+#' \item \code{recovery_contrib}: contribution from recovery (e.g., benefit layers times actions)
+#' \item \code{total}: baseline + recovery
 #' }
 #'
-#' @name getActions
+#' @param x A [solution-class] object returned by [solve()].
 #'
-NULL
-
-#' @rdname getActions
-#' @importFrom rlang .data
+#' @return A \code{data.frame} with feature achievement metrics.
 #' @export
-getActions <- function(x, format = "wide") {
-  # assert argument is valid
-  assertthat::assert_that(
-    inherits(x, c("Solution", "Portfolio")),
-    format %in% c("large", "wide"))
+#'
+#' @examples
+#' \dontrun{
+#' sol <- solve(hola)
+#' feat_tbl <- get_features(sol)
+#' }
+get_features <- function(x) {
+  stopifnot(inherits(x, "Solution"))
+  f <- x$data$tables$features %||% NULL
+  if (is.null(f)) stop("No features table found in solution (x$data$tables$features is NULL).", call. = FALSE)
+  f
+}
 
-  if(inherits(x, "Solution")){
+#' @title Get target achievement table from a Solution
+#'
+#' @description
+#' Extracts the targets table (if present) from a [solution-class] object returned by [solve()].
+#' The targets table typically includes \code{target_value}, \code{achieved}, and \code{gap}
+#' (achieved - target_value), plus target metadata (e.g., type).
+#'
+#' @param x A [solution-class] object returned by [solve()].
+#'
+#' @return A \code{data.frame} with target achievement metrics, or \code{NULL} if no targets
+#'   were stored/applied.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' sol <- solve(hola)
+#' tgt_tbl <- get_targets(sol)
+#' if (!is.null(tgt_tbl)) head(tgt_tbl)
+#' }
+get_targets <- function(x) {
+  stopifnot(inherits(x, "Solution"))
+  t <- x$data$tables$targets %||% NULL
+  # targets are optional: return NULL silently if absent
+  t
+}
 
-    statusCode <- x$data$status
-
-    if(!(statusCode %in% c(1,3))){
-
-      #variables
-      # Getting monitoring solution
-      monitoring <- x$OptimizationClass$ConservationClass$getData("pu")
-      monitoring <- monitoring[!names(monitoring) %in% c("monitoring_cost", "status", "internal_id")]
-
-      # Getting actions solution
-      actions <- x$OptimizationClass$ConservationClass$getData("dist_threats")
-      actions <- actions[names(actions) %in% c("pu","threat")]
-      actions <- actions %>% dplyr::rename("action" = "threat")
-
-      # Getting local benefits
-      benefits <- x$OptimizationClass$ConservationClass$getData("dist_features")
-      benefits <- benefits[!names(benefits) %in% c("amount","internal_feature","internal_pu")]
-      benefits <- benefits[order(benefits$feature), ]
-
-      #assign solutions to data.frame
-      monitoring$solution <- x$data$sol_monitoring
-      actions$solution <- x$data$sol_actions
-
-      #Preparing action file: conservation
-      benefits <- benefits[order(benefits$feature),]
-      benefits$conservation <- x$data$sol_conservation
-      benefits <- benefits[order(benefits$pu), ]
-
-      complete_dist_features <- merge(x = monitoring, y = benefits, by.x = "id", by.y = "pu", all = TRUE)
-      complete_dist_features <- complete_dist_features %>% tidyr::spread(key = .data$feature, value = conservation)
-
-      complete_dist_features$`0` <- 0
-      sum_rows <- rowSums(complete_dist_features[,!names(complete_dist_features) %in% c("id", "solution","<NA>")], na.rm = TRUE)
-      conservation <- ifelse(sum_rows > 0, 1, 0)
-
-      #Preparing action file: actions in sites
-      complete_dist_threats <- merge(x = monitoring, y = actions, by.x = "id", by.y = "pu", all = TRUE)
-      threats_data_extended <- complete_dist_threats %>% tidyr::spread(key = .data$action, value = .data$solution.y)
-
-      threats_data_extended$`0` <- 0
-      sum_rows_threats <- rowSums(threats_data_extended[,!names(threats_data_extended) %in% c("id", "solution.x", "<NA>")], na.rm = TRUE)
-      threats_units <- ifelse(sum_rows_threats > 0, 1, 0)
-
-      conservation_and_actions <- ifelse(conservation + threats_units >= 1, 1, 0)
-      connectivity <- monitoring$solution - conservation_and_actions
-
-      #Creating columns of new action file
-      monitoring$solution <- conservation
-      colnames(monitoring) <- c("pu", "solution")
-      monitoring[,"action"] <- "conservation"
-      actions <- rbind(actions, monitoring)
-
-      monitoring$solution <- connectivity
-      monitoring[,"action"] <- "connectivity"
-      actions <- rbind(actions, monitoring)
-
-
-      if(format == "large"){
-        actions <- cbind(solution_name = x$name, actions)
-        return(actions)
-      }
-      else{
-        actions_wide <- actions[names(actions) %in% c("solution_name","pu","action","solution")]
-        actions_wide <- actions_wide %>% tidyr::spread(key = .data$action, value = .data$solution, fill = 0)
-        actions_wide <- base::round(actions_wide, digits = 1)
-        actions_wide <- actions_wide[,c(1:(ncol(actions_wide) - 2), ncol(actions_wide), ncol(actions_wide) - 1)]
-        actions_wide <- cbind(solution_name = x$name, actions_wide)
-
-        return(actions_wide)
-      }
-    }
-    else{
-      return(NA)
-    }
-  }
-  else if(inherits(x, "Portfolio")){
-
-    actions = c()
-
-    for(it in seq_len(length(x$data))){
-
-      actions_solution <- getActions(x$data[[it]], format = format)
-      actions <- rbind(actions, actions_solution)
-    }
-    return(actions)
-  }
+#' @title Get raw solution vector from a Solution
+#'
+#' @description
+#' Returns the raw decision-variable vector produced by the solver (in the model variable order).
+#'
+#' @param x A [solution-class] object returned by [solve()].
+#'
+#' @return A numeric vector with one value per model variable.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' sol <- solve(hola)
+#' v <- get_solution_vector(sol)
+#' length(v)
+#' }
+get_solution_vector <- function(x) {
+  stopifnot(inherits(x, "Solution"))
+  v <- x$data$sol %||% NULL
+  if (is.null(v)) stop("No raw solution vector found (x$data$sol is NULL).", call. = FALSE)
+  as.numeric(v)
 }

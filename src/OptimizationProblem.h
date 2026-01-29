@@ -44,6 +44,12 @@ public:
   std::vector<double> _id_pow_variables;
   std::vector<double> _id_variables;
   int _boundary_size;
+  int _n_pu = 0;
+  int _n_x = 0;
+  int _n_z = 0;
+  int _w_offset = 0;   // normalmente 0
+  int _x_offset = 0;   // normalmente n_pu
+  int _z_offset = 0;   // normalmente n_pu
 
   // methods
   inline const std::size_t nrow() const {
@@ -64,6 +70,37 @@ public:
         Rcpp::Named("j")=_A_j,
         Rcpp::Named("x")=_A_x));
   }
+
+  // ------------------------------------------------
+  // Convenience: add one constraint row
+  // ------------------------------------------------
+  // `cols` are 0-based indices of decision variables
+  inline void addRow(const std::vector<int>& cols,
+                     const std::vector<double>& vals,
+                     const std::string& sense,
+                     double rhs) {
+
+    if (cols.size() != vals.size()) {
+      Rcpp::stop("addRow: cols and vals must have the same length.");
+    }
+    if (!(sense == "<=" || sense == ">=" || sense == "==")) {
+      Rcpp::stop("addRow: sense must be one of '<=', '>=', '=='.");
+    }
+
+    const std::size_t row = _rhs.size(); // 0-based row index
+
+    _rhs.push_back(rhs);
+    _sense.push_back(sense);
+
+    for (std::size_t t = 0; t < cols.size(); ++t) {
+      const int col = cols[t];
+      if (col < 0) Rcpp::stop("addRow: negative column index.");
+      _A_i.push_back(row);
+      _A_j.push_back(static_cast<std::size_t>(col));
+      _A_x.push_back(vals[t]);
+    }
+  }
+
 };
 
 #endif

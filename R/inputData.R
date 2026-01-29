@@ -1,554 +1,382 @@
-#' @include internal.R
-NULL
-
-#' @title Creates the multi-action planning problem
-#'
-#' @description
-#' Create the [data-class] object with information about the multi-action
-#' conservation planning problem. This function is used to specify all the data
-#' that defines the spatial prioritization problem (planning units data, feature
-#' data, threats data, and their spatial distributions.)
-#'
-#' @param pu Object of class [data.frame()] that specifies the planning units (PU)
-#' of the corresponding instance and their corresponding monitoring cost and status. Each
-#' row corresponds to a different planning unit. This file is inherited from the
-#' *pu.dat* in *Marxan*. It must contain the following columns:
-#' \describe{
-#'    \item{`id`}{`integer` unique identifier for each planning unit.}
-#'    \item{`monitoring_cost`}{`numeric` cost of including each planning unit in the reserve system.}
-#'    \item{`status`}{`integer` (**optional**) value that indicate if each planning unit
-#'    should be available to be selected (0), *locked-in* (2) as part of the
-#'    solution, or *locked-out* (3) and excluded from the solution.}
-#'    }
-#'
-#' @param features Object of class [data.frame()] that specifies the conservation
-#' features to consider in the optimization problem. Each row corresponds to a different
-#' feature. This file is inherited from marxan's *spec.dat*.
-#'
-#' The `prioriactions` package supports two types of purposes when optimizing: focus on
-#' recovery of features threatened (through the **recovery target**), where only
-#' take into account benefits when taking action against threats and there is no benefit
-#' when selecting planning units where the features are not threatened;
-#' or include the benefits of the features sites where they are not threatened
-#' (through the **conservation target**).
-#'
-#' Note that by default only information on recovery targets is necessary,
-#' while conservation targets equal to zero are assumed. The maximum values of
-#' benefits to achieve both recovery and conservation per feature can be verified
-#' with the `getPotentialBenefit()` function.
-#' For more information on the implications of these targets in the solutions see
-#' the [recovery](https://prioriactions.github.io/prioriactions/articles/objectives.html)
-#' vignette.
-#'
-#' This file must contain
-#' the following columns:
-#' \describe{
-#'    \item{`id`}{`integer` unique identifier for each conservation feature.}
-#'    \item{`target_recovery`}{`numeric` amount of recovery target to achieve for each conservation feature.
-#'    This field is **required** if a `minimizeCosts` model is used.}
-#'    \item{`target_conservation`}{`numeric` (**optional**) amount of conservation target to achieve
-#'    for each conservation feature.
-#'    This field is used only if a model of the type `minimizeCosts` is applied.}
-#'    \item{`name`}{`character` (**optional**) name for each conservation feature.}
-#'    }
-#'
-#' @param dist_features Object of class [data.frame()] that specifies the spatial
-#' distribution of conservation features across planning units. Each row corresponds
-#' to a combination of planning unit and feature. This file is inherited from marxan's
-#' *puvspr.dat*. It must contain the following columns:
-#' \describe{
-#'    \item{`pu`}{`integer` *id* of a planning unit where the conservation feature
-#'    listed on the same row occurs.}
-#'    \item{`feature`}{`integer` *id* of each conservation feature.}
-#'    \item{`amount`}{`numeric` amount of the feature in the planning unit. Set
-#'    to 1 to work with presence/absence.}
-#'    }
-#'
-#' @param threats Object of class [data.frame()] that specifies the threats to consider in
-#' the optimization exercise. Each row corresponds to a different threats. It must contain
-#' the following columns:
-#' \describe{
-#'    \item{`id`}{`integer` unique identifier for each threat.}
-#'    \item{`blm_actions`}{`numeric` (**optional**) penalty of connectivity between threats.
-#'    Default is 0.}
-#'    \item{`name`}{`character` (**optional**) name for each threat.}
-#'    }
-#'
-#' @param dist_threats Object of class [data.frame()] that specifies the spatial
-#' distribution of threats across planning units. Each row corresponds
-#' to a combination of planning unit and threat. It must contain the following
-#' columns:
-#' \describe{
-#'    \item{`pu`}{`integer` *id* of a planning unit where the threat listed on the
-#'    same row occurs.}
-#'    \item{`threat`}{`integer` *id* of each threat.}
-#'    \item{`amount`}{`numeric` amount of the threat in the planning unit. Set
-#'    to 1 to work with presence/absence. Continuous amount values require
-#'    that feature sensitivities to threats be established (more info in
-#'    [sensitivities](https://prioriactions.github.io/prioriactions/articles/sensitivities.html)
-#'    vignette).}
-#'    \item{`action_cost`}{`numeric` cost of an action to abate the threat
-#'    in each planning unit.}
-#'    \item{`status`}{`integer` (**optional**) value that indicates if each action
-#'    to abate the threat is available to be selected (0), *locked-in* (2)
-#'    as part of the solution, or *locked-out* (3) and therefore excluded from the solution.}
-#'    }
-#'
-#' @param sensitivity (**optional**) Object of class [data.frame()] that specifies
-#' the sensitivity of each feature to each threat. Each row corresponds
-#' to a combination of feature and threat. If not informed, all features
-#' are assumed to be sensitive to all threats.
-#'
-#' Sensitivity can be parameterized in two ways: **binary**; the feature is
-#' sensitive or not, or **continuous**; with response curves of the probability of
-#' persistence of the features to threats. For the first case, it is only necessary
-#' to indicate the ids of the threats and the respective features sensitive to them.
-#' In the second case, the response can be parameterized through four values: *\eqn{\delta_1}*, *\eqn{\delta_2}*, *\eqn{\delta_3}*
-#' and *\eqn{\delta_4}*. See
-#' [sensitivities](https://prioriactions.github.io/prioriactions/articles/sensitivities.html)
-#' vignette for more information on continuous sensitivities. Then, the sensitivity input must contain the following columns:
-#'    \describe{
-#'    \item{`feature`}{`integer` *id* of each conservation feature.}
-#'    \item{`threat`}{`integer` *id* of each threat.}
-#'    \item{`delta1`}{`numeric` (**optional**) the minimum intensity of the threat at
-#'    which the features probability of persistence starts to decline. The more
-#'    sensitive the feature is to the threat, the lowest this value will be. Default
-#'    is 0.}
-#'    \item{`delta2`}{`numeric` (**optional**) the value of intensity of the threat
-#'    over which the feature has a probability of persistence of 0. If it is not
-#'    established,it is assumed as the **maximum value of the threat across all planning units**
-#'    in the study area.
-#'    Note that this might overestimate the sensitivity of features to threats,
-#'    as they will only be assumed to disappear from planning units if the
-#'    threats reach the maximum intensity value in the study area.}
-#'    \item{`delta3`}{`numeric` (**optional**) minimum probability of persistence of a
-#'    features when a threat reaches its maximum intensity value. Default is 0.}
-#'    \item{`delta4`}{`numeric` (**optional**) maximum probability of persistence of a
-#'    features in absence threats. Default is 1.}
-#'    }
-#'  Note that optional parameters *delta1*, *delta2*, *delta3* and *delta4* can be provided independently.
-#'
-#' @param boundary (**optional**) Object of class [data.frame()] that specifies
-#' the spatial relationship between pair of planning units. Each row corresponds
-#' to a combination of planning unit. This file is inherited from marxan's
-#' *bound.dat*. It must contain the following columns:
-#'   \describe{
-#'   \item{`id1`}{`integer` *id* of each planning unit.}
-#'   \item{`id2`}{`integer` *id* of each planning unit.}
-#'   \item{`boundary`}{`numeric` penalty applied in the objective function
-#'   when only one of the planning units is present in the solution.}
-#'   }
-#'
-#' @param ... Unused arguments, reserved for future expansion.
-#'
-#' @name inputData
-#'
-#' @return An object of class [data-class].
-#'
-#' @seealso For more information on the correct format for *Marxan* input data, see the
-#' [official *Marxan* website](https://marxansolutions.org) and Ball *et al.* (2009).
-#'
-#' @examples
-#' ## set seed for reproducibility
-#' set.seed(14)
-#'
-#' ## Set prioriactions path
-#' prioriactions_path <- system.file("extdata/example_input/", package = "prioriactions")
-#'
-#' ## Load in planning unit data
-#' pu_data <- data.table::fread(paste0(prioriactions_path,"/pu.dat"),
-#'                              data.table = FALSE)
-#' head(pu_data)
-#'
-#' ## Load in feature data
-#' features_data <- data.table::fread(paste0(prioriactions_path,"/features.dat"),
-#'                                    data.table = FALSE)
-#' head(features_data)
-#'
-#' ## Load in planning unit vs feature data
-#' dist_features_data <- data.table::fread(paste0(prioriactions_path,"/dist_features.dat"),
-#'                                         data.table = FALSE)
-#' head(dist_features_data)
-#'
-#' ## Load in the threats data
-#' threats_data <- data.table::fread(paste0(prioriactions_path,"/threats.dat"),
-#'                                   data.table = FALSE)
-#' head(threats_data)
-#'
-#' ## Load in the threats distribution data
-#' dist_threats_data <- data.table::fread(paste0(prioriactions_path,"/dist_threats.dat"),
-#'                                        data.table = FALSE)
-#' head(dist_threats_data)
-#'
-#' ## Load in the sensitivity data
-#' sensitivity_data <- data.table::fread(paste0(prioriactions_path,"/sensitivity.dat"),
-#'                                       data.table = FALSE)
-#' head(sensitivity_data)
-#'
-#' ## Load in the boundary data
-#' boundary_data <- data.table::fread(paste0(prioriactions_path,"/boundary.dat"),
-#'                                    data.table = FALSE)
-#' head(boundary_data)
-#'
-#' ## Create data instance
-#' problem_data <- inputData(
-#'   pu = sim_pu_data, features = sim_features_data, dist_features = sim_dist_features_data,
-#'   threats = sim_threats_data, dist_threats = sim_dist_threats_data,
-#'   sensitivity = sim_sensitivity_data, boundary = sim_boundary_data
-#' )
-#'
-#' ## Summary
-#' print(problem_data)
-#'
-#' @references
-#' \itemize{
-#' \item Ball I, Possingham H, Watts, M. *Marxan and relatives: software for spatial
-#' conservation prioritization*. Spatial conservation prioritisation: quantitative
-#' methods and computational tools 2009.
-#' }
-#'
 #' @export
-methods::setGeneric("inputData",
-                    signature = methods::signature("pu", "features", "dist_features", "threats", "dist_threats"),
-                    function(pu, features, dist_features, threats, dist_threats, ...) standardGeneric("inputData")
+#' @rdname inputData
+methods::setGeneric(
+  "inputData",
+  signature = methods::signature("pu", "features", "dist_features"),
+  function(
+    pu,
+    features,
+    dist_features,
+    boundary = NULL,
+    cost = NULL,
+    pu_id_col = "id",
+    locked_in_col = "locked_in",
+    locked_out_col = "locked_out",
+    pu_status = NULL,
+    cost_aggregation = c("mean", "sum"),
+    ...
+  ) {
+    standardGeneric("inputData")
+  }
 )
 
-#' @rdname inputData
-methods::setMethod(
-  "inputData",
-  methods::signature(
-    pu = "data.frame", features = "data.frame", dist_features = "data.frame",
-    threats = "data.frame", dist_threats = "data.frame"
-  ),
-  function(pu, features, dist_features, threats, dist_threats,
-           sensitivity = NULL, boundary = NULL) {
+# =========================================================
+# Internal: TABULAR implementation (pure tabular + legacy)
+# =========================================================
+.pa_inputData_tabular_impl <- function(pu, features, dist_features, boundary = NULL, ...) {
 
-    ## pu
-    assertthat::assert_that(
-      inherits(pu, "data.frame"),
-      assertthat::has_name(pu, "id"),
-      is.numeric(pu$id),
-      anyDuplicated(pu$id) == 0,
-      nrow(pu) > 0,
-      assertthat::noNA(pu$id),
-      assertthat::has_name(pu, "monitoring_cost"),
-      is.numeric(pu$monitoring_cost),
-      assertthat::noNA(pu$monitoring_cost)
-    )
-    if ("status" %in% names(pu)) {
-      assertthat::assert_that(
-        is.numeric(pu$status),
-        assertthat::noNA(pu$status),
-        all(pu$status %in% c(0, 2, 3))
-      )
+  dots <- list(...)
+  `%||%` <- function(a, b) if (!is.null(a)) a else b
+
+  # -------------------------
+  # Detect legacy inputs
+  # -------------------------
+  has_legacy <- !is.null(dots$threats) || !is.null(dots$dist_threats) || !is.null(dots$sensitivity)
+
+  format <- dots$format %||% "auto"
+  if (!format %in% c("auto", "new", "legacy")) {
+    stop("`format` must be one of: 'auto', 'new', 'legacy'.", call. = FALSE)
+  }
+  if (format == "new" && has_legacy) {
+    stop("You provided legacy inputs (threats/dist_threats/sensitivity) but format='new'.", call. = FALSE)
+  }
+  if (format == "legacy" && (!is.data.frame(dots$threats) || !is.data.frame(dots$dist_threats))) {
+    stop("format='legacy' requires `threats` and `dist_threats` (data.frame) in ...", call. = FALSE)
+  }
+
+  # helper: coerce ids to integer safely
+  .as_int_id <- function(x, what) {
+    if (is.factor(x)) x <- as.character(x)
+    if (is.character(x)) {
+      if (any(grepl("[^0-9\\-]", x))) {
+        stop(what, " must be numeric/integer ids (got non-numeric strings).", call. = FALSE)
+      }
+      x <- as.integer(x)
     } else {
-      pu$status <- 0
+      x <- as.integer(x)
     }
-    pu <- pu[order(pu$id),]
+    if (anyNA(x)) stop(what, " contains NA after coercion to integer.", call. = FALSE)
+    x
+  }
 
-    ## features
+  # =========================
+  # PU: validate + normalize
+  # =========================
+  assertthat::assert_that(
+    inherits(pu, "data.frame"),
+    assertthat::has_name(pu, "id"),
+    nrow(pu) > 0,
+    assertthat::noNA(pu$id)
+  )
+
+  pu$id <- .as_int_id(pu$id, "pu$id")
+  if (anyDuplicated(pu$id) != 0) stop("pu$id must be unique.", call. = FALSE)
+
+  # accept cost or monitoring_cost -> normalize to cost
+  if ("cost" %in% names(pu)) {
+    assertthat::assert_that(is.numeric(pu$cost), assertthat::noNA(pu$cost))
+  } else if ("monitoring_cost" %in% names(pu)) {
+    assertthat::assert_that(is.numeric(pu$monitoring_cost), assertthat::noNA(pu$monitoring_cost))
+    pu$cost <- pu$monitoring_cost
+  } else {
+    stop("pu must contain either a 'cost' column or a 'monitoring_cost' column.", call. = FALSE)
+  }
+
+  # locks: accept locked_in/locked_out or status (Marxan style)
+  has_locked_cols <- ("locked_in" %in% names(pu)) || ("locked_out" %in% names(pu))
+  if (has_locked_cols) {
+    if (!("locked_in" %in% names(pu))) pu$locked_in <- FALSE
+    if (!("locked_out" %in% names(pu))) pu$locked_out <- FALSE
+    pu$locked_in  <- as.logical(pu$locked_in)
+    pu$locked_out <- as.logical(pu$locked_out)
+  } else if ("status" %in% names(pu)) {
+    pu$status <- as.integer(pu$status)
+    pu$locked_in  <- pu$status == 2L
+    pu$locked_out <- pu$status == 3L
+  } else {
+    pu$locked_in  <- FALSE
+    pu$locked_out <- FALSE
+  }
+
+  if (any(pu$locked_in & pu$locked_out, na.rm = TRUE)) {
+    stop("Some planning units are both locked_in and locked_out. Please fix pu input.", call. = FALSE)
+  }
+
+  pu <- pu[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
+  pu <- pu[order(pu$id), , drop = FALSE]
+
+  # internal ids + lookup
+  pu$internal_id <- seq_len(nrow(pu))
+  pu_index <- stats::setNames(pu$internal_id, as.character(pu$id))
+
+  # =========================
+  # FEATURES: validate + normalize
+  # =========================
+  assertthat::assert_that(
+    inherits(features, "data.frame"),
+    assertthat::has_name(features, "id"),
+    nrow(features) > 0,
+    assertthat::noNA(features$id)
+  )
+
+  features$id <- .as_int_id(features$id, "features$id")
+  if (anyDuplicated(features$id) != 0) stop("features$id must be unique.", call. = FALSE)
+
+  if (!("name" %in% names(features))) {
+    features$name <- paste0("feature.", seq_len(nrow(features)))
+  } else {
+    features$name <- as.character(features$name)
+    assertthat::assert_that(assertthat::noNA(features$name))
+    if (anyDuplicated(features$name) != 0) stop("features$name must be unique.", call. = FALSE)
+  }
+
+  # legacy-only: require targets
+  if ((format == "legacy") || (format == "auto" && has_legacy)) {
+    if (!("target_recovery" %in% names(features))) {
+      stop("Legacy mode requires features$target_recovery.", call. = FALSE)
+    }
+    assertthat::assert_that(is.numeric(features$target_recovery), assertthat::noNA(features$target_recovery))
+    if (!("target_conservation" %in% names(features))) features$target_conservation <- 0
+    assertthat::assert_that(is.numeric(features$target_conservation), assertthat::noNA(features$target_conservation))
+  }
+
+  features <- features[, c("id", "name", setdiff(names(features), c("id", "name"))), drop = FALSE]
+  features <- features[order(features$id), , drop = FALSE]
+
+  features$internal_id <- seq_len(nrow(features))
+  feature_index <- stats::setNames(features$internal_id, as.character(features$id))
+
+  # =========================
+  # DIST_FEATURES: validate + normalize
+  # =========================
+  assertthat::assert_that(
+    inherits(dist_features, "data.frame"),
+    assertthat::has_name(dist_features, "pu"),
+    assertthat::has_name(dist_features, "feature"),
+    assertthat::has_name(dist_features, "amount"),
+    nrow(dist_features) > 0,
+    assertthat::noNA(dist_features$pu),
+    assertthat::noNA(dist_features$feature),
+    assertthat::noNA(dist_features$amount),
+    is.numeric(dist_features$amount),
+    all(dist_features$amount >= 0)
+  )
+
+  dist_features$pu      <- .as_int_id(dist_features$pu, "dist_features$pu")
+  dist_features$feature <- .as_int_id(dist_features$feature, "dist_features$feature")
+
+  if (!all(dist_features$pu %in% pu$id)) {
+    bad <- unique(dist_features$pu[!dist_features$pu %in% pu$id])
+    stop("dist_features contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
+  }
+  if (!all(dist_features$feature %in% features$id)) {
+    bad <- unique(dist_features$feature[!dist_features$feature %in% features$id])
+    stop("dist_features contains unknown feature ids: ", paste(bad, collapse = ", "), call. = FALSE)
+  }
+
+  dist_features <- dist_features[dist_features$amount != 0, , drop = FALSE]
+
+  key <- paste(dist_features$pu, dist_features$feature, sep = "||")
+  if (anyDuplicated(key) != 0) stop("There are duplicate (pu, feature) pairs in dist_features.", call. = FALSE)
+
+  dist_features$internal_pu      <- unname(pu_index[as.character(dist_features$pu)])
+  dist_features$internal_feature <- unname(feature_index[as.character(dist_features$feature)])
+
+  dist_features <- dist_features[order(dist_features$internal_pu, dist_features$internal_feature), , drop = FALSE]
+  dist_features$internal_row <- seq_len(nrow(dist_features))
+
+  # =========================
+  # BOUNDARY: validate + normalize
+  # =========================
+  assertthat::assert_that(inherits(boundary, c("NULL", "data.frame")))
+  if (inherits(boundary, "data.frame")) {
     assertthat::assert_that(
-      inherits(features, "data.frame"),
-      assertthat::has_name(features, "id"),
-      is.numeric(features$id),
-      nrow(features) > 0,
-      anyDuplicated(features$id) == 0,
-      assertthat::noNA(features$id)
+      assertthat::has_name(boundary, "id1"),
+      assertthat::has_name(boundary, "id2"),
+      assertthat::has_name(boundary, "boundary"),
+      assertthat::noNA(boundary$id1),
+      assertthat::noNA(boundary$id2),
+      assertthat::noNA(boundary$boundary),
+      is.numeric(boundary$boundary)
     )
-    if ("name" %in% names(features)) {
-      assertthat::assert_that(
-        inherits(as.character(features$name), c("character", "factor")),
-        anyDuplicated(as.character(features$name)) == 0,
-        assertthat::noNA(as.character(features$name))
-      )
+
+    boundary$id1 <- .as_int_id(boundary$id1, "boundary$id1")
+    boundary$id2 <- .as_int_id(boundary$id2, "boundary$id2")
+    boundary$boundary <- base::round(as.numeric(boundary$boundary), 3)
+
+    if (!all(boundary$id1 %in% pu$id) || !all(boundary$id2 %in% pu$id)) {
+      warning("boundary contains PU ids not present in pu; they will be removed.", call. = FALSE, immediate. = TRUE)
+      keep <- boundary$id1 %in% pu$id & boundary$id2 %in% pu$id
+      boundary <- boundary[keep, , drop = FALSE]
+    }
+
+    if (nrow(boundary) == 0) {
+      boundary <- NULL
     } else {
-      features$name <- paste0("feature.", seq_len(nrow(features)))
+      boundary$internal_id1 <- unname(pu_index[as.character(boundary$id1)])
+      boundary$internal_id2 <- unname(pu_index[as.character(boundary$id2)])
     }
+  }
 
-    ## Targets_recovery
-    assertthat::assert_that(
-      assertthat::has_name(features, "target_recovery"),
-      is.numeric(features$target_recovery),
-      assertthat::noNA(features$target_recovery)
+  # =========================
+  # rounding
+  # =========================
+  pu$cost <- base::round(pu$cost, 3)
+  dist_features$amount <- base::round(dist_features$amount, 3)
+
+  # =========================
+  # useful warnings
+  # =========================
+  dif_pu <- setdiff(unique(pu$id), unique(dist_features$pu))
+  if (length(dif_pu) != 0L) {
+    warning(
+      paste0("The following pu's do not contain features: ", paste(dif_pu, collapse = " ")),
+      call. = FALSE, immediate. = TRUE
     )
+  }
 
-    if(assertthat::has_name(features, "target_conservation")){
-      assertthat::assert_that(
-        is.numeric(features$target_conservation),
-        assertthat::noNA(features$target_conservation)
-      )
-    }
-    else{
-      features$target_conservation <- 0
-    }
-
-
-    ## dist_features
-    assertthat::assert_that(
-      inherits(dist_features, "data.frame"),
-      assertthat::has_name(dist_features, "pu"),
-      assertthat::has_name(dist_features, "feature"),
-      assertthat::has_name(dist_features, "amount"),
-      nrow(dist_features) > 0,
-      is.numeric(dist_features$pu),
-      is.numeric(dist_features$feature),
-      is.numeric(dist_features$amount),
-      assertthat::noNA(dist_features$pu),
-      assertthat::noNA(dist_features$feature),
-      assertthat::noNA(dist_features$amount),
-      all(dist_features$amount >= 0),
-      all(dist_features$pu %in% pu$id),
-      all(dist_features$feature %in% features$id)
+  dif_features <- setdiff(unique(features$id), unique(dist_features$feature))
+  if (length(dif_features) != 0L) {
+    warning(
+      paste0("The following features are not represented in dist_features: ", paste(dif_features, collapse = " ")),
+      call. = FALSE, immediate. = TRUE
     )
+  }
 
-    # eliminate features with amount equal to zero
-    dist_features <- dist_features[!dist_features$amount == 0, ]
+  # =========================
+  # LEGACY BLOCK (optional)
+  # =========================
+  threats <- NULL
+  dist_threats <- NULL
+  sensitivity <- NULL
+  threat_index <- NULL
 
-    # verify if exist rows duplicates
-    dist_features_copy <- dist_features[,c("pu", "feature")]
-    dist_features_copy <- dist_features_copy %>% dplyr::distinct()
+  if ((format == "legacy") || (format == "auto" && has_legacy)) {
 
-    if(nrow(dist_features_copy) != nrow(dist_features)){
-      stop("There are duplicate values of the pu and feature pair in the dis_features input file.", call. = FALSE, immediate. = TRUE)
+    threats <- dots$threats
+    dist_threats <- dots$dist_threats
+    sensitivity <- dots$sensitivity %||% NULL
+
+    if (!inherits(threats, "data.frame") || !inherits(dist_threats, "data.frame")) {
+      stop("Legacy inputs require `threats` and `dist_threats` as data.frame (passed via ...).", call. = FALSE)
     }
 
-    ## threats
+    # ---- threats
     assertthat::assert_that(
-      inherits(threats, "data.frame"),
       assertthat::has_name(threats, "id"),
-      is.numeric(threats$id),
       nrow(threats) > 0,
-      anyDuplicated(threats$id) == 0,
       assertthat::noNA(threats$id)
     )
-    if ("name" %in% names(threats)) {
-      assertthat::assert_that(
-        inherits(as.character(threats$name), c("character", "factor")),
-        anyDuplicated(as.character(threats$name)) == 0,
-        assertthat::noNA(as.character(threats$name))
-      )
-    } else {
-      threats$name <- paste0("threat.", seq_len(nrow(threats)))
-    }
-    if ("blm_actions" %in% names(threats)) {
-      assertthat::assert_that(
-        is.numeric(threats$blm_actions),
-        all(threats$blm_actions >= 0))
-    }
-    else{
-      threats$blm_actions <- 0.0
-    }
+    threats$id <- .as_int_id(threats$id, "threats$id")
+    if (anyDuplicated(threats$id) != 0) stop("threats$id must be unique.", call. = FALSE)
 
-    ## dist_threats
+    if (!("name" %in% names(threats))) threats$name <- paste0("threat.", seq_len(nrow(threats)))
+    threats$name <- as.character(threats$name)
+    if (anyDuplicated(threats$name) != 0) stop("threats$name must be unique.", call. = FALSE)
+
+    if (!("blm_actions" %in% names(threats))) threats$blm_actions <- 0
+    assertthat::assert_that(is.numeric(threats$blm_actions), all(threats$blm_actions >= 0))
+
+    threats <- threats[order(threats$id), , drop = FALSE]
+    threats$internal_id <- seq_len(nrow(threats))
+    threat_index <- stats::setNames(threats$internal_id, as.character(threats$id))
+
+    # ---- dist_threats
     assertthat::assert_that(
-      inherits(dist_threats, "data.frame"),
       assertthat::has_name(dist_threats, "pu"),
       assertthat::has_name(dist_threats, "threat"),
-      assertthat::has_name(dist_threats, "action_cost"),
       assertthat::has_name(dist_threats, "amount"),
+      assertthat::has_name(dist_threats, "action_cost"),
       nrow(dist_threats) > 0,
-      is.numeric(dist_threats$pu),
-      is.numeric(dist_threats$threat),
-      is.numeric(dist_threats$action_cost),
-      is.numeric(dist_threats$amount),
       assertthat::noNA(dist_threats$pu),
       assertthat::noNA(dist_threats$threat),
+      assertthat::noNA(dist_threats$amount),
       assertthat::noNA(dist_threats$action_cost),
-      all(dist_threats$amount >= 0),
-      all(dist_threats$pu %in% pu$id)
+      is.numeric(dist_threats$amount),
+      is.numeric(dist_threats$action_cost),
+      all(dist_threats$amount >= 0)
     )
+
+    dist_threats$pu     <- .as_int_id(dist_threats$pu, "dist_threats$pu")
+    dist_threats$threat <- .as_int_id(dist_threats$threat, "dist_threats$threat")
+
+    if (!all(dist_threats$pu %in% pu$id)) {
+      bad <- unique(dist_threats$pu[!dist_threats$pu %in% pu$id])
+      stop("dist_threats contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
+    }
+    if (!all(dist_threats$threat %in% threats$id)) {
+      bad <- unique(dist_threats$threat[!dist_threats$threat %in% threats$id])
+      stop("dist_threats contains unknown threat ids: ", paste(bad, collapse = ", "), call. = FALSE)
+    }
+
+    # status handling (optional)
     if ("status" %in% names(dist_threats)) {
-      assertthat::assert_that(
-        is.numeric(dist_threats$status),
-        assertthat::noNA(dist_threats$status),
-        all(dist_threats$status %in% c(0, 2, 3))
-      )
+      dist_threats$status <- as.integer(dist_threats$status)
+      ok <- dist_threats$status %in% c(0L, 2L, 3L)
+      if (!all(ok, na.rm = TRUE)) stop("dist_threats$status must be in {0,2,3}.", call. = FALSE)
 
-      status_lock_out <- pu$status == 3
-
-      for(row in seq_along(pu$id)){
-        if(isTRUE(status_lock_out[row])){
-
-          status_locked_out <- dist_threats[dist_threats$pu == pu$id[row], ]$status
-          status_incorrect <- any(status_locked_out == 2)
-
-          if(isTRUE(status_incorrect)){
-            warning(paste0("The pu ", pu$id[row], " was set as locked out so it is not possible to set actions on it (lock in). Therefore, all actions in that unit will be set as locked out"), call. = FALSE, immediate. = TRUE)
-          }
-
-          if(length(status_locked_out) != 0){
-            dist_threats[dist_threats$pu == pu$id[row], ]$status <- 3
-          }
+      locked_out_pus <- pu$id[pu$locked_out]
+      if (length(locked_out_pus)) {
+        idx <- dist_threats$pu %in% locked_out_pus & dist_threats$status == 2L
+        if (any(idx, na.rm = TRUE)) {
+          warning("Some actions were locked-in inside locked-out PU(s); setting them to locked-out.", call. = FALSE, immediate. = TRUE)
+          dist_threats$status[idx] <- 3L
         }
+        idx2 <- dist_threats$pu %in% locked_out_pus
+        dist_threats$status[idx2] <- 3L
       }
     } else {
-      pu$status <- 0
+      dist_threats$status <- 0L
     }
 
-    # eliminate threats with amount equal to zero
-    dist_threats <- dist_threats[!dist_threats$amount == 0, ]
+    dist_threats <- dist_threats[dist_threats$amount != 0, , drop = FALSE]
+    key_t <- paste(dist_threats$pu, dist_threats$threat, sep = "||")
+    if (anyDuplicated(key_t) != 0) stop("There are duplicate (pu, threat) pairs in dist_threats.", call. = FALSE)
 
-    # verify if exist rows duplicates
-    dist_threats_copy <- dist_threats[,c("pu", "threat")]
-    dist_threats_copy <- dist_threats_copy %>% dplyr::distinct()
+    dist_threats$internal_pu <- unname(pu_index[as.character(dist_threats$pu)])
+    dist_threats$internal_threat <- unname(threat_index[as.character(dist_threats$threat)])
 
-    if(nrow(dist_threats_copy) != nrow(dist_threats)){
-      stop("There are duplicate values of the pu and threat pair in the dis_threats input file.", call. = FALSE, immediate. = TRUE)
-    }
-
-    ## sensitivity
-    assertthat::assert_that(inherits(sensitivity, c("NULL", "data.frame")))
-    if (inherits(sensitivity, "data.frame")) {
+    # ---- sensitivity
+    if (is.null(sensitivity)) {
+      sensitivity <- base::expand.grid(feature = features$id, threat = threats$id)
+    } else {
       assertthat::assert_that(
+        inherits(sensitivity, "data.frame"),
         assertthat::has_name(sensitivity, "feature"),
         assertthat::has_name(sensitivity, "threat"),
         nrow(sensitivity) > 0,
-        is.numeric(sensitivity$feature),
-        is.numeric(sensitivity$threat),
         assertthat::noNA(sensitivity$feature),
         assertthat::noNA(sensitivity$threat)
       )
     }
-    else{
-      sensitivity <- base::expand.grid("feature" = features$id, "threat" = threats$id)
-    }
 
-    if ("delta1" %in% names(sensitivity)) {
-      assertthat::assert_that(
-        !is.character(sensitivity$delta1)
-      )
-      sensitivity$delta1[is.na(sensitivity$delta1)] = 0
-    } else {
-      sensitivity$delta1 <- 0
-    }
-    if ("delta2" %in% names(sensitivity)) {
-      assertthat::assert_that(
-        !is.character(sensitivity$delta2)
-      )
-    } else {
-      sensitivity$delta2 <- NA
-    }
+    sensitivity$feature <- .as_int_id(sensitivity$feature, "sensitivity$feature")
+    sensitivity$threat  <- .as_int_id(sensitivity$threat,  "sensitivity$threat")
 
-    vector_max_intensities <- c()
+    sensitivity <- sensitivity[sensitivity$feature %in% features$id & sensitivity$threat %in% threats$id, , drop = FALSE]
+    if (nrow(sensitivity) == 0) stop("After filtering, sensitivity has 0 valid rows.", call. = FALSE)
 
-    max_intensities <- dist_threats %>% dplyr::group_by(.data$threat) %>% dplyr::summarise(value = max(.data$amount))
+    if (!("delta1" %in% names(sensitivity))) sensitivity$delta1 <- 0
+    if (!("delta2" %in% names(sensitivity))) sensitivity$delta2 <- NA
+    if (!("delta3" %in% names(sensitivity))) sensitivity$delta3 <- 0
+    if (!("delta4" %in% names(sensitivity))) sensitivity$delta4 <- 1
 
-    for(i in seq_len(nrow(max_intensities))){
-      if(any(sensitivity$threat == max_intensities$threat[i][[1]])){
-        vector_max_intensities[sensitivity$threat == max_intensities$threat[i][[1]]] <- max_intensities$value[i][[1]]
-      }
-    }
-    sensitivity$delta2[is.na(sensitivity$delta2)] <- vector_max_intensities[is.na(sensitivity$delta2)]
+    sensitivity$delta1[is.na(sensitivity$delta1)] <- 0
+    sensitivity$delta3[is.na(sensitivity$delta3)] <- 0
+    sensitivity$delta4[is.na(sensitivity$delta4)] <- 1
 
+    max_int <- stats::aggregate(dist_threats$amount, by = list(threat = dist_threats$threat), FUN = max)
+    names(max_int)[2] <- "max_amount"
+    idx_map <- match(sensitivity$threat, max_int$threat)
+    fill_vals <- max_int$max_amount[idx_map]
+    sensitivity$delta2[is.na(sensitivity$delta2)] <- fill_vals[is.na(sensitivity$delta2)]
 
-    if ("delta3" %in% names(sensitivity)) {
-      assertthat::assert_that(
-        !is.character(sensitivity$delta3)
-      )
-      sensitivity$delta3[is.na(sensitivity$delta3)] = 0
-    } else {
-      sensitivity$delta3 <- 0
-    }
-    if ("delta4" %in% names(sensitivity)) {
-      assertthat::assert_that(
-        !is.character(sensitivity$delta4)
-      )
-      sensitivity$delta4[is.na(sensitivity$delta4)] = 1
-    } else {
-      sensitivity$delta4 <- 1
-    }
+    if (!all(sensitivity$delta2 > sensitivity$delta1)) stop("Each delta2 must be > delta1.", call. = FALSE)
+    if (!all(sensitivity$delta4 > sensitivity$delta3)) stop("Each delta4 must be > delta3.", call. = FALSE)
 
-    if(isFALSE(all(sensitivity$delta2 > sensitivity$delta1))){
-      stop("Every value of delta1 parameter must be less than every value of delta2 parameter", call. = FALSE, immediate. = TRUE)
-    }
+    sensitivity$internal_feature <- unname(feature_index[as.character(sensitivity$feature)])
+    sensitivity$internal_threat  <- unname(threat_index[as.character(sensitivity$threat)])
 
-    if(isFALSE(all(sensitivity$delta4 > sensitivity$delta3))){
-      stop("Every value of delta3 parameter must be less than every value of delta4 parameter", call. = FALSE, immediate. = TRUE)
-    }
-
-
-    ## boundary
-    assertthat::assert_that(inherits(boundary, c("NULL", "data.frame")))
-    if (inherits(boundary, "data.frame")) {
-      assertthat::assert_that(
-        assertthat::has_name(boundary, "id1"),
-        assertthat::has_name(boundary, "id2"),
-        assertthat::has_name(boundary, "boundary"),
-        is.numeric(boundary$id1),
-        is.numeric(boundary$id2),
-        is.numeric(boundary$boundary),
-        assertthat::noNA(boundary$id1),
-        assertthat::noNA(boundary$id2),
-        assertthat::noNA(boundary$boundary)
-        #all(boundary$id1 %in% pu$id), all(boundary$id2 %in% pu$id)
-      )
-      boundary$boundary <- base::round(boundary$boundary, 3)
-    }
-
-
-    ## Verification subsets
-    verify_that(all(as.matrix(pu[, "monitoring_cost", drop = FALSE]) >= 0,
-                    na.rm = TRUE
-    ),
-    msg = "argument to pu has negative monitoring cost data"
-    )
-
-    dif_pu <- setdiff(unique(pu$id), unique(dist_features$pu))
-    if (length(dif_pu) != 0L) {
-      warning(paste0("The following pu's do not contain features: ", paste(dif_pu, collapse = " ")), call. = FALSE, immediate. = TRUE)
-    }
-
-    dif_features <- setdiff(unique(features$id), unique(dist_features$feature))
-    if (length(dif_features) != 0L) {
-
-      warning(paste0("The following features are not represented (it'll not be considered in the model): ", paste(dif_features, collapse = " ")), call. = FALSE, immediate. = TRUE)
-
-      # eliminate species not represented
-      features <- features[!features$id %in% dif_features, ]
-      sensitivity <- sensitivity[!sensitivity$feature %in% dif_features, ]
-    }
-
-    dif_species_threatened <- setdiff(unique(features$id), unique(sensitivity$feature))
-    if (length(dif_species_threatened) != 0L) {
-      warning(paste0("The following features are not threatened: ", paste(dif_species_threatened, collapse = " ")), call. = FALSE, immediate. = TRUE)
-
-      # eliminate species not threatened
-
-    }
-
-    dif_threats <- setdiff(unique(threats$id), unique(dist_threats$threat))
-    if (length(dif_threats) != 0L) {
-      warning(paste0("The following threats are not represented (it'll not be considered in the model): ", paste(dif_threats, collapse = " ")), call. = FALSE, immediate. = TRUE)
-
-      # eliminate species not represented
-      threats <- threats[!threats$id %in% dif_threats, ]
-      sensitivity <- sensitivity[!sensitivity$threat %in% dif_threats, ]
-    }
-
-    dif_threats_dangerous <- setdiff(unique(threats$id), unique(sensitivity$threat))
-    if (length(dif_threats_dangerous) != 0L) {
-      warning(paste0("The following threats are not dangerous to any features (it'll not be considered in the model): ", paste(dif_threats_dangerous, collapse = " ")), call. = FALSE, immediate. = TRUE)
-
-      # eliminate threats not represented
-      threats <- threats[!threats$id %in% dif_threats_dangerous, ]
-      dist_threats <- dist_threats[!dist_threats$threat %in% dif_threats_dangerous, ]
-    }
-    if(!is.null(boundary)){
-      if(!all(boundary$id1 %in% pu$id) || !all(boundary$id2 %in% pu$id)){
-        warning("The boundary data contain pu which ids does not exist in pu data (it'll not be considered in the model)", call. = FALSE, immediate. = TRUE)
-
-        rows_boundary_leftover <- c(which(!boundary$id1 %in% pu$id), which(!boundary$id2 %in% pu$id))
-        boundary <- boundary[-rows_boundary_leftover,]
-      }
-    }
-
-
-
-    ## Rounding numeric fields of input data
-    pu$monitoring_cost <- base::round(pu$monitoring_cost, 3)
-    features$target_recovery <- base::round(features$target_recovery, 3)
-    features$target_conservation <- base::round(features$target_conservation, 3)
-    dist_features$amount <- base::round(dist_features$amount, 3)
     threats$blm_actions <- base::round(threats$blm_actions, 3)
     dist_threats$amount <- base::round(dist_threats$amount, 3)
     dist_threats$action_cost <- base::round(dist_threats$action_cost, 3)
@@ -557,55 +385,371 @@ methods::setMethod(
     sensitivity$delta3 <- base::round(sensitivity$delta3, 3)
     sensitivity$delta4 <- base::round(sensitivity$delta4, 3)
 
+    if (isTRUE(dots$warn_legacy %||% TRUE)) {
+      if (requireNamespace("lifecycle", quietly = TRUE)) {
+        lifecycle::deprecate_warn(
+          when = "1.0.1",
+          what = "inputData()",
+          with = "add_actions()",
+          details = paste(
+            "Legacy inputs detected (threats/dist_threats/sensitivity).",
+            "New workflow example:",
+            "inputData(...) %>% add_actions(...) %>% add_effects(...) %>% solve()"
+          )
+        )
+      } else {
+        warning(
+          "Legacy inputs detected (threats/dist_threats/sensitivity). Consider migrating to the new format.",
+          call. = FALSE, immediate. = TRUE
+        )
+      }
+    }
+  }
 
+  # =========================
+  # build Data object (FIXED: assign to x and return it)
+  # =========================
+  x <- pproto(
+    NULL, Data,
+    data = list(
+      pu = pu,
+      features = features,
+      dist_features = dist_features,
+      boundary = boundary,
 
-    ## Creating internal id's
-    # pu
-    pu$internal_id <- seq_len(nrow(pu))
+      # legacy (optional)
+      threats = threats,
+      dist_threats = dist_threats,
+      sensitivity = sensitivity,
 
-    # features
-    features$internal_id <- seq_len(nrow(features))
+      index = list(
+        pu = pu_index,
+        feature = feature_index,
+        threat = threat_index,
+        feature_name_to_id = stats::setNames(features$id, features$name)
+      ),
 
-    # threats
-    threats$internal_id <- seq_len(nrow(threats))
+      meta = list(
+        input_format = if ((format == "legacy") || (format == "auto" && has_legacy)) "legacy" else "new",
+        dist_features_meaning = "baseline_amount",
+        dist_benefit_meaning  = "delta_by_default"
+      ),
 
-    # boundary
-    if(!is.null(boundary)){
-      internal_id1 <- dplyr::inner_join(boundary, pu, by = c("id1" = "id"))$internal_id
-      internal_id2 <- dplyr::inner_join(boundary, pu, by = c("id2" = "id"))$internal_id
-      boundary$internal_id1 <- internal_id1
-      boundary$internal_id2 <- internal_id2
+      # new workflow placeholders
+      actions = NULL,
+      dist_actions = NULL,
+      dist_benefit = NULL,
+      locked_actions = NULL,
+      targets = NULL,
+      objective = NULL,
+      decisions = NULL,
+      solver = NULL
+    )
+  )
+
+  x
+}
+
+# =========================================================
+# Method: TABULAR inputs
+# =========================================================
+#' @export
+#' @rdname inputData
+methods::setMethod(
+  "inputData",
+  methods::signature(pu = "data.frame", features = "data.frame", dist_features = "data.frame"),
+  function(
+    pu,
+    features,
+    dist_features,
+    boundary = NULL,
+    cost = NULL,
+    pu_id_col = "id",
+    locked_in_col = "locked_in",
+    locked_out_col = "locked_out",
+    pu_status = NULL,
+    cost_aggregation = c("mean", "sum"),
+    ...
+  ) {
+    # ignore spatial-only args in tabular mode
+    .pa_inputData_tabular_impl(
+      pu = pu,
+      features = features,
+      dist_features = dist_features,
+      boundary = boundary,
+      ...
+    )
+  }
+)
+
+# =========================================================
+# Method: SPATIAL inputs (dist_features missing)
+# =========================================================
+#' @export
+#' @rdname inputData
+methods::setMethod(
+  "inputData",
+  methods::signature(pu = "ANY", features = "ANY", dist_features = "missing"),
+  function(
+    pu,
+    features,
+    dist_features,
+    boundary = "auto",
+    cost = NULL,
+    pu_id_col = "id",
+    locked_in_col = "locked_in",
+    locked_out_col = "locked_out",
+    pu_status = NULL,
+    cost_aggregation = c("mean", "sum"),
+    ...
+  ) {
+    cost_aggregation <- match.arg(cost_aggregation)
+
+    if (is.null(cost)) {
+      stop(
+        "Spatial mode: `dist_features` is missing, so you must provide `cost` ",
+        "(either a PU column name for vector PUs, or a raster/file path).",
+        call. = FALSE
+      )
+    }
+    if (!requireNamespace("terra", quietly = TRUE)) {
+      stop("Spatial mode requires the 'terra' package. Please install it.", call. = FALSE)
+    }
+    if (!(is.null(boundary) || is.character(boundary) || is.data.frame(boundary))) {
+      stop("boundary must be NULL, 'auto', or a data.frame.", call. = FALSE)
     }
 
-    # dist_features
-    internal_id <- dplyr::inner_join(dist_features, pu, by = c("pu" = "id"))$internal_id
-    dist_features$internal_pu <- internal_id
+    fun_cost <- .fun_from_name(cost_aggregation)
 
-    internal_feature <- dplyr::inner_join(dist_features, features, by = c("feature" = "id"))$internal_id
-    dist_features$internal_feature <- internal_feature
+    # ---- read pu
+    pu_r <- NULL
+    pu_v <- NULL
 
-    # dist_threats
-    internal_id <- dplyr::inner_join(dist_threats, pu, by = c("pu" = "id"))$internal_id
-    dist_threats$internal_pu <- internal_id
+    if (inherits(pu, "SpatRaster") || .is_raster_path(pu)) {
+      pu_r <- .read_rast(pu)
+      pu_r <- terra::round(pu_r)
+      pu_v <- terra::as.polygons(pu_r, dissolve = TRUE, values = TRUE, na.rm = TRUE)
+      names(pu_v) <- pu_id_col
+    } else {
+      pu_v <- .read_vect(pu)
 
-    internal_threat <- dplyr::inner_join(dist_threats, threats, by = c("threat" = "id"))$internal_id
-    dist_threats$internal_threat <- internal_threat
+      if (!(pu_id_col %in% names(pu_v))) {
+        if (identical(pu_id_col, "id")) {
+          warning(
+            "Planning unit layer has no 'id' column. Creating sequential ids (1..n). ",
+            "If you want to use an existing field, set pu_id_col to its name.",
+            call. = FALSE, immediate. = TRUE
+          )
+          pu_v$id <- seq_len(nrow(pu_v))
+          pu_id_col <- "id"
+        } else {
+          stop(
+            "Planning unit vector is missing the id column: '", pu_id_col, "'. ",
+            "Either provide that column or set pu_id_col to an existing column name.",
+            call. = FALSE
+          )
+        }
+      }
+    }
 
-    # sensitivity
-    internal_feature <- dplyr::inner_join(sensitivity, features, by = c("feature" = "id"))$internal_id
-    sensitivity$internal_feature <- internal_feature
+    # base pu table
+    pu_df <- terra::as.data.frame(pu_v)
+    names(pu_df)[names(pu_df) == pu_id_col] <- "id"
+    pu_df$id <- as.integer(round(pu_df$id))
+    pu_df <- pu_df[order(pu_df$id), , drop = FALSE]
+    if (!("id" %in% names(pu_df))) stop("Could not find planning unit ids.", call. = FALSE)
 
-    internal_threat <- dplyr::inner_join(sensitivity, threats, by = c("threat" = "id"))$internal_id
-    sensitivity$internal_threat <- internal_threat
+    # ---- cost
+    if (is.character(cost) && (cost %in% names(pu_df))) {
+      pu_df$cost <- pu_df[[cost]]
+    } else {
+      cost_r <- .read_rast(cost)
+      if (is.null(cost_r)) {
+        stop("You must provide 'cost' either as a column name in pu (vector) or as a raster/file path.", call. = FALSE)
+      }
+      cost_ex <- terra::extract(cost_r, pu_v, fun = fun_cost, na.rm = TRUE)
+      cost_ex <- cost_ex[match(pu_df$id, cost_ex[[1]]), , drop = FALSE]
+      pu_df$cost <- cost_ex[[2]]
+    }
 
+    # ---- locks (prefer columns if present)
+    pu_df$locked_in  <- FALSE
+    pu_df$locked_out <- FALSE
 
-    ## Create Data object
+    if (locked_in_col %in% names(pu_df)) {
+      pu_df$locked_in <- as.logical(pu_df[[locked_in_col]])
+    }
+    if (locked_out_col %in% names(pu_df)) {
+      pu_df$locked_out <- as.logical(pu_df[[locked_out_col]])
+    }
 
-    pproto(NULL, Data,
-           data = list(
-             pu = pu, features = features, dist_features = dist_features, dist_threats = dist_threats, threats = threats,
-             sensitivity = sensitivity, boundary = boundary
-           )
+    # optional pu_status (0/2/3) only fills missing locks
+    if (!is.null(pu_status) && !(locked_in_col %in% names(pu_df)) && !(locked_out_col %in% names(pu_df))) {
+      if (is.character(pu_status) && (pu_status %in% names(pu_df))) {
+        st <- pu_df[[pu_status]]
+      } else {
+        st_r <- .read_rast(pu_status)
+        if (is.null(st_r)) stop("pu_status must be a column name or a raster/file path.", call. = FALSE)
+        st_ex <- terra::extract(st_r, pu_v, fun = terra::modal, na.rm = TRUE)
+        st <- st_ex[[2]]
+      }
+      pu_df$locked_in  <- st == 2
+      pu_df$locked_out <- st == 3
+    }
+
+    if (any(pu_df$locked_in & pu_df$locked_out, na.rm = TRUE)) {
+      stop("Some planning units are both locked_in and locked_out. Please fix your inputs.", call. = FALSE)
+    }
+
+    pu_df <- pu_df[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
+
+    # ---- features + dist_features (sum by PU)
+    feat_r <- .read_rast(features)
+    if (is.null(feat_r)) {
+      stop(
+        "Spatial mode: `features` must be a terra::SpatRaster (or raster file path) with one layer per feature.\n",
+        "If you intended tabular mode, provide `dist_features` as a data.frame.",
+        call. = FALSE
+      )
+    }
+
+    feat_names <- names(feat_r)
+    if (is.null(feat_names) || any(feat_names == "")) {
+      feat_names <- paste0("feature.", seq_len(terra::nlyr(feat_r)))
+    }
+
+    features_df <- data.frame(
+      id = seq_len(terra::nlyr(feat_r)),
+      name = feat_names,
+      stringsAsFactors = FALSE
+    )
+
+    feat_ex <- terra::extract(feat_r, pu_v, fun = sum, na.rm = TRUE)
+    feat_ex <- feat_ex[match(pu_df$id, feat_ex[[1]]), , drop = FALSE]
+    feat_mat <- as.matrix(feat_ex[, -1, drop = FALSE])
+
+    dist_features_df <- data.frame(
+      pu      = rep(pu_df$id, times = terra::nlyr(feat_r)),
+      feature = rep(features_df$id, each = nrow(pu_df)),
+      amount  = as.vector(t(feat_mat)),
+      stringsAsFactors = FALSE
+    )
+    dist_features_df <- dist_features_df[!is.na(dist_features_df$amount) & dist_features_df$amount > 0, , drop = FALSE]
+
+    # ---- boundary (optional)
+    boundary_df <- NULL
+    if (is.data.frame(boundary)) {
+      boundary_df <- boundary
+    } else if (is.character(boundary) && identical(boundary, "auto")) {
+      if (!requireNamespace("sf", quietly = TRUE)) {
+        stop(
+          "Automatic boundary derivation requires the 'sf' package. Please install it or provide boundary as a data.frame.",
+          call. = FALSE
+        )
+      }
+
+      pu_sf <- tryCatch(sf::st_as_sf(pu_v), error = function(e) NULL)
+      if (is.null(pu_sf)) {
+        stop("Could not convert planning units to sf for boundary derivation. Provide boundary as a data.frame.", call. = FALSE)
+      }
+
+      nb <- sf::st_touches(pu_sf)
+      id_vec <- pu_df$id
+
+      id1 <- integer(0)
+      id2 <- integer(0)
+
+      for (i in seq_along(nb)) {
+        if (length(nb[[i]]) == 0) next
+        j <- nb[[i]]
+        keep <- j > i
+        if (any(keep)) {
+          id1 <- c(id1, rep(id_vec[i], sum(keep)))
+          id2 <- c(id2, id_vec[j[keep]])
+        }
+      }
+
+      boundary_df <- data.frame(
+        id1 = id1,
+        id2 = id2,
+        boundary = 1,
+        stringsAsFactors = FALSE
+      )
+    }
+
+    # ---- build via tabular impl (no recursion / no double dispatch)
+    x <- .pa_inputData_tabular_impl(
+      pu = pu_df,
+      features = features_df,
+      dist_features = dist_features_df,
+      boundary = boundary_df,
+      ...
+    )
+
+    # ---- store spatial artifacts (optional)
+    if (!is.null(pu_r)) x$data$pu_raster_id <- pu_r
+
+    if (requireNamespace("sf", quietly = TRUE)) {
+      pu_sf_store <- tryCatch(sf::st_as_sf(pu_v), error = function(e) NULL)
+      if (!is.null(pu_sf_store)) {
+
+        if (pu_id_col %in% names(pu_sf_store)) {
+          names(pu_sf_store)[names(pu_sf_store) == pu_id_col] <- "id"
+        }
+        if (!("id" %in% names(pu_sf_store))) {
+          pu_sf_store$id <- seq_len(nrow(pu_sf_store))
+        }
+
+        pu_sf_store <- pu_sf_store[, "id", drop = FALSE]
+        ord <- match(x$data$pu$id, pu_sf_store$id)
+
+        if (any(is.na(ord))) {
+          warning(
+            "Could not safely match PU geometry to PU ids; 'pu_sf' will not be stored in the problem object.",
+            call. = FALSE, immediate. = TRUE
+          )
+        } else {
+          x$data$pu_sf <- pu_sf_store[ord, , drop = FALSE]
+        }
+      }
+    }
+
+    x
+  }
+)
+
+# =========================================================
+# Method: SPATIAL inputs (dist_features explicitly NULL)
+# =========================================================
+#' @export
+#' @rdname inputData
+methods::setMethod(
+  "inputData",
+  methods::signature(pu = "ANY", features = "ANY", dist_features = "NULL"),
+  function(
+    pu,
+    features,
+    dist_features,
+    boundary = "auto",
+    cost = NULL,
+    pu_id_col = "id",
+    locked_in_col = "locked_in",
+    locked_out_col = "locked_out",
+    pu_status = NULL,
+    cost_aggregation = c("mean", "sum"),
+    ...
+  ) {
+    methods::selectMethod("inputData", signature = c("ANY", "ANY", "missing"))(
+      pu = pu,
+      features = features,
+      boundary = boundary,
+      cost = cost,
+      pu_id_col = pu_id_col,
+      locked_in_col = locked_in_col,
+      locked_out_col = locked_out_col,
+      pu_status = pu_status,
+      cost_aggregation = cost_aggregation,
+      ...
     )
   }
 )
