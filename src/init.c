@@ -14,19 +14,9 @@ extern SEXP _prioriactions_rcpp_get_optimization_problem_ncol(SEXP);
 extern SEXP _prioriactions_rcpp_get_optimization_problem_nrow(SEXP);
 extern SEXP _prioriactions_rcpp_get_optimization_problem_ncell(SEXP);
 extern SEXP _prioriactions_rcpp_get_optimization_problem_A(SEXP);
+
 extern SEXP _prioriactions_rcpp_objective_min_set(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_objective_max_coverage(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_constraint_benefit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_constraint_activation(SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_constraint_lock(SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_stats_connectivity_units(SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_stats_connectivity_actions(SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_stats_costs_units(SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_stats_costs_actions(SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_constraint_target(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_constraint_budget(SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_stats_benefit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_stats_recovery(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 extern SEXP _prioriactions_rcpp_add_action_locks(SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_set_objective_min_cost(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -48,6 +38,9 @@ extern SEXP _prioriactions_rcpp_add_linear_constraint(SEXP, SEXP, SEXP, SEXP, SE
 extern SEXP _prioriactions_rcpp_add_target_mixed_total_power(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_add_target_recovery_power(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_add_exclude_conservation_when_actions(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation(SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation_interventions(SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action(SEXP, SEXP, SEXP, SEXP);
 
 
 static const R_CallMethodDef CallEntries[] = {
@@ -59,17 +52,6 @@ static const R_CallMethodDef CallEntries[] = {
   {"_prioriactions_rcpp_get_optimization_problem_A", (DL_FUNC) &_prioriactions_rcpp_get_optimization_problem_A, 1},
   {"_prioriactions_rcpp_objective_min_set", (DL_FUNC) &_prioriactions_rcpp_objective_min_set, 9},
   {"_prioriactions_rcpp_objective_max_coverage", (DL_FUNC) &_prioriactions_rcpp_objective_max_coverage, 9},
-  {"_prioriactions_rcpp_constraint_benefit", (DL_FUNC) &_prioriactions_rcpp_constraint_benefit, 7},
-  {"_prioriactions_rcpp_constraint_activation", (DL_FUNC) &_prioriactions_rcpp_constraint_activation, 4},
-  {"_prioriactions_rcpp_constraint_lock", (DL_FUNC) &_prioriactions_rcpp_constraint_lock, 3},
-  {"_prioriactions_rcpp_stats_connectivity_units", (DL_FUNC) &_prioriactions_rcpp_stats_connectivity_units, 5},
-  {"_prioriactions_rcpp_stats_connectivity_actions", (DL_FUNC) &_prioriactions_rcpp_stats_connectivity_actions, 5},
-  {"_prioriactions_rcpp_stats_costs_units", (DL_FUNC) &_prioriactions_rcpp_stats_costs_units, 2},
-  {"_prioriactions_rcpp_stats_costs_actions", (DL_FUNC) &_prioriactions_rcpp_stats_costs_actions, 4},
-  {"_prioriactions_rcpp_constraint_target", (DL_FUNC) &_prioriactions_rcpp_constraint_target, 8},
-  {"_prioriactions_rcpp_constraint_budget", (DL_FUNC) &_prioriactions_rcpp_constraint_budget, 4},
-  {"_prioriactions_rcpp_stats_benefit", (DL_FUNC) &_prioriactions_rcpp_stats_benefit, 7},
-  {"_prioriactions_rcpp_stats_recovery", (DL_FUNC) &_prioriactions_rcpp_stats_recovery, 7},
   {"_prioriactions_rcpp_add_action_locks", (DL_FUNC) &_prioriactions_rcpp_add_action_locks, 2},
   {"_prioriactions_rcpp_set_objective_min_cost", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_cost, 5},
   {"_prioriactions_rcpp_add_pu_locks", (DL_FUNC) &_prioriactions_rcpp_add_pu_locks, 2},
@@ -89,6 +71,9 @@ static const R_CallMethodDef CallEntries[] = {
   {"_prioriactions_rcpp_add_target_mixed_total_power", (DL_FUNC) &_prioriactions_rcpp_add_target_mixed_total_power, 9},
   {"_prioriactions_rcpp_add_target_recovery_power", (DL_FUNC) &_prioriactions_rcpp_add_target_recovery_power, 8},
   {"_prioriactions_rcpp_add_exclude_conservation_when_actions", (DL_FUNC) &_prioriactions_rcpp_add_exclude_conservation_when_actions, 6},
+  {"_prioriactions_rcpp_set_objective_min_fragmentation", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation, 4},
+  {"_prioriactions_rcpp_set_objective_min_fragmentation_interventions", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation_interventions, 4},
+  {"_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action, 4},
   {NULL, NULL, 0}
 
 };

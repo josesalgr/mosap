@@ -259,82 +259,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rcpp_constraint_activation
-bool rcpp_constraint_activation(SEXP x, DataFrame pu_data, DataFrame threats_data, DataFrame dist_threats_data);
-RcppExport SEXP _prioriactions_rcpp_constraint_activation(SEXP xSEXP, SEXP pu_dataSEXP, SEXP threats_dataSEXP, SEXP dist_threats_dataSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_constraint_activation(x, pu_data, threats_data, dist_threats_data));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_constraint_benefit
-bool rcpp_constraint_benefit(SEXP x, DataFrame pu_data, DataFrame features_data, DataFrame dist_features_data, DataFrame threats_data, DataFrame dist_threats_data, DataFrame sensitivity_data);
-RcppExport SEXP _prioriactions_rcpp_constraint_benefit(SEXP xSEXP, SEXP pu_dataSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP threats_dataSEXP, SEXP dist_threats_dataSEXP, SEXP sensitivity_dataSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type features_data(features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type sensitivity_data(sensitivity_dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_constraint_benefit(x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, sensitivity_data));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_constraint_budget
-bool rcpp_constraint_budget(SEXP x, DataFrame pu_data, DataFrame dist_threats_data, double budget);
-RcppExport SEXP _prioriactions_rcpp_constraint_budget(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_threats_dataSEXP, SEXP budgetSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< double >::type budget(budgetSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_constraint_budget(x, pu_data, dist_threats_data, budget));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_constraint_lock
-bool rcpp_constraint_lock(SEXP x, DataFrame pu_data, DataFrame dist_threats_data);
-RcppExport SEXP _prioriactions_rcpp_constraint_lock(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_threats_dataSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_constraint_lock(x, pu_data, dist_threats_data));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_constraint_target
-bool rcpp_constraint_target(SEXP x, DataFrame pu_data, DataFrame features_data, DataFrame dist_features_data, DataFrame dist_threats_data, DataFrame threats_data, DataFrame sensitivity_data, int curve);
-RcppExport SEXP _prioriactions_rcpp_constraint_target(SEXP xSEXP, SEXP pu_dataSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP dist_threats_dataSEXP, SEXP threats_dataSEXP, SEXP sensitivity_dataSEXP, SEXP curveSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type features_data(features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type sensitivity_data(sensitivity_dataSEXP);
-    Rcpp::traits::input_parameter< int >::type curve(curveSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_constraint_target(x, pu_data, features_data, dist_features_data, dist_threats_data, threats_data, sensitivity_data, curve));
-    return rcpp_result_gen;
-END_RCPP
-}
 // rcpp_fix_z_ineligible_by_positive_delta
 Rcpp::List rcpp_fix_z_ineligible_by_positive_delta(SEXP x, Rcpp::DataFrame dist_features_data, Rcpp::DataFrame dist_benefit_data, bool fix_lb_too, double eps);
 RcppExport SEXP _prioriactions_rcpp_fix_z_ineligible_by_positive_delta(SEXP xSEXP, SEXP dist_features_dataSEXP, SEXP dist_benefit_dataSEXP, SEXP fix_lb_tooSEXP, SEXP epsSEXP) {
@@ -461,6 +385,50 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_set_objective_min_fragmentation
+bool rcpp_set_objective_min_fragmentation(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame relation_data, double weight_multiplier);
+RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation(SEXP xSEXP, SEXP pu_dataSEXP, SEXP relation_dataSEXP, SEXP weight_multiplierSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type pu_data(pu_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type relation_data(relation_dataSEXP);
+    Rcpp::traits::input_parameter< double >::type weight_multiplier(weight_multiplierSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation(x, pu_data, relation_data, weight_multiplier));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rcpp_set_objective_min_fragmentation_actions_by_action
+bool rcpp_set_objective_min_fragmentation_actions_by_action(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame relation_data, Rcpp::Nullable<Rcpp::IntegerVector> actions_to_use, Rcpp::Nullable<Rcpp::NumericVector> action_weights, double weight_multiplier);
+RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP relation_dataSEXP, SEXP actions_to_useSEXP, SEXP action_weightsSEXP, SEXP weight_multiplierSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type relation_data(relation_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::IntegerVector> >::type actions_to_use(actions_to_useSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type action_weights(action_weightsSEXP);
+    Rcpp::traits::input_parameter< double >::type weight_multiplier(weight_multiplierSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation_actions_by_action(x, dist_actions_data, relation_data, actions_to_use, action_weights, weight_multiplier));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rcpp_set_objective_min_fragmentation_interventions
+bool rcpp_set_objective_min_fragmentation_interventions(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame relation_data, double weight_multiplier);
+RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation_interventions(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP relation_dataSEXP, SEXP weight_multiplierSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type relation_data(relation_dataSEXP);
+    Rcpp::traits::input_parameter< double >::type weight_multiplier(weight_multiplierSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation_interventions(x, dist_actions_data, relation_data, weight_multiplier));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_set_objective_min_loss
 bool rcpp_set_objective_min_loss(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_effects_data, std::string loss_col);
 RcppExport SEXP _prioriactions_rcpp_set_objective_min_loss(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP dist_effects_dataSEXP, SEXP loss_colSEXP) {
@@ -472,96 +440,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_effects_data(dist_effects_dataSEXP);
     Rcpp::traits::input_parameter< std::string >::type loss_col(loss_colSEXP);
     rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_loss(x, dist_actions_data, dist_effects_data, loss_col));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_stats_benefit
-DataFrame rcpp_stats_benefit(DataFrame pu_data, DataFrame features_data, DataFrame dist_features_data, DataFrame threats_data, DataFrame dist_threats_data, DataFrame sensitivity_data, std::vector<double> solution);
-RcppExport SEXP _prioriactions_rcpp_stats_benefit(SEXP pu_dataSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP threats_dataSEXP, SEXP dist_threats_dataSEXP, SEXP sensitivity_dataSEXP, SEXP solutionSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type features_data(features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type sensitivity_data(sensitivity_dataSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type solution(solutionSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_stats_benefit(pu_data, features_data, dist_features_data, threats_data, dist_threats_data, sensitivity_data, solution));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_stats_connectivity_actions
-NumericVector rcpp_stats_connectivity_actions(DataFrame pu_data, DataFrame threats_data, DataFrame dist_threats_data, DataFrame boundary_data, std::vector<double> solution);
-RcppExport SEXP _prioriactions_rcpp_stats_connectivity_actions(SEXP pu_dataSEXP, SEXP threats_dataSEXP, SEXP dist_threats_dataSEXP, SEXP boundary_dataSEXP, SEXP solutionSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type boundary_data(boundary_dataSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type solution(solutionSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_stats_connectivity_actions(pu_data, threats_data, dist_threats_data, boundary_data, solution));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_stats_connectivity_units
-double rcpp_stats_connectivity_units(DataFrame pu_data, DataFrame boundary_data, DataFrame dist_threats_data, DataFrame dist_features_data, std::vector<double> solution);
-RcppExport SEXP _prioriactions_rcpp_stats_connectivity_units(SEXP pu_dataSEXP, SEXP boundary_dataSEXP, SEXP dist_threats_dataSEXP, SEXP dist_features_dataSEXP, SEXP solutionSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type boundary_data(boundary_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type solution(solutionSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_stats_connectivity_units(pu_data, boundary_data, dist_threats_data, dist_features_data, solution));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_stats_costs_actions
-NumericVector rcpp_stats_costs_actions(DataFrame pu_data, DataFrame threats_data, DataFrame dist_threats_data, std::vector<double> solution);
-RcppExport SEXP _prioriactions_rcpp_stats_costs_actions(SEXP pu_dataSEXP, SEXP threats_dataSEXP, SEXP dist_threats_dataSEXP, SEXP solutionSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type solution(solutionSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_stats_costs_actions(pu_data, threats_data, dist_threats_data, solution));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_stats_costs_units
-double rcpp_stats_costs_units(DataFrame pu_data, std::vector<double> solution);
-RcppExport SEXP _prioriactions_rcpp_stats_costs_units(SEXP pu_dataSEXP, SEXP solutionSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type solution(solutionSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_stats_costs_units(pu_data, solution));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_stats_recovery
-List rcpp_stats_recovery(std::vector<double> solution, DataFrame pu_data, DataFrame features_data, DataFrame dist_features_data, DataFrame dist_threats_data, DataFrame threats_data, DataFrame sensitivity_data);
-RcppExport SEXP _prioriactions_rcpp_stats_recovery(SEXP solutionSEXP, SEXP pu_dataSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP dist_threats_dataSEXP, SEXP threats_dataSEXP, SEXP sensitivity_dataSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::vector<double> >::type solution(solutionSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type features_data(features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type sensitivity_data(sensitivity_dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_stats_recovery(solution, pu_data, features_data, dist_features_data, dist_threats_data, threats_data, sensitivity_data));
     return rcpp_result_gen;
 END_RCPP
 }

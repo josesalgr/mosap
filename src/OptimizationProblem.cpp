@@ -41,9 +41,17 @@ Rcpp::List rcpp_optimization_problem_as_list(SEXP x) {
     Rcpp::Named("n_pu") = op->_n_pu,
     Rcpp::Named("n_x") = op->_n_x,
     Rcpp::Named("n_z") = op->_n_z,
+    Rcpp::Named("n_y_pu") = op->_n_y_pu,
+    Rcpp::Named("n_y_action") = op->_n_y_action,
+    Rcpp::Named("n_y_intervention") = op->_n_y_intervention,
+    Rcpp::Named("n_u_intervention") = op->_n_u_intervention,
     Rcpp::Named("w_offset") = op->_w_offset,
     Rcpp::Named("x_offset") = op->_x_offset,
-    Rcpp::Named("z_offset") = op->_z_offset);
+    Rcpp::Named("z_offset") = op->_z_offset,
+    Rcpp::Named("y_pu_offset") = op->_y_pu_offset,
+    Rcpp::Named("y_action_offset") = op->_y_action_offset,
+    Rcpp::Named("u_intervention_offset") = op->_u_intervention_offset,
+    Rcpp::Named("y_intervention_offset") = op->_y_intervention_offset);
 }
 
 // [[Rcpp::export]]
@@ -65,3 +73,5 @@ std::size_t rcpp_get_optimization_problem_ncell(SEXP x) {
 Rcpp::List rcpp_get_optimization_problem_A(SEXP x) {
   return(Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x)->A());
 }
+
+

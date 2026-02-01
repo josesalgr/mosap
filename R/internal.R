@@ -568,8 +568,8 @@ available_to_solve <- function(package = ""){
 
   # If model already exists, apply targets immediately and refresh snapshot
   if (!is.null(x$data$model_ptr)) {
-    x <- .pa_apply_targets_if_present(x, allow_multiple_rows_per_feature = TRUE)
-    x <- .pa_refresh_model_snapshot(x)
+    if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
+    x$data$meta$model_dirty <- TRUE
   }
 
   x
@@ -1181,6 +1181,42 @@ available_to_solve <- function(package = ""){
   )
 }
 
+.pa_has_coords <- function(x) {
+  is.list(x$data) && !is.null(x$data$pu_coords) &&
+    inherits(x$data$pu_coords, "data.frame") &&
+    all(c("id","x","y") %in% names(x$data$pu_coords)) &&
+    nrow(x$data$pu_coords) > 0
+}
+
+.pa_spatial_relations_summary <- function(x) {
+  rels <- x$data$spatial_relations
+  if (is.null(rels) || !is.list(rels) || length(rels) == 0) return(NULL)
+
+  nm <- names(rels)
+  if (is.null(nm)) nm <- rep("", length(rels))
+  nm[nm == ""] <- paste0("rel_", seq_along(nm))
+
+  out <- lapply(seq_along(rels), function(i) {
+    r <- rels[[i]]
+    if (!inherits(r, "data.frame") || nrow(r) == 0) {
+      return(data.frame(name = nm[i], edges = 0L, w_min = NA_real_, w_max = NA_real_))
+    }
+    w <- suppressWarnings(as.numeric(r$weight))
+    rng <- .pa_safe_range(w)
+    data.frame(
+      name  = nm[i],
+      edges = as.integer(nrow(r)),
+      w_min = if (is.null(rng)) NA_real_ else rng[[1]],
+      w_max = if (is.null(rng)) NA_real_ else rng[[2]]
+    )
+  })
+
+  do.call(rbind, out)
+}
+
+
+
+
 # -------------------------------------------------------------------------
 # Internal helpers SOLVER
 # -------------------------------------------------------------------------
@@ -1779,77 +1815,6 @@ available_to_solve <- function(package = ""){
 }
 
 
-# ------------------------------------------------------------
-# Legacy targets: convert features$target_* into x$data$targets
-# ------------------------------------------------------------
-.pa_targets_from_features_legacy <- function(x,
-                                             overwrite = FALSE,
-                                             drop_zeros = TRUE) {
-  stopifnot(inherits(x, "Data"))
-
-  if (!overwrite && !is.null(x$data$targets) && inherits(x$data$targets, "data.frame") && nrow(x$data$targets) > 0) {
-    return(invisible(x))
-  }
-
-  feats <- x$data$features
-  if (is.null(feats) || !inherits(feats, "data.frame") || nrow(feats) == 0) {
-    stop("x$data$features is missing or empty.", call. = FALSE)
-  }
-  if (!("internal_id" %in% names(feats))) {
-    stop("x$data$features must contain internal_id.", call. = FALSE)
-  }
-
-  has_rec <- "target_recovery" %in% names(feats)
-  has_con <- "target_conservation" %in% names(feats)
-
-  if (!has_rec && !has_con) {
-    stop("Legacy targets require features$target_recovery and/or features$target_conservation.", call. = FALSE)
-  }
-
-  out <- list()
-
-  if (has_con) {
-    tc <- data.frame(
-      feature = as.integer(feats$internal_id),
-      type = "conservation",
-      target_value = as.numeric(feats$target_conservation),
-      stringsAsFactors = FALSE
-    )
-    out[["conservation"]] <- tc
-  }
-
-  if (has_rec) {
-    tr <- data.frame(
-      feature = as.integer(feats$internal_id),
-      type = "recovery",
-      target_value = as.numeric(feats$target_recovery),
-      stringsAsFactors = FALSE
-    )
-    out[["recovery"]] <- tr
-  }
-
-  targets <- do.call(rbind, out)
-
-  if (drop_zeros) {
-    targets <- targets[is.finite(targets$target_value) & !is.na(targets$target_value) & targets$target_value > 0, , drop = FALSE]
-  } else {
-    targets <- targets[is.finite(targets$target_value) & !is.na(targets$target_value), , drop = FALSE]
-  }
-
-  if (nrow(targets) == 0) {
-    targets <- NULL
-  }
-
-  x$data$targets <- targets
-
-  if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
-  x$data$meta$targets_generated_from_legacy <- TRUE
-  x$data$meta$legacy_targets_source <- "features$target_*"
-
-  invisible(x)
-}
-
-
 # ------------------------------------------------------------------------------
 # Legacy adapter: convert features$target_* to x$data$targets (model-ready format)
 # - required cols: feature (INTERNAL feature id), type, target_value
@@ -2237,3 +2202,223 @@ available_to_solve <- function(package = ""){
   x <- .pa_refresh_model_snapshot(x)
   x
 }
+
+
+
+
+# -------------------------------------------------------------------------
+# Internal helpers spatial relations
+# -------------------------------------------------------------------------
+
+.pa_validate_relation <- function(rel, n_pu, allow_self = FALSE,
+                                  dup_agg = c("sum", "max", "min", "mean")) {
+
+  stopifnot(is.data.frame(rel))
+  dup_agg <- match.arg(dup_agg)
+
+  req <- c("internal_pu1", "internal_pu2", "weight")
+  miss <- setdiff(req, names(rel))
+  if (length(miss) > 0) stop("Relation is missing columns: ", paste(miss, collapse = ", "), call. = FALSE)
+
+  rel$internal_pu1 <- as.integer(rel$internal_pu1)
+  rel$internal_pu2 <- as.integer(rel$internal_pu2)
+  rel$weight <- as.numeric(rel$weight)
+
+  if (anyNA(rel$internal_pu1) || anyNA(rel$internal_pu2) || anyNA(rel$weight)) {
+    stop("Relation has NA in internal_pu1/internal_pu2/weight.", call. = FALSE)
+  }
+  if (any(rel$internal_pu1 < 1L | rel$internal_pu1 > n_pu)) stop("internal_pu1 out of range.", call. = FALSE)
+  if (any(rel$internal_pu2 < 1L | rel$internal_pu2 > n_pu)) stop("internal_pu2 out of range.", call. = FALSE)
+  if (!allow_self && any(rel$internal_pu1 == rel$internal_pu2)) stop("Self-edges are not allowed.", call. = FALSE)
+  if (any(!is.finite(rel$weight)) || any(rel$weight < 0)) stop("weight must be finite and >= 0.", call. = FALSE)
+
+  # undirected: canonical ordering
+  a <- pmin(rel$internal_pu1, rel$internal_pu2)
+  b <- pmax(rel$internal_pu1, rel$internal_pu2)
+  rel$internal_pu1 <- a
+  rel$internal_pu2 <- b
+
+  # aggregate duplicates
+  key <- paste(a, b)
+  if (anyDuplicated(key) != 0) {
+    FUN <- switch(
+      dup_agg,
+      sum  = sum,
+      max  = max,
+      min  = min,
+      mean = mean
+    )
+    rel <- stats::aggregate(weight ~ internal_pu1 + internal_pu2, data = rel, FUN = FUN)
+  } else {
+    rel <- rel[, c("internal_pu1", "internal_pu2", "weight",
+                   intersect(names(rel), c("pu1","pu2","distance","source"))),
+               drop = FALSE]
+  }
+
+  rel
+}
+
+
+.pa_action_weights_vector <- function(actions_df,
+                                      action_weights = NULL,
+                                      subset_actions = NULL,
+                                      default_weight = 1) {
+
+  stopifnot(is.data.frame(actions_df), nrow(actions_df) > 0)
+
+  n_actions <- nrow(actions_df)
+
+  w <- rep(as.numeric(default_weight)[1], n_actions)
+
+  if (!is.null(subset_actions)) {
+    subset_actions <- as.integer(subset_actions)
+    if (anyNA(subset_actions)) stop("subset_actions contains NA.", call. = FALSE)
+    if (any(subset_actions < 1L | subset_actions > n_actions)) {
+      stop("subset_actions out of range (1..n_actions).", call. = FALSE)
+    }
+
+    # si se especifica subset y NO se da vector completo, el default para acciones fuera del subset suele ser 0
+    w[-subset_actions] <- 0
+  }
+
+  if (!is.null(action_weights)) {
+    action_weights <- as.numeric(action_weights)
+    if (any(!is.finite(action_weights)) || any(action_weights < 0)) {
+      stop("action_weights must be finite and >= 0.", call. = FALSE)
+    }
+
+    if (length(action_weights) == n_actions) {
+      w <- action_weights
+
+    } else if (!is.null(subset_actions) && length(action_weights) == length(subset_actions)) {
+      w[subset_actions] <- action_weights
+
+    } else {
+      stop(
+        "action_weights must have length n_actions (= ", n_actions, ") ",
+        "or length(subset_actions) (= ", length(subset_actions) %||% 0, ").",
+        call. = FALSE
+      )
+    }
+  }
+
+  w
+}
+
+
+.pa_model_frag_vars_summary <- function(x) {
+  if (!inherits(x, "Data")) return(NULL)
+  ml <- x$data$model_list
+  if (is.null(ml) || !is.list(ml)) return(NULL)
+
+  # defensivo: algunos campos pueden no existir
+  get_int0 <- function(nm) {
+    v <- ml[[nm]]
+    if (is.null(v)) return(0L)
+    as.integer(v)[1]
+  }
+
+  out <- list(
+    n_y_pu            = get_int0("n_y_pu"),
+    n_y_actions       = get_int0("n_y_actions"),
+    n_y_interventions = get_int0("n_y_interventions"),
+    y_pu_offset            = get_int0("y_pu_offset"),
+    y_actions_offset       = get_int0("y_actions_offset"),
+    y_interventions_offset = get_int0("y_interventions_offset")
+  )
+
+  # si no hay ninguna y*, devuelve NULL para no ensuciar print
+  if ((out$n_y_pu + out$n_y_actions + out$n_y_interventions) == 0L) return(NULL)
+  out
+}
+
+
+# -------------------------------------------------------------------------
+# Internal helpers multi objectives
+# -------------------------------------------------------------------------
+
+.pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+
+.pa_apply_runtime_updates_to_model <- function(model, x) {
+
+  upd <- x$data$runtime_updates %||% list()
+  reg <- x$data$model_registry %||% list()
+
+  # nada que hacer
+  if (length(upd) == 0) return(model)
+
+  bigM <- as.numeric(upd$bigM %||% 1e15)[1]
+
+  # Helper: relajar una fila para que sea redundante
+  relax_row <- function(i) {
+    s <- model$sense[i]
+    if (identical(s, ">=")) {
+      model$rhs[i] <<- -bigM
+    } else if (identical(s, "<=")) {
+      model$rhs[i] <<-  bigM
+    } else if (identical(s, "==")) {
+      # relaja igualdad convirtiéndola en <= bigM (redundante)
+      model$sense[i] <<- "<="
+      model$rhs[i]   <<-  bigM
+    } else {
+      # por seguridad: si aparece algo raro, lo relajo como <= bigM
+      model$sense[i] <<- "<="
+      model$rhs[i]   <<-  bigM
+    }
+    invisible(NULL)
+  }
+
+  # 1) activar/desactivar constraints por grupos (si el registry lo soporta)
+  # upd$deactivate_constraints puede ser vector de ids lógicos (por nombre) o filas directas
+  if (!is.null(upd$deactivate_rows)) {
+    rows <- as.integer(upd$deactivate_rows)
+    rows <- rows[rows >= 1L & rows <= length(model$rhs)]
+    for (i in rows) relax_row(i)
+  }
+
+  if (!is.null(upd$deactivate_groups) && !is.null(reg$cons)) {
+    for (g in upd$deactivate_groups) {
+      rows <- reg$cons[[g]] %||% integer(0)
+      rows <- as.integer(rows)
+      rows <- rows[rows >= 1L & rows <= length(model$rhs)]
+      for (i in rows) relax_row(i)
+    }
+  }
+
+  # 2) epsilons: update RHS de constraints epsilon (sin cambiar estructura)
+  # ejemplo: upd$epsilon <- list(f2 = 0.25, f3 = 10)
+  if (!is.null(upd$epsilon) && !is.null(reg$cons$epsilon)) {
+    eps_list <- upd$epsilon
+    for (nm in names(eps_list)) {
+      rows <- reg$cons$epsilon[[nm]] %||% integer(0)
+      rows <- as.integer(rows)
+      if (length(rows) == 0) next
+      rhs <- as.numeric(eps_list[[nm]])[1]
+      # aquí asumes que la fila es del tipo f(x) >= epsilon
+      model$rhs[rows] <- rhs
+    }
+  }
+
+  # 3) objetivo: swap por plantilla (vector obj completo)
+  if (!is.null(upd$objective_template) && !is.null(reg$obj_templates)) {
+    tpl <- reg$obj_templates[[upd$objective_template]]
+    if (!is.null(tpl)) {
+      if (length(tpl$obj) != length(model$obj)) {
+        stop("Objective template length mismatch.", call. = FALSE)
+      }
+      model$obj <- tpl$obj
+      if (!is.null(tpl$modelsense)) model$modelsense <- tpl$modelsense
+    }
+  }
+
+  # 4) pesos AUGMECON: por ejemplo coef de slacks en obj (sin reconstruir)
+  if (!is.null(upd$slack_weight) && !is.null(reg$vars$slack)) {
+    w <- as.numeric(upd$slack_weight)[1]
+    slack_ids <- as.integer(reg$vars$slack)
+    slack_ids <- slack_ids[slack_ids >= 1L & slack_ids <= length(model$obj)]
+    model$obj[slack_ids] <- w
+  }
+
+  model
+}
+

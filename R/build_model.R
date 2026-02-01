@@ -6,9 +6,6 @@
 #' Materializes (builds) the optimization model using the current state of the `Data` object:
 #' prepared data tables, stored objective settings, and stored constraints (e.g., targets).
 #'
-#' The configuration (objective type, budget, blm, etc.) is expected to be stored in
-#' `x$data$model_args` by other functions (e.g., `set_objective_*()`, `add_budget()`, etc.).
-#'
 #' @param x Data object (class "Data") created with inputData()/inputDataSpatial().
 #'
 #' @return Updated `Data` object with model pointer and model snapshot.
@@ -19,108 +16,232 @@
   stopifnot(!is.null(x$data$dist_features))
 
   # ------------------------------------------------------------
-  # 0) Detect input format
+  # local helpers (keep minimal here; you can move to internal.R)
   # ------------------------------------------------------------
+  .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+  .pa_has_rows <- function(df) !is.null(df) && inherits(df, "data.frame") && nrow(df) > 0
+
+  .pa_log_init <- function(x) {
+    x$data$meta <- x$data$meta %||% list()
+    x$data$meta$build_log <- x$data$meta$build_log %||% list(
+      dropped_status3 = 0L,
+      dropped_missing_internal = 0L,
+      dropped_bad_cost = 0L,
+      filtered_effects_rows = 0L,
+      filtered_profit_rows = 0L
+    )
+    x
+  }
+  .pa_log_add <- function(x, key, n) {
+    x$data$meta$build_log[[key]] <- as.integer(x$data$meta$build_log[[key]] %||% 0L) + as.integer(n)
+    x
+  }
+  .pa_emit_build_warnings <- function(x) {
+    log <- x$data$meta$build_log %||% list()
+    msgs <- character(0)
+
+    if (isTRUE(log$dropped_status3 > 0L)) {
+      msgs <- c(msgs, paste0("Dropped ", log$dropped_status3, " dist_actions rows with status==3 (locked-out)."))
+    }
+    if (isTRUE(log$dropped_missing_internal > 0L)) {
+      msgs <- c(msgs, paste0("Dropped ", log$dropped_missing_internal, " dist_actions rows with missing internal_pu/internal_action."))
+    }
+    if (isTRUE(log$dropped_bad_cost > 0L)) {
+      msgs <- c(msgs, paste0("Dropped ", log$dropped_bad_cost, " dist_actions rows with missing/non-finite cost."))
+    }
+    if (isTRUE(log$filtered_effects_rows > 0L)) {
+      msgs <- c(msgs, paste0("Filtered ", log$filtered_effects_rows, " dist_effects rows not matching feasible dist_actions."))
+    }
+    if (isTRUE(log$filtered_profit_rows > 0L)) {
+      msgs <- c(msgs, paste0("Filtered ", log$filtered_profit_rows, " dist_profit rows not matching feasible dist_actions."))
+    }
+
+    if (length(msgs) > 0) {
+      warning(paste(msgs, collapse = "\n"), call. = FALSE, immediate. = TRUE)
+    }
+    x
+  }
+
+  .pa_check_single_objective <- function(args) {
+    if (is.null(args)) return(invisible(TRUE))
+
+    if (!is.null(args$objectives)) {
+      nobj <- if (is.data.frame(args$objectives)) nrow(args$objectives) else length(args$objectives)
+      if (is.finite(nobj) && nobj > 1) {
+        .pa_abort(
+          "Multiple objectives detected (", nobj, "). prioriactions builds a single-objective MILP.\n",
+          "Use a multiobjective wrapper (e.g., prioriactionsMO) for epsilon-constraint/AUGMECON/interactive methods."
+        )
+      }
+    }
+
+    if (is.vector(args$model_type) && length(args$model_type) > 1) {
+      .pa_abort(
+        "Multiple model_type values detected: ",
+        paste(args$model_type, collapse = ", "),
+        ". Choose exactly one objective."
+      )
+    }
+
+    invisible(TRUE)
+  }
+
+  # ------------------------------------------------------------
+  # init build log and args
+  # ------------------------------------------------------------
+  x <- .pa_log_init(x)
+
   input_format <- x$data$meta$input_format %||% "new"
 
-  # ------------------------------------------------------------
-  # 0.1) Objective must be configured in NEW pipeline
-  #      (legacy can default to minimizeCosts)
-  # ------------------------------------------------------------
   if (is.null(x$data$model_args)) x$data$model_args <- list()
+  .pa_check_single_objective(x$data$model_args)
 
+  # objective required for new pipeline (legacy can default)
   if (is.null(x$data$model_args$model_type)) {
     if (identical(input_format, "legacy")) {
       x$data$model_args$model_type <- "minimizeCosts"
     } else {
-      stop(
-        "No objective configured. Use add_objective_*() (new pipeline) or call problem() (legacy pipeline).",
-        call. = FALSE
+      .pa_abort(
+        "No objective configured. Use add_objective_*() (new pipeline) or call problem() (legacy pipeline)."
       )
     }
   }
 
-  # keep these for later constraints/printing
+  # defaults for later printing / adapters
   if (is.null(x$data$model_args$budget))   x$data$model_args$budget   <- 0
   if (is.null(x$data$model_args$blm))      x$data$model_args$blm      <- 0
   if (is.null(x$data$model_args$curve))    x$data$model_args$curve    <- 1L
   if (is.null(x$data$model_args$segments)) x$data$model_args$segments <- 3L
 
   # ------------------------------------------------------------
-  # 0.2) LEGACY ADAPTERS (only if legacy format)
+  # legacy adapters
   # ------------------------------------------------------------
   if (identical(input_format, "legacy")) {
-
-    has_threats_data <- !is.null(x$data$dist_threats) &&
-      inherits(x$data$dist_threats, "data.frame") &&
-      nrow(x$data$dist_threats) > 0
-
-    has_user_actions <- !is.null(x$data$actions) &&
-      inherits(x$data$actions, "data.frame") &&
-      nrow(x$data$actions) > 0
-
-    has_user_dist_actions <- !is.null(x$data$dist_actions) &&
-      inherits(x$data$dist_actions, "data.frame") &&
-      nrow(x$data$dist_actions) > 0
-
-    # ---- (A) Default actions from threats ONLY if user didn't define actions
-    if (has_threats_data && !(has_user_actions || has_user_dist_actions)) {
-      if (!exists(".pa_add_actions_default_from_threats", mode = "function")) {
-        stop(
-          "Legacy input detected (threats/dist_threats), but .pa_add_actions_default_from_threats() is not implemented.",
-          call. = FALSE
-        )
-      }
-
-      be  <- as.numeric(x$data$model_args$benefit_exponent %||% x$data$model_args$curve %||% 1)[1]
-      seg <- as.integer(x$data$model_args$curve_segments %||% x$data$model_args$segments %||% 3L)[1]
-
-      x <- .pa_add_actions_default_from_threats(
-        x,
-        benefit_exponent = be,
-        curve_segments   = seg
-      )
-    }
-
-    # ---- (B) Default targets from features ONLY if needed by objective
-    mtype_now <- x$data$model_args$model_type %||% "minimizeCosts"
-
-    need_targets <- identical(mtype_now, "minimizeCosts") &&
-      (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0)
-
-    has_legacy_targets_in_features <- !is.null(x$data$features) &&
-      inherits(x$data$features, "data.frame") &&
-      ("target_recovery" %in% names(x$data$features) || "target_conservation" %in% names(x$data$features))
-
-    if (need_targets && has_legacy_targets_in_features) {
-      if (!exists(".pa_targets_from_features_legacy", mode = "function")) {
-        stop(
-          "model_type='minimizeCosts' requires targets. Legacy targets exist in features, but .pa_targets_from_features_legacy() is not implemented.",
-          call. = FALSE
-        )
-      }
-      x <- .pa_targets_from_features_legacy(x)
-    }
-
-    # if still legacy + threats but no actions, warn once (after trying adapter)
-    has_actions_data <- !is.null(x$data$dist_actions) &&
-      inherits(x$data$dist_actions, "data.frame") &&
-      nrow(x$data$dist_actions) > 0
-
-    if (has_threats_data && !has_actions_data) {
-      warning(
-        "Legacy threats detected but no actions were materialized. Model will be built without actions (likely unintended).",
-        call. = FALSE, immediate. = TRUE
-      )
-    }
+    x <- .pa_build_model_apply_legacy_adapters(x)
   }
 
   # ------------------------------------------------------------
-  # 1) Ensure tables exist (allow "no actions" case)
+  # ensure tables exist (allow "no actions" case)
   # ------------------------------------------------------------
+  x <- .pa_build_model_ensure_tables(x)
+
+  # ------------------------------------------------------------
+  # post-adapter validation
+  # ------------------------------------------------------------
+  x <- .pa_build_model_validate_pipeline_state(x, input_format = input_format)
+
+  # ------------------------------------------------------------
+  # prepare model-ready tables (filters + joins)
+  # ------------------------------------------------------------
+  x <- .pa_build_model_prepare_tables(x)
+
+  # ------------------------------------------------------------
+  # early validation: objective dependencies
+  # ------------------------------------------------------------
+  x <- .pa_build_model_validate_objective_requirements(x)
+
+  # ------------------------------------------------------------
+  # build C++ model pointer + base vars + minimal constraints
+  # ------------------------------------------------------------
+  x <- .pa_build_model_build_cpp_core(x)
+
+  # ------------------------------------------------------------
+  # objective (C++ side)
+  # ------------------------------------------------------------
+  x <- .pa_build_model_set_objective_cpp(x)
+
+  # ------------------------------------------------------------
+  # apply stored targets/constraints
+  # ------------------------------------------------------------
+  x <- .pa_build_model_apply_constraints(x)
+
+  # ------------------------------------------------------------
+  # store metadata + snapshot + warnings
+  # ------------------------------------------------------------
+  x <- .pa_build_model_finalize(x)
+  x <- .pa_emit_build_warnings(x)
+
+  x$data$has_model <- TRUE
+  x
+}
+
+# -------------------------------------------------------------------------
+# Helpers (recommended to live in internal.R, but ok here as noRd)
+# -------------------------------------------------------------------------
+
+.pa_build_model_apply_legacy_adapters <- function(x) {
+
+  .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+
+  has_threats_data <- !is.null(x$data$dist_threats) &&
+    inherits(x$data$dist_threats, "data.frame") &&
+    nrow(x$data$dist_threats) > 0
+
+  has_user_actions <- !is.null(x$data$actions) &&
+    inherits(x$data$actions, "data.frame") &&
+    nrow(x$data$actions) > 0
+
+  has_user_dist_actions <- !is.null(x$data$dist_actions) &&
+    inherits(x$data$dist_actions, "data.frame") &&
+    nrow(x$data$dist_actions) > 0
+
+  # (A) Default actions from threats ONLY if user didn't define actions
+  if (has_threats_data && !(has_user_actions || has_user_dist_actions)) {
+    if (!exists(".pa_add_actions_default_from_threats", mode = "function")) {
+      .pa_abort(
+        "Legacy input detected (threats/dist_threats), but .pa_add_actions_default_from_threats() is not implemented."
+      )
+    }
+
+    be  <- as.numeric(x$data$model_args$benefit_exponent %||% x$data$model_args$curve %||% 1)[1]
+    seg <- as.integer(x$data$model_args$curve_segments %||% x$data$model_args$segments %||% 3L)[1]
+
+    x <- .pa_add_actions_default_from_threats(
+      x,
+      benefit_exponent = be,
+      curve_segments   = seg
+    )
+  }
+
+  # (B) Default targets from features ONLY if needed by objective
+  mtype_now <- x$data$model_args$model_type %||% "minimizeCosts"
+
+  need_targets <- identical(mtype_now, "minimizeCosts") &&
+    (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0)
+
+  has_legacy_targets_in_features <- !is.null(x$data$features) &&
+    inherits(x$data$features, "data.frame") &&
+    ("target_recovery" %in% names(x$data$features) || "target_conservation" %in% names(x$data$features))
+
+  if (need_targets && has_legacy_targets_in_features) {
+    if (!exists(".pa_targets_from_features_legacy", mode = "function")) {
+      .pa_abort(
+        "model_type='minimizeCosts' requires targets. Legacy targets exist in features, but .pa_targets_from_features_legacy() is not implemented."
+      )
+    }
+    x <- .pa_targets_from_features_legacy(x)
+  }
+
+  # Warn once if threats exist but still no actions
+  has_actions_data <- !is.null(x$data$dist_actions) &&
+    inherits(x$data$dist_actions, "data.frame") &&
+    nrow(x$data$dist_actions) > 0
+
+  if (has_threats_data && !has_actions_data) {
+    warning(
+      "Legacy threats detected but no actions were materialized. Model will be built without actions (likely unintended).",
+      call. = FALSE, immediate. = TRUE
+    )
+  }
+
+  x
+}
+
+.pa_build_model_ensure_tables <- function(x) {
+
   if (is.null(x$data$dist_actions)) {
     x$data$dist_actions <- data.frame(
-      pu = character(0),
+      pu = integer(0),
       action = character(0),
       cost = numeric(0),
       status = integer(0),
@@ -136,174 +257,288 @@
       stringsAsFactors = FALSE
     )
   }
+  x
+}
 
-  # ------------------------------------------------------------
-  # 1.1) NEW pipeline validation (post-adapter)
-  # ------------------------------------------------------------
+.pa_build_model_validate_pipeline_state <- function(x, input_format) {
+
+  .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+
   mtype_check <- x$data$model_args$model_type %||% "minimizeCosts"
+
   if (!identical(input_format, "legacy") && identical(mtype_check, "minimizeCosts")) {
     if (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0) {
-      stop(
-        "model_type='minimizeCosts' requires targets, but x$data$targets is empty. ",
-        "Run add_target_*() before solve().",
-        call. = FALSE
+      .pa_abort(
+        "model_type='minimizeCosts' requires targets, but x$data$targets is empty.\n",
+        "Run add_target_*() before solve()."
       )
     }
   }
 
-  # ------------------------------------------------------------
-  # 2) Prepare model-ready tables (feasibility filter)
-  # ------------------------------------------------------------
+  x
+}
+
+.pa_build_model_prepare_tables <- function(x) {
+
+  .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+  .has_rows <- function(df) !is.null(df) && inherits(df, "data.frame") && nrow(df) > 0
+
   da <- x$data$dist_actions
+  if (is.null(da)) da <- data.frame()
 
-  if (inherits(da, "data.frame") && nrow(da) > 0) {
-
-    # Drop locked-out (status == 3)
-    if ("status" %in% names(da)) {
-      da <- da[da$status != 3L, , drop = FALSE]
-    }
-
-    # Drop rows without internal ids (defensive)
-    if (all(c("internal_pu", "internal_action") %in% names(da))) {
-      da <- da[!is.na(da$internal_pu) & !is.na(da$internal_action), , drop = FALSE]
-    }
-
-    # Drop rows with missing/non-finite costs
-    if ("cost" %in% names(da)) {
-      da$cost <- as.numeric(da$cost)
-      da <- da[is.finite(da$cost) & !is.na(da$cost), , drop = FALSE]
-    }
-
-    # type normalize for joins
-    if ("pu" %in% names(da)) da$pu <- as.integer(da$pu)
-    if ("action" %in% names(da)) da$action <- as.character(da$action)
+  if (!inherits(da, "data.frame")) {
+    .pa_abort("dist_actions must be a data.frame (or NULL).")
   }
 
-  # asegurar orden determinista (esto es importantísimo)
-  da <- da[order(da$internal_pu, da$internal_action), , drop = FALSE]
+  n0 <- nrow(da)
 
-  # internal_row para el MODELO (fila 1..n del dist_actions_model)
+  if (n0 > 0) {
+
+    # status filter
+    if ("status" %in% names(da)) {
+      keep <- da$status != 3L
+      dropped <- sum(!keep, na.rm = TRUE)
+      if (dropped > 0) x <- .pa_log_add(x, "dropped_status3", dropped)
+      da <- da[keep, , drop = FALSE]
+    }
+
+    # internal ids
+    if (all(c("internal_pu", "internal_action") %in% names(da))) {
+      keep <- !is.na(da$internal_pu) & !is.na(da$internal_action)
+      dropped <- sum(!keep)
+      if (dropped > 0) x <- .pa_log_add(x, "dropped_missing_internal", dropped)
+      da <- da[keep, , drop = FALSE]
+    }
+
+    # costs
+    if ("cost" %in% names(da)) {
+      da$cost <- as.numeric(da$cost)
+      keep <- is.finite(da$cost) & !is.na(da$cost)
+      dropped <- sum(!keep)
+      if (dropped > 0) x <- .pa_log_add(x, "dropped_bad_cost", dropped)
+      da <- da[keep, , drop = FALSE]
+    }
+
+    # normalize types
+    if ("pu" %in% names(da)) da$pu <- as.integer(da$pu)
+    if ("action" %in% names(da)) da$action <- as.character(da$action)
+    if ("internal_pu" %in% names(da)) da$internal_pu <- as.integer(da$internal_pu)
+    if ("internal_action" %in% names(da)) da$internal_action <- as.integer(da$internal_action)
+
+    # deterministic order
+    if (all(c("internal_pu","internal_action") %in% names(da)) && nrow(da) > 0) {
+      da <- da[order(da$internal_pu, da$internal_action), , drop = FALSE]
+    }
+  }
+
+  # internal_row
   da$internal_row <- seq_len(nrow(da))
 
-  has_actions_model <- inherits(da, "data.frame") && nrow(da) > 0
+  # validate internal id ranges (if present)
+  if (.has_rows(da) && all(c("internal_pu","internal_action") %in% names(da))) {
+    n_pu <- nrow(x$data$pu)
+    if (any(da$internal_pu < 1L | da$internal_pu > n_pu, na.rm = TRUE)) {
+      .pa_abort("dist_actions contains internal_pu indices out of range (1..n_pu).")
+    }
+    if (!is.null(x$data$actions) && inherits(x$data$actions, "data.frame") && nrow(x$data$actions) > 0) {
+      n_a <- nrow(x$data$actions)
+      if (any(da$internal_action < 1L | da$internal_action > n_a, na.rm = TRUE)) {
+        .pa_abort("dist_actions contains internal_action indices out of range (1..n_actions).")
+      }
+    }
+  }
+
+  # duplicates check (pu, action)
+  if (.has_rows(da) && all(c("pu","action") %in% names(da))) {
+    key <- paste(da$pu, da$action, sep = "||")
+    if (anyDuplicated(key)) {
+      .pa_abort(
+        "dist_actions has duplicated (pu, action) pairs. Please aggregate/resolve duplicates before building the model."
+      )
+    }
+  }
 
   x$data$dist_actions_model <- da
 
-  # ---- EFFECTS model-ready (new source of truth)
+  # dist_effects model-ready
   de <- x$data$dist_effects
-  if (!is.null(de) && inherits(de, "data.frame") && nrow(de) > 0 && nrow(da) > 0) {
+  if (.has_rows(de) && .has_rows(da)) {
+    n_before <- nrow(de)
     if ("pu" %in% names(de)) de$pu <- as.integer(de$pu)
     if ("action" %in% names(de)) de$action <- as.character(de$action)
-
-    de <- dplyr::inner_join(
-      de,
-      da[, c("pu", "action"), drop = FALSE],
-      by = c("pu", "action")
-    )
+    de <- dplyr::inner_join(de, da[, c("pu", "action"), drop = FALSE], by = c("pu", "action"))
+    n_after <- nrow(de)
+    dropped <- n_before - n_after
+    if (dropped > 0) x <- .pa_log_add(x, "filtered_effects_rows", dropped)
   }
   x$data$dist_effects_model <- de
 
-  # ---- OPTIONAL COMPAT: keep dist_benefit_model derived from effects if available
+  # dist_benefit_model derived
   db <- NULL
-  if (!is.null(de) && inherits(de, "data.frame") && nrow(de) > 0 && "benefit" %in% names(de)) {
+  if (.has_rows(de) && "benefit" %in% names(de)) {
     db <- de
     db$benefit <- as.numeric(db$benefit)
   }
   x$data$dist_benefit_model <- db
 
-  # profit model-ready (if present)
+  # dist_profit model-ready
   dp <- x$data$dist_profit
-  if (!is.null(dp) && inherits(dp, "data.frame") && nrow(dp) > 0 && nrow(da) > 0) {
+  if (.has_rows(dp) && .has_rows(da)) {
+    n_before <- nrow(dp)
     if ("pu" %in% names(dp)) dp$pu <- as.integer(dp$pu)
     if ("action" %in% names(dp)) dp$action <- as.character(dp$action)
-
-    dp <- dplyr::inner_join(
-      dp,
-      da[, c("pu", "action"), drop = FALSE],
-      by = c("pu", "action")
-    )
+    dp <- dplyr::inner_join(dp, da[, c("pu", "action"), drop = FALSE], by = c("pu", "action"))
+    n_after <- nrow(dp)
+    dropped <- n_before - n_after
+    if (dropped > 0) x <- .pa_log_add(x, "filtered_profit_rows", dropped)
   }
   x$data$dist_profit_model <- dp
 
-  # ------------------------------------------------------------
-  # 2.5) Early validation: objectives that require actions/effects
-  # ------------------------------------------------------------
+  x
+}
+
+.pa_build_model_validate_objective_requirements <- function(x) {
+
+  .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+  .has_rows <- function(df) !is.null(df) && inherits(df, "data.frame") && nrow(df) > 0
+
   args  <- x$data$model_args %||% list()
   mtype <- args$model_type %||% "minimizeCosts"
-  oargs <- args$objective_args %||% list()  # (por si quieres usarlo en mensajes)
+  oargs <- args$objective_args %||% list()
 
-  .pa_fail <- function(...) stop(paste0(...), call. = FALSE)
+  has_actions_model <- .has_rows(x$data$dist_actions_model)
 
-  # Helpers robustos
-  .has_df_rows <- function(df) !is.null(df) && inherits(df, "data.frame") && nrow(df) > 0
-
-  needs_actions <- mtype %in% c("maximizeBenefits", "minimizeLosses", "maximizeProfit", "maximizeNetProfit")
+  needs_actions <- mtype %in% c("maximizeBenefits", "minimizeLosses", "maximizeProfit", "maximizeNetProfit",
+                                "minimizeActionFragmentation", "minimizeInterventionFragmentation")
 
   if (needs_actions && !isTRUE(has_actions_model)) {
-    .pa_fail(
+    .pa_abort(
       "Objective '", mtype, "' requires actions, but no actions are available.\n",
-      "You likely forgot to run add_actions() (and to provide feasible dist_actions).\n",
-      "If you intended a reserve-selection problem with no actions, use set_objective_min_cost() ",
-      "or set_objective_max_representation()."
+      "Run add_actions() (and ensure feasible dist_actions rows exist) before solve()."
     )
   }
 
   if (identical(mtype, "maximizeBenefits")) {
-    if (!.has_df_rows(x$data$dist_effects_model)) {
-      .pa_fail(
+    if (!.has_rows(x$data$dist_effects_model)) {
+      .pa_abort(
         "Objective 'maximizeBenefits' requires effects/benefits, but dist_effects is empty.\n",
         "Run add_benefits() / add_effects() after add_actions()."
       )
     }
     bcol <- as.character(oargs$benefit_col %||% "benefit")[1]
     if (!(bcol %in% names(x$data$dist_effects_model))) {
-      .pa_fail(
-        "Objective 'maximizeBenefits' requires column '", bcol, "' in dist_effects.\n",
-        "Check add_benefits()/add_effects() output or set benefit_col in objective_args."
+      .pa_abort(
+        "Objective 'maximizeBenefits' requires column '", bcol, "' in dist_effects."
       )
     }
   }
 
   if (identical(mtype, "minimizeLosses")) {
-    if (!.has_df_rows(x$data$dist_effects_model)) {
-      .pa_fail(
+    if (!.has_rows(x$data$dist_effects_model)) {
+      .pa_abort(
         "Objective 'minimizeLosses' requires effects/losses, but dist_effects is empty.\n",
         "Run add_losses() / add_effects() after add_actions()."
       )
     }
     lcol <- as.character(oargs$loss_col %||% "loss")[1]
     if (!(lcol %in% names(x$data$dist_effects_model))) {
-      .pa_fail(
-        "Objective 'minimizeLosses' requires column '", lcol, "' in dist_effects.\n",
-        "Check add_losses()/add_effects() output or set loss_col in objective_args."
+      .pa_abort(
+        "Objective 'minimizeLosses' requires column '", lcol, "' in dist_effects."
       )
     }
   }
 
   if (mtype %in% c("maximizeProfit", "maximizeNetProfit")) {
-    if (!.has_df_rows(x$data$dist_profit_model)) {
-      .pa_fail(
+    if (!.has_rows(x$data$dist_profit_model)) {
+      .pa_abort(
         "Objective '", mtype, "' requires dist_profit, but dist_profit is empty.\n",
         "Run add_profit() after add_actions()."
       )
     }
     pcol <- as.character(oargs$profit_col %||% "profit")[1]
     if (!(pcol %in% names(x$data$dist_profit_model))) {
-      .pa_fail(
-        "Objective '", mtype, "' requires column '", pcol, "' in dist_profit.\n",
-        "Check add_profit() output or set profit_col in objective_args."
+      .pa_abort(
+        "Objective '", mtype, "' requires column '", pcol, "' in dist_profit."
       )
     }
   }
 
-  # ------------------------------------------------------------
-  # 3) Build optimization problem pointer (C++ side)
-  # ------------------------------------------------------------
+  # fragmentation objectives: require spatial relation
+  if (mtype %in% c("minimizeFragmentation", "minimizeActionFragmentation", "minimizeInterventionFragmentation")) {
+
+    rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
+    rels <- x$data$spatial_relations
+
+    if (is.null(rels) || !is.list(rels) || is.null(rels[[rel_name]])) {
+      .pa_abort(
+        "Objective '", mtype, "' requires a spatial relation named '", rel_name, "'.\n",
+        "But x$data$spatial_relations[['", rel_name, "']] is missing."
+      )
+    }
+
+    rel <- rels[[rel_name]]
+    if (!inherits(rel, "data.frame") || nrow(rel) == 0) {
+      .pa_abort("Spatial relation '", rel_name, "' exists but is empty or not a data.frame.")
+    }
+
+    need_cols <- c("internal_pu1", "internal_pu2", "weight")
+    if (!all(need_cols %in% names(rel))) {
+      .pa_abort(
+        "Spatial relation '", rel_name, "' must contain columns: ",
+        paste(need_cols, collapse = ", "), "."
+      )
+    }
+
+    n_pu <- nrow(x$data$pu)
+    if (anyNA(rel$internal_pu1) || anyNA(rel$internal_pu2)) {
+      .pa_abort("Spatial relation '", rel_name, "' contains NA in internal_pu1/internal_pu2.")
+    }
+    if (any(rel$internal_pu1 < 1L | rel$internal_pu1 > n_pu) ||
+        any(rel$internal_pu2 < 1L | rel$internal_pu2 > n_pu)) {
+      .pa_abort("Spatial relation '", rel_name, "' has internal PU indices out of range (1..n_pu).")
+    }
+
+    ww <- as.numeric(rel$weight)
+    if (any(!is.finite(ww)) || any(ww < 0)) {
+      .pa_abort("Spatial relation '", rel_name, "' has non-finite or negative weights.")
+    }
+
+    if (identical(mtype, "minimizeActionFragmentation")) {
+      if (is.null(x$data$actions) || !inherits(x$data$actions, "data.frame") || nrow(x$data$actions) == 0) {
+        .pa_abort("Objective 'minimizeActionFragmentation' requires x$data$actions to exist (non-empty).")
+      }
+      if (!is.null(oargs$actions_to_use)) {
+        a <- as.integer(oargs$actions_to_use)
+        if (anyNA(a)) .pa_abort("actions_to_use contains NA.")
+        if (any(a < 1L | a > nrow(x$data$actions))) {
+          .pa_abort("actions_to_use has internal_action ids out of range (1..n_actions).")
+        }
+      }
+      if (!is.null(oargs$action_weights)) {
+        aw <- as.numeric(oargs$action_weights)
+        if (any(!is.finite(aw)) || any(aw < 0)) {
+          .pa_abort("action_weights must be finite and >= 0.")
+        }
+      }
+    }
+  }
+
+  x
+}
+
+.pa_build_model_build_cpp_core <- function(x) {
+
+  .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+
+  if (!exists("rcpp_new_optimization_problem", mode = "function")) {
+    .pa_abort("Missing rcpp_new_optimization_problem() in the package.")
+  }
+  if (!exists("rcpp_add_base_variables", mode = "function")) {
+    .pa_abort("Missing rcpp_add_base_variables() in the package.")
+  }
+
   op <- rcpp_new_optimization_problem()
 
-  # ------------------------------------------------------------
-  # 4) Add base variables (w, x, z)
-  # ------------------------------------------------------------
   idx <- rcpp_add_base_variables(
     op,
     pu_data            = x$data$pu,
@@ -311,10 +546,8 @@
     dist_features_data = x$data$dist_features
   )
 
-  # ------------------------------------------------------------
-  # 5) Minimal structural constraints
-  # ------------------------------------------------------------
-  if (nrow(x$data$dist_actions_model) > 0) {
+  # structural constraints
+  if (!is.null(x$data$dist_actions_model) && nrow(x$data$dist_actions_model) > 0) {
     rcpp_add_linking_x_le_w(op, x$data$dist_actions_model)
   }
   if (exists("rcpp_add_linking_z_le_w", mode = "function")) {
@@ -323,13 +556,43 @@
   if (exists("rcpp_add_pu_locks", mode = "function")) {
     rcpp_add_pu_locks(op, x$data$pu)
   }
-  if (nrow(x$data$dist_actions_model) > 0 && exists("rcpp_add_action_locks", mode = "function")) {
+  if (!is.null(x$data$dist_actions_model) && nrow(x$data$dist_actions_model) > 0 &&
+      exists("rcpp_add_action_locks", mode = "function")) {
     rcpp_add_action_locks(op, x$data$dist_actions_model)
   }
 
-  # ------------------------------------------------------------
-  # 6) Objective (from model_args)
-  # ------------------------------------------------------------
+  x$data$model_ptr   <- op
+  x$data$model_index <- idx
+
+  # registry placeholder for future MO updates (constraint/objective IDs)
+  x$data$model_registry <- list(
+    cons = list(),
+    vars = list(),
+    obj_templates = list(),
+    objective = list()
+  )
+
+  x
+}
+
+.pa_build_model_set_objective_cpp <- function(x) {
+
+  .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+
+  .pa_prepare_relation_model <- function(rel) {
+    rel <- rel[, c(
+      "internal_pu1","internal_pu2","weight",
+      intersect(names(rel), c("distance","source","relation_name"))
+    ), drop = FALSE]
+    rel$internal_pu1 <- as.integer(rel$internal_pu1)
+    rel$internal_pu2 <- as.integer(rel$internal_pu2)
+    rel$weight <- as.numeric(rel$weight)
+    rel <- rel[order(rel$internal_pu1, rel$internal_pu2), , drop = FALSE]
+    rel$internal_edge <- seq_len(nrow(rel))
+    rel
+  }
+
+  op <- x$data$model_ptr
   args  <- x$data$model_args %||% list()
   mtype <- args$model_type %||% "minimizeCosts"
   oargs <- args$objective_args %||% list()
@@ -337,7 +600,7 @@
   if (identical(mtype, "minimizeCosts")) {
 
     if (!exists("rcpp_set_objective_min_cost", mode = "function")) {
-      stop("Missing rcpp_set_objective_min_cost() in the package.", call. = FALSE)
+      .pa_abort("Missing rcpp_set_objective_min_cost() in the package.")
     }
 
     rcpp_set_objective_min_cost(
@@ -354,18 +617,10 @@
   } else if (identical(mtype, "maximizeBenefits")) {
 
     if (!exists("rcpp_set_objective_max_benefit", mode = "function")) {
-      stop("Missing rcpp_set_objective_max_benefit() in the package.", call. = FALSE)
-    }
-
-    if (is.null(x$data$dist_effects_model) || nrow(x$data$dist_effects_model) == 0) {
-      stop("maximizeBenefits requires dist_effects (with a 'benefit' column). Run add_effects()/add_benefits() first.", call. = FALSE)
+      .pa_abort("Missing rcpp_set_objective_max_benefit() in the package.")
     }
 
     bcol <- as.character(oargs$benefit_col %||% "benefit")[1]
-    if (!(bcol %in% names(x$data$dist_effects_model))) {
-      stop("maximizeBenefits: column '", bcol, "' not found in dist_effects.", call. = FALSE)
-    }
-
     rcpp_set_objective_max_benefit(
       op,
       dist_actions_data = x$data$dist_actions_model,
@@ -379,18 +634,10 @@
   } else if (identical(mtype, "minimizeLosses")) {
 
     if (!exists("rcpp_set_objective_min_loss", mode = "function")) {
-      stop("Missing rcpp_set_objective_min_loss() in the package.", call. = FALSE)
-    }
-
-    if (is.null(x$data$dist_effects_model) || nrow(x$data$dist_effects_model) == 0) {
-      stop("minimizeLosses requires dist_effects (with a 'loss' column). Run add_losses()/add_effects() first.", call. = FALSE)
+      .pa_abort("Missing rcpp_set_objective_min_loss() in the package.")
     }
 
     lcol <- as.character(oargs$loss_col %||% "loss")[1]
-    if (!(lcol %in% names(x$data$dist_effects_model))) {
-      stop("minimizeLosses: column '", lcol, "' not found in dist_effects.", call. = FALSE)
-    }
-
     rcpp_set_objective_min_loss(
       op,
       dist_actions_data = x$data$dist_actions_model,
@@ -404,18 +651,14 @@
   } else if (identical(mtype, "maximizeProfit")) {
 
     if (!exists("rcpp_set_objective_max_profit", mode = "function")) {
-      stop("Missing rcpp_set_objective_max_profit() in the package.", call. = FALSE)
-    }
-
-    if (is.null(x$data$dist_profit_model) || nrow(x$data$dist_profit_model) == 0) {
-      stop("maximizeProfit requires dist_profit. Run add_profit() first.", call. = FALSE)
+      .pa_abort("Missing rcpp_set_objective_max_profit() in the package.")
     }
 
     rcpp_set_objective_max_profit(
       op,
       dist_actions_data = x$data$dist_actions_model,
       dist_profit_data  = x$data$dist_profit_model,
-      profit_col = oargs$profit_col %||% "profit"
+      profit_col = as.character(oargs$profit_col %||% "profit")[1]
     )
 
     objective_id <- "max_profit"
@@ -424,11 +667,7 @@
   } else if (identical(mtype, "maximizeNetProfit")) {
 
     if (!exists("rcpp_set_objective_max_net_profit", mode = "function")) {
-      stop("Missing rcpp_set_objective_max_net_profit() in the package.", call. = FALSE)
-    }
-
-    if (is.null(x$data$dist_profit_model) || nrow(x$data$dist_profit_model) == 0) {
-      stop("maximizeNetProfit requires dist_profit. Run add_profit() first.", call. = FALSE)
+      .pa_abort("Missing rcpp_set_objective_max_net_profit() in the package.")
     }
 
     rcpp_set_objective_max_net_profit(
@@ -436,7 +675,7 @@
       pu_data = x$data$pu,
       dist_actions_data = x$data$dist_actions_model,
       dist_profit_data  = x$data$dist_profit_model,
-      profit_col = oargs$profit_col %||% "profit",
+      profit_col = as.character(oargs$profit_col %||% "profit")[1],
       include_pu_cost = isTRUE(oargs$include_pu_cost %||% TRUE),
       include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE)
     )
@@ -447,19 +686,10 @@
   } else if (identical(mtype, "maximizeRepresentation")) {
 
     if (!exists("rcpp_set_objective_max_representation", mode = "function")) {
-      stop("Missing rcpp_set_objective_max_representation() in the package.", call. = FALSE)
-    }
-
-    # En este objetivo, solo necesitamos dist_features (y z), NO dist_actions ni dist_effects
-    if (is.null(x$data$dist_features) || nrow(x$data$dist_features) == 0) {
-      stop("maximizeRepresentation requires dist_features.", call. = FALSE)
+      .pa_abort("Missing rcpp_set_objective_max_representation() in the package.")
     }
 
     acol <- as.character(oargs$amount_col %||% "amount")[1]
-    if (!(acol %in% names(x$data$dist_features))) {
-      stop("maximizeRepresentation: column '", acol, "' not found in dist_features.", call. = FALSE)
-    }
-
     rcpp_set_objective_max_representation(
       op,
       dist_features_data = x$data$dist_features,
@@ -469,33 +699,123 @@
     objective_id <- "max_representation"
     modelsense   <- "max"
 
+  } else if (identical(mtype, "minimizeFragmentation")) {
+
+    if (!exists("rcpp_set_objective_min_fragmentation", mode = "function")) {
+      .pa_abort("Missing rcpp_set_objective_min_fragmentation() in the package.")
+    }
+
+    rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
+    rel <- x$data$spatial_relations[[rel_name]]
+    rel_model <- .pa_prepare_relation_model(rel)
+
+    x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
+    x$data$spatial_relations_model[[rel_name]] <- rel_model
+
+    rcpp_set_objective_min_fragmentation(
+      op,
+      pu_data = x$data$pu,
+      relation_data = rel_model,
+      weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
+    )
+
+    objective_id <- "min_fragmentation"
+    modelsense   <- "min"
+
+  } else if (identical(mtype, "minimizeActionFragmentation")) {
+
+    if (!exists("rcpp_set_objective_min_action_fragmentation", mode = "function")) {
+      .pa_abort("Missing rcpp_set_objective_min_action_fragmentation() in the package.")
+    }
+
+    rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
+    rel <- x$data$spatial_relations[[rel_name]]
+    rel_model <- .pa_prepare_relation_model(rel)
+
+    x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
+    x$data$spatial_relations_model[[rel_name]] <- rel_model
+
+    aw_vec <- .pa_action_weights_vector(
+      actions_df = x$data$actions,
+      action_weights = oargs$action_weights %||% NULL,
+      subset_actions = oargs$actions %||% NULL
+    )
+
+    rcpp_set_objective_min_fragmentation_actions_by_action(
+      op,
+      dist_actions_data = x$data$dist_actions_model,
+      relation_data = rel_model,
+      action_weights = aw_vec,
+      weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
+    )
+
+    objective_id <- "min_action_fragmentation"
+    modelsense   <- "min"
+
+  } else if (identical(mtype, "minimizeInterventionFragmentation")) {
+
+    if (!exists("rcpp_set_objective_min_intervention_fragmentation", mode = "function")) {
+      .pa_abort("Missing rcpp_set_objective_min_intervention_fragmentation() in the package.")
+    }
+
+    rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
+    rel <- x$data$spatial_relations[[rel_name]]
+    rel_model <- .pa_prepare_relation_model(rel)
+
+    x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
+    x$data$spatial_relations_model[[rel_name]] <- rel_model
+
+    rcpp_set_objective_min_fragmentation_interventions(
+      op,
+      dist_actions_data = x$data$dist_actions_model,
+      relation_data = rel_model,
+      weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
+    )
+
+    objective_id <- "min_intervention_fragmentation"
+    modelsense   <- "min"
+
   } else {
-    stop("Unknown model_type in x$data$model_args$model_type: ", mtype, call. = FALSE)
+    .pa_abort("Unknown model_type in x$data$model_args$model_type: ", mtype)
   }
 
-  # ------------------------------------------------------------
-  # 7) Store pointer + index
-  # ------------------------------------------------------------
-  x$data$model_ptr   <- op
-  x$data$model_index <- idx
-
-  # ------------------------------------------------------------
-  # 8) Apply stored targets (if any)
-  # ------------------------------------------------------------
-  if (!is.null(x$data$targets) &&
-      inherits(x$data$targets, "data.frame") &&
-      nrow(x$data$targets) > 0) {
-    x <- .pa_apply_targets_if_present(x, allow_multiple_rows_per_feature = TRUE)
-  }
-
-  # ------------------------------------------------------------
-  # 9) Store resolved objective metadata + snapshot
-  # ------------------------------------------------------------
   x$data$model_args$modelsense   <- modelsense
   x$data$model_args$objective_id <- objective_id
 
-  x <- .pa_refresh_model_snapshot(x)
+  # future: store objective handle/id returned by C++ if you implement it
+  x$data$model_registry$objective <- list(
+    type = mtype,
+    id = objective_id
+  )
 
-  x$data$has_model <- TRUE
+  x
+}
+
+.pa_build_model_apply_constraints <- function(x) {
+
+  # Apply targets if present
+  if (!is.null(x$data$targets) &&
+      inherits(x$data$targets, "data.frame") &&
+      nrow(x$data$targets) > 0) {
+
+    if (!exists(".pa_apply_targets_if_present", mode = "function")) {
+      stop(".pa_apply_targets_if_present() is missing.", call. = FALSE)
+    }
+
+    x <- .pa_apply_targets_if_present(x, allow_multiple_rows_per_feature = TRUE)
+
+    # future: if C++ returns constraint IDs, store them in x$data$model_registry$constraints$targets
+  }
+
+  x
+}
+
+.pa_build_model_finalize <- function(x) {
+
+  if (!exists(".pa_refresh_model_snapshot", mode = "function")) {
+    stop(".pa_refresh_model_snapshot() is missing.", call. = FALSE)
+  }
+
+  x <- .pa_refresh_model_snapshot(x)
   x
 }

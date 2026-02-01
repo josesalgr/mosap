@@ -73,26 +73,6 @@ rcpp_add_target_recovery_power <- function(x, features_data, dist_actions_data, 
     .Call(`_prioriactions_rcpp_add_target_recovery_power`, x, features_data, dist_actions_data, dist_benefit_data, exponent, segments, target_col_sexp, tol)
 }
 
-rcpp_constraint_activation <- function(x, pu_data, threats_data, dist_threats_data) {
-    .Call(`_prioriactions_rcpp_constraint_activation`, x, pu_data, threats_data, dist_threats_data)
-}
-
-rcpp_constraint_benefit <- function(x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, sensitivity_data) {
-    .Call(`_prioriactions_rcpp_constraint_benefit`, x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, sensitivity_data)
-}
-
-rcpp_constraint_budget <- function(x, pu_data, dist_threats_data, budget) {
-    .Call(`_prioriactions_rcpp_constraint_budget`, x, pu_data, dist_threats_data, budget)
-}
-
-rcpp_constraint_lock <- function(x, pu_data, dist_threats_data) {
-    .Call(`_prioriactions_rcpp_constraint_lock`, x, pu_data, dist_threats_data)
-}
-
-rcpp_constraint_target <- function(x, pu_data, features_data, dist_features_data, dist_threats_data, threats_data, sensitivity_data, curve) {
-    .Call(`_prioriactions_rcpp_constraint_target`, x, pu_data, features_data, dist_features_data, dist_threats_data, threats_data, sensitivity_data, curve)
-}
-
 rcpp_fix_z_ineligible_by_positive_delta <- function(x, dist_features_data, dist_benefit_data, fix_lb_too = TRUE, eps = 1e-12) {
     .Call(`_prioriactions_rcpp_fix_z_ineligible_by_positive_delta`, x, dist_features_data, dist_benefit_data, fix_lb_too, eps)
 }
@@ -125,31 +105,19 @@ rcpp_set_objective_min_cost <- function(x, pu_data, dist_actions_data, include_p
     .Call(`_prioriactions_rcpp_set_objective_min_cost`, x, pu_data, dist_actions_data, include_pu_cost, include_action_cost)
 }
 
+rcpp_set_objective_min_fragmentation <- function(x, pu_data, relation_data, weight_multiplier = 1.0) {
+    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation`, x, pu_data, relation_data, weight_multiplier)
+}
+
+rcpp_set_objective_min_fragmentation_actions_by_action <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, action_weights = NULL, weight_multiplier = 1.0) {
+    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action`, x, dist_actions_data, relation_data, actions_to_use, action_weights, weight_multiplier)
+}
+
+rcpp_set_objective_min_fragmentation_interventions <- function(x, dist_actions_data, relation_data, weight_multiplier = 1.0) {
+    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation_interventions`, x, dist_actions_data, relation_data, weight_multiplier)
+}
+
 rcpp_set_objective_min_loss <- function(x, dist_actions_data, dist_effects_data, loss_col = "loss") {
     .Call(`_prioriactions_rcpp_set_objective_min_loss`, x, dist_actions_data, dist_effects_data, loss_col)
-}
-
-rcpp_stats_benefit <- function(pu_data, features_data, dist_features_data, threats_data, dist_threats_data, sensitivity_data, solution) {
-    .Call(`_prioriactions_rcpp_stats_benefit`, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, sensitivity_data, solution)
-}
-
-rcpp_stats_connectivity_actions <- function(pu_data, threats_data, dist_threats_data, boundary_data, solution) {
-    .Call(`_prioriactions_rcpp_stats_connectivity_actions`, pu_data, threats_data, dist_threats_data, boundary_data, solution)
-}
-
-rcpp_stats_connectivity_units <- function(pu_data, boundary_data, dist_threats_data, dist_features_data, solution) {
-    .Call(`_prioriactions_rcpp_stats_connectivity_units`, pu_data, boundary_data, dist_threats_data, dist_features_data, solution)
-}
-
-rcpp_stats_costs_actions <- function(pu_data, threats_data, dist_threats_data, solution) {
-    .Call(`_prioriactions_rcpp_stats_costs_actions`, pu_data, threats_data, dist_threats_data, solution)
-}
-
-rcpp_stats_costs_units <- function(pu_data, solution) {
-    .Call(`_prioriactions_rcpp_stats_costs_units`, pu_data, solution)
-}
-
-rcpp_stats_recovery <- function(solution, pu_data, features_data, dist_features_data, dist_threats_data, threats_data, sensitivity_data) {
-    .Call(`_prioriactions_rcpp_stats_recovery`, solution, pu_data, features_data, dist_features_data, dist_threats_data, threats_data, sensitivity_data)
 }
 

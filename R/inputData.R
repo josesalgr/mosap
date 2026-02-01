@@ -44,6 +44,9 @@ methods::setGeneric(
     stop("format='legacy' requires `threats` and `dist_threats` (data.frame) in ...", call. = FALSE)
   }
 
+  pu_coords <- NULL
+
+
   # helper: coerce ids to integer safely
   .as_int_id <- function(x, what) {
     if (is.factor(x)) x <- as.character(x)
@@ -101,6 +104,20 @@ methods::setGeneric(
   if (any(pu$locked_in & pu$locked_out, na.rm = TRUE)) {
     stop("Some planning units are both locked_in and locked_out. Please fix pu input.", call. = FALSE)
   }
+
+  # optional: store coordinates if present (tabular users)
+  if (all(c("x", "y") %in% names(pu))) {
+    pu_coords <- data.frame(
+      id = pu$id,
+      x  = as.numeric(pu$x),
+      y  = as.numeric(pu$y),
+      stringsAsFactors = FALSE
+    )
+    if (any(!is.finite(pu_coords$x) | !is.finite(pu_coords$y))) {
+      stop("pu$x/pu$y contain non-finite values.", call. = FALSE)
+    }
+  }
+
 
   pu <- pu[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
   pu <- pu[order(pu$id), , drop = FALSE]
@@ -210,12 +227,7 @@ methods::setGeneric(
       boundary <- boundary[keep, , drop = FALSE]
     }
 
-    if (nrow(boundary) == 0) {
-      boundary <- NULL
-    } else {
-      boundary$internal_id1 <- unname(pu_index[as.character(boundary$id1)])
-      boundary$internal_id2 <- unname(pu_index[as.character(boundary$id2)])
-    }
+    if (nrow(boundary) == 0) boundary <- NULL
   }
 
   # =========================
@@ -415,7 +427,10 @@ methods::setGeneric(
       pu = pu,
       features = features,
       dist_features = dist_features,
-      boundary = boundary,
+
+      # ---- NEW: spatial storage
+      pu_coords = pu_coords,
+      spatial_relations = list(),
 
       # legacy (optional)
       threats = threats,
@@ -446,6 +461,34 @@ methods::setGeneric(
       solver = NULL
     )
   )
+
+
+  # =========================
+  # boundary -> spatial relation ("boundary")
+  # =========================
+  if (!is.null(boundary) && inherits(boundary, "data.frame") && nrow(boundary) > 0) {
+
+    rel <- data.frame(
+      internal_pu1 = unname(pu_index[as.character(boundary$id1)]),
+      internal_pu2 = unname(pu_index[as.character(boundary$id2)]),
+      weight       = as.numeric(boundary$boundary),
+      source       = "boundary_table",
+      stringsAsFactors = FALSE
+    )
+
+    # por si acaso (aunque ya filtraste ids), chequeo defensivo:
+    if (anyNA(rel$internal_pu1) || anyNA(rel$internal_pu2)) {
+      stop("boundary contains PU ids not present in pu (after filtering).", call. = FALSE)
+    }
+
+    rel <- .pa_validate_relation(rel, n_pu = nrow(pu), allow_self = FALSE, dup_agg = "sum")
+    rel$relation_name <- "boundary"
+
+    if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
+      x$data$spatial_relations <- list()
+    }
+    x$data$spatial_relations[["boundary"]] <- rel
+  }
 
   x
 }
@@ -601,6 +644,16 @@ methods::setMethod(
       stop("Some planning units are both locked_in and locked_out. Please fix your inputs.", call. = FALSE)
     }
 
+    # ---- centroid coordinates (terra-only, no sf required)
+    ctr <- terra::centroids(pu_v)
+    xy  <- terra::crds(ctr)
+    pu_coords <- data.frame(
+      id = pu_df$id,
+      x  = as.numeric(xy[, 1]),
+      y  = as.numeric(xy[, 2]),
+      stringsAsFactors = FALSE
+    )
+
     pu_df <- pu_df[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
 
     # ---- features + dist_features (sum by PU)
@@ -685,6 +738,14 @@ methods::setMethod(
       boundary = boundary_df,
       ...
     )
+
+    # store centroid coords (for knn/distance relations without sf)
+    x$data$pu_coords <- pu_coords
+
+    # ensure spatial_relations container exists (defensive)
+    if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
+      x$data$spatial_relations <- list()
+    }
 
     # ---- store spatial artifacts (optional)
     if (!is.null(pu_r)) x$data$pu_raster_id <- pu_r

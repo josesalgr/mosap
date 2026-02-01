@@ -47,9 +47,17 @@ public:
   int _n_pu = 0;
   int _n_x = 0;
   int _n_z = 0;
+  int _n_y_pu = 0;
+  int _n_y_action = 0;
+  int _n_y_intervention = 0;
+  int _n_u_intervention = 0;
   int _w_offset = 0;   // normalmente 0
   int _x_offset = 0;   // normalmente n_pu
   int _z_offset = 0;   // normalmente n_pu
+  int _y_pu_offset = 0;   // normalmente n_pu
+  int _y_action_offset = 0;   // normalmente n_pu
+  int _y_intervention_offset = 0;   // normalmente n_pu
+  int _u_intervention_offset = 0;   // normalmente n_pu
 
   // methods
   inline const std::size_t nrow() const {
@@ -101,6 +109,38 @@ public:
     }
   }
 
+  // OptimizationProblem.h
+  struct BlockRange {
+    std::string name;        // "targets", "budget", "frag_boundary", ...
+    std::string kind;        // "constraint" | "variable" | "objective"
+    std::size_t start;       // inclusive
+    std::size_t end;         // exclusive
+    std::string tag;         // opcional: feature_id, target_set, action_id, etc.
+  };
+
+  // ...
+  std::vector<BlockRange> _registry;
+
+  std::size_t nrow_used() const { return _rhs.size(); }
+  std::size_t ncol_used() const { return _obj.size(); }
+
+  void register_constraint_block(const std::string& name,
+                                   std::size_t start, std::size_t end,
+                                   const std::string& tag = "") {
+      _registry.push_back(BlockRange{name, "constraint", start, end, tag});
+  }
+
+  void register_variable_block(const std::string& name,
+                                 std::size_t start, std::size_t end,
+                                 const std::string& tag = "") {
+      _registry.push_back(BlockRange{name, "variable", start, end, tag});
+  }
+
+  void register_objective_block(const std::string& name,
+                                  std::size_t start, std::size_t end,
+                                  const std::string& tag = "") {
+      _registry.push_back(BlockRange{name, "objective", start, end, tag});
+  }
 };
 
 #endif

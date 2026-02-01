@@ -236,8 +236,9 @@ solve <- function(x, ...) {
   }
 
   # ---- ensure model is built
-  if (is.null(x$data$model_ptr) || !isTRUE(x$data$has_model)) {
+  if (is.null(x$data$model_ptr) || !isTRUE(x$data$has_model) || isTRUE(x$data$meta$model_dirty)) {
     x <- .pa_build_model(x)
+    x$data$meta$model_dirty <- FALSE
   }
 
   # ---- model list from pointer
@@ -246,6 +247,9 @@ solve <- function(x, ...) {
     args = x$data$model_args %||% list(),
     drop_triplets = TRUE
   )
+
+  # ---- APPLY SUPERSET RUNTIME UPDATES (solver-agnostic)
+  model <- .pa_apply_runtime_updates_to_model(model, x)
 
   # ---- pack args into Solution metadata
   solve_args <- list(
@@ -483,6 +487,8 @@ solve <- function(x, ...) {
   # 3) Build human-readable tables (you implement this helper)
   # ------------------------------------------------------------
   tables <- .pa_extract_solution_tables(x, solvec)
+
+  x$data$runtime_updates <- NULL
 
   # ------------------------------------------------------------
   # 4) Construct Solution ONCE

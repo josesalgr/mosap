@@ -75,6 +75,20 @@ Data <- pproto(
                       "\n  model:           ",
                       if (!is.null(a)) paste0(a$model_type, " (", a$modelsense, ")") else "(built)",
                       "\n    dimensions:    ", d$n_con, " constraints, ", d$n_var, " vars, ", d$nnz, " nnz")
+
+        frag <- .pa_model_frag_vars_summary(self)
+        if (!is.null(frag)) {
+          msg <- paste0(
+            msg,
+            "\n    frag vars:     y_pu=", frag$n_y_pu,
+            " (off ", frag$y_pu_offset, ")",
+            ", y_actions=", frag$n_y_actions,
+            " (off ", frag$y_actions_offset, ")",
+            ", y_interv=", frag$n_y_interventions,
+            " (off ", frag$y_interventions_offset, ")"
+          )
+        }
+
       }
 
       # targets summary (if present)
@@ -107,8 +121,11 @@ Data <- pproto(
     n_thr <- .pa_nrow0(thr)
     thr_names <- self$getThreatNames()
 
-    boundary <- self$data$boundary
-    n_bnd <- .pa_nrow0(boundary)
+    pu_coords <- self$data$pu_coords
+    has_coords <- .pa_has_coords(self)
+
+    rels_sum <- .pa_spatial_relations_summary(self)
+    n_rels <- if (is.null(rels_sum)) 0L else nrow(rels_sum)
 
     actions <- self$data$actions
     n_act <- .pa_nrow0(actions)
@@ -147,15 +164,6 @@ Data <- pproto(
     cli::cli_text("{ch$v}{ch$j}{ch$b}threats:        {txt}",
                   .envir = environment())
 
-    if (!is.null(boundary)) {
-      bnd_n <- n_bnd
-      cli::cli_text("{ch$v}{ch$l}{ch$b}boundary:       {bnd_n} pairs",
-                    .envir = environment())
-    } else {
-      cli::cli_text("{ch$v}{ch$l}{ch$b}boundary:       {.muted none}",
-                    .envir = environment())
-    }
-
     # ---- ACTIONS SECTION
     cli::cli_text("{ch$l}{ch$b}{.h actions}", .envir = environment())
 
@@ -191,6 +199,98 @@ Data <- pproto(
       cli::cli_text(" {ch$v}{ch$l}{ch$b}dist_benefit:   {n_rows} rows",
                     .envir = environment())
     }
+
+    # ---- SPATIAL SECTION
+    cli::cli_text("{ch$l}{ch$b}{.h spatial}", .envir = environment())
+
+    if (has_coords) {
+      n_c <- nrow(pu_coords)
+      xr <- .pa_safe_range(pu_coords$x)
+      yr <- .pa_safe_range(pu_coords$y)
+      if (is.null(xr) || is.null(yr)) {
+        cli::cli_text(" {ch$v}{ch$j}{ch$b}pu_coords:      {n_c} rows",
+                      .envir = environment())
+      } else {
+        cli::cli_text(" {ch$v}{ch$j}{ch$b}pu_coords:      {n_c} rows (x: {xr[[1]]}..{xr[[2]]}, y: {yr[[1]]}..{yr[[2]]})",
+                      .envir = environment())
+      }
+    } else {
+      cli::cli_text(" {ch$v}{ch$j}{ch$b}pu_coords:      {.muted none}",
+                    .envir = environment())
+    }
+
+    if (n_rels == 0) {
+      cli::cli_text(" {ch$v}{ch$l}{ch$b}relations:      {.muted none}",
+                    .envir = environment())
+    } else {
+      cli::cli_text(" {ch$v}{ch$j}{ch$b}relations:      {n_rels} registered",
+                    .envir = environment())
+
+      # print each relation on its own line (limit to avoid super long prints)
+      max_show <- 6L
+      show_sum <- rels_sum[seq_len(min(n_rels, max_show)), , drop = FALSE]
+
+      for (i in seq_len(nrow(show_sum))) {
+        nm <- show_sum$name[i]
+        ed <- show_sum$edges[i]
+        w1 <- show_sum$w_min[i]
+        w2 <- show_sum$w_max[i]
+        if (is.na(w1) || is.na(w2)) {
+          cli::cli_text(" {ch$v}{ch$j}{ch$b}- {nm}: {ed} edges",
+                        .envir = environment())
+        } else {
+          cli::cli_text(" {ch$v}{ch$j}{ch$b}- {nm}: {ed} edges (w: {w1}..{w2})",
+                        .envir = environment())
+        }
+      }
+
+      if (n_rels > max_show) {
+        extra <- n_rels - max_show
+        cli::cli_text(" {ch$v}{ch$l}{ch$b}{.muted ... +{extra} more relation(s)}",
+                      .envir = environment())
+      }
+    }
+
+    # ---- MODEL EXTRAS: fragmentation auxiliary vars (if present)
+    if (.pa_has_model(self)) {
+      frag <- .pa_model_frag_vars_summary(self)
+
+      if (!is.null(frag)) {
+
+        cli::cli_text("{ch$l}{ch$b}{.h fragmentation vars}", .envir = environment())
+
+        if (frag$n_y_pu > 0) {
+          n1 <- frag$n_y_pu
+          o1 <- frag$y_pu_offset
+          cli::cli_text(" {ch$v}{ch$j}{ch$b}y_pu:            {n1} vars (offset: {o1})",
+                        .envir = environment())
+        } else {
+          cli::cli_text(" {ch$v}{ch$j}{ch$b}y_pu:            {.muted none}",
+                        .envir = environment())
+        }
+
+        if (frag$n_y_actions > 0) {
+          n2 <- frag$n_y_actions
+          o2 <- frag$y_actions_offset
+          cli::cli_text(" {ch$v}{ch$j}{ch$b}y_actions:       {n2} vars (offset: {o2})",
+                        .envir = environment())
+        } else {
+          cli::cli_text(" {ch$v}{ch$j}{ch$b}y_actions:       {.muted none}",
+                        .envir = environment())
+        }
+
+        if (frag$n_y_interventions > 0) {
+          n3 <- frag$n_y_interventions
+          o3 <- frag$y_interventions_offset
+          cli::cli_text(" {ch$v}{ch$l}{ch$b}y_interventions: {n3} vars (offset: {o3})",
+                        .envir = environment())
+        } else {
+          cli::cli_text(" {ch$v}{ch$l}{ch$b}y_interventions: {.muted none}",
+                        .envir = environment())
+        }
+      }
+    }
+
 
     # ---- MODEL SECTION (always)
     .pa_print_model_section(self, ch)
