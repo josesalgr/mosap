@@ -80,7 +80,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_add_action_locks
-bool rcpp_add_action_locks(SEXP x, Rcpp::DataFrame dist_actions_data);
+Rcpp::List rcpp_add_action_locks(SEXP x, Rcpp::DataFrame dist_actions_data);
 RcppExport SEXP _prioriactions_rcpp_add_action_locks(SEXP xSEXP, SEXP dist_actions_dataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -123,60 +123,68 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_add_linear_constraint
-bool rcpp_add_linear_constraint(SEXP model_ptr, IntegerVector j0, NumericVector x, std::string sense, double rhs, std::string name);
-RcppExport SEXP _prioriactions_rcpp_add_linear_constraint(SEXP model_ptrSEXP, SEXP j0SEXP, SEXP xSEXP, SEXP senseSEXP, SEXP rhsSEXP, SEXP nameSEXP) {
+Rcpp::List rcpp_add_linear_constraint(SEXP model_ptr, Rcpp::IntegerVector j0, Rcpp::NumericVector x, std::string sense, double rhs, std::string name, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_add_linear_constraint(SEXP model_ptrSEXP, SEXP j0SEXP, SEXP xSEXP, SEXP senseSEXP, SEXP rhsSEXP, SEXP nameSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type model_ptr(model_ptrSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type j0(j0SEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type j0(j0SEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
     Rcpp::traits::input_parameter< std::string >::type sense(senseSEXP);
     Rcpp::traits::input_parameter< double >::type rhs(rhsSEXP);
     Rcpp::traits::input_parameter< std::string >::type name(nameSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_linear_constraint(model_ptr, j0, x, sense, rhs, name));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_add_linear_constraint(model_ptr, j0, x, sense, rhs, name, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_add_linking_x_le_w
-bool rcpp_add_linking_x_le_w(SEXP x, Rcpp::DataFrame dist_actions_data);
-RcppExport SEXP _prioriactions_rcpp_add_linking_x_le_w(SEXP xSEXP, SEXP dist_actions_dataSEXP) {
+Rcpp::List rcpp_add_linking_x_le_w(SEXP x, Rcpp::DataFrame dist_actions_data, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_add_linking_x_le_w(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_linking_x_le_w(x, dist_actions_data));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_add_linking_x_le_w(x, dist_actions_data, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_add_linking_z_le_w
-Rcpp::List rcpp_add_linking_z_le_w(SEXP x, Rcpp::DataFrame dist_features_data);
-RcppExport SEXP _prioriactions_rcpp_add_linking_z_le_w(SEXP xSEXP, SEXP dist_features_dataSEXP) {
+Rcpp::List rcpp_add_linking_z_le_w(SEXP x, Rcpp::DataFrame dist_features_data, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_add_linking_z_le_w(SEXP xSEXP, SEXP dist_features_dataSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_linking_z_le_w(x, dist_features_data));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_add_linking_z_le_w(x, dist_features_data, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_add_pu_locks
-bool rcpp_add_pu_locks(SEXP x, Rcpp::DataFrame pu_data);
-RcppExport SEXP _prioriactions_rcpp_add_pu_locks(SEXP xSEXP, SEXP pu_dataSEXP) {
+Rcpp::List rcpp_add_pu_locks(SEXP x, Rcpp::DataFrame pu_data, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_add_pu_locks(SEXP xSEXP, SEXP pu_dataSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type pu_data(pu_dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_pu_locks(x, pu_data));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_add_pu_locks(x, pu_data, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_add_target_conservation
-Rcpp::List rcpp_add_target_conservation(SEXP x, Rcpp::DataFrame features_data, Rcpp::DataFrame dist_features_data, SEXP target_col_sexp, double tol);
-RcppExport SEXP _prioriactions_rcpp_add_target_conservation(SEXP xSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP target_col_sexpSEXP, SEXP tolSEXP) {
+Rcpp::List rcpp_add_target_conservation(SEXP x, Rcpp::DataFrame features_data, Rcpp::DataFrame dist_features_data, SEXP target_col_sexp, double tol, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_add_target_conservation(SEXP xSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP target_col_sexpSEXP, SEXP tolSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -185,7 +193,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_features_data(dist_features_dataSEXP);
     Rcpp::traits::input_parameter< SEXP >::type target_col_sexp(target_col_sexpSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_target_conservation(x, features_data, dist_features_data, target_col_sexp, tol));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_add_target_conservation(x, features_data, dist_features_data, target_col_sexp, tol, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -275,18 +285,18 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_objective_max_coverage
-bool rcpp_objective_max_coverage(SEXP x, DataFrame pu_data, DataFrame features_data, DataFrame dist_features_data, DataFrame threats_data, DataFrame dist_threats_data, DataFrame boundary_data, double blm, int curve);
+Rcpp::List rcpp_objective_max_coverage(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame features_data, Rcpp::DataFrame dist_features_data, Rcpp::DataFrame threats_data, Rcpp::DataFrame dist_threats_data, Rcpp::DataFrame boundary_data, double blm, int curve);
 RcppExport SEXP _prioriactions_rcpp_objective_max_coverage(SEXP xSEXP, SEXP pu_dataSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP threats_dataSEXP, SEXP dist_threats_dataSEXP, SEXP boundary_dataSEXP, SEXP blmSEXP, SEXP curveSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type features_data(features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type boundary_data(boundary_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type pu_data(pu_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type features_data(features_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_features_data(dist_features_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type threats_data(threats_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type boundary_data(boundary_dataSEXP);
     Rcpp::traits::input_parameter< double >::type blm(blmSEXP);
     Rcpp::traits::input_parameter< int >::type curve(curveSEXP);
     rcpp_result_gen = Rcpp::wrap(rcpp_objective_max_coverage(x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, boundary_data, blm, curve));
@@ -294,27 +304,27 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_objective_min_set
-bool rcpp_objective_min_set(SEXP x, DataFrame pu_data, DataFrame features_data, DataFrame dist_features_data, DataFrame threats_data, DataFrame dist_threats_data, DataFrame boundary_data, double blm, int curve);
-RcppExport SEXP _prioriactions_rcpp_objective_min_set(SEXP xSEXP, SEXP pu_dataSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP threats_dataSEXP, SEXP dist_threats_dataSEXP, SEXP boundary_dataSEXP, SEXP blmSEXP, SEXP curveSEXP) {
+Rcpp::List rcpp_objective_min_set(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame threats_data, Rcpp::DataFrame dist_threats_data, Rcpp::DataFrame boundary_data, double blm, int curve, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_objective_min_set(SEXP xSEXP, SEXP pu_dataSEXP, SEXP threats_dataSEXP, SEXP dist_threats_dataSEXP, SEXP boundary_dataSEXP, SEXP blmSEXP, SEXP curveSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type pu_data(pu_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type features_data(features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type threats_data(threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type boundary_data(boundary_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type pu_data(pu_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type threats_data(threats_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_threats_data(dist_threats_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type boundary_data(boundary_dataSEXP);
     Rcpp::traits::input_parameter< double >::type blm(blmSEXP);
     Rcpp::traits::input_parameter< int >::type curve(curveSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_objective_min_set(x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, boundary_data, blm, curve));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_objective_min_set(x, pu_data, threats_data, dist_threats_data, boundary_data, blm, curve, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_max_benefit
-bool rcpp_set_objective_max_benefit(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_benefit_data, std::string benefit_col);
-RcppExport SEXP _prioriactions_rcpp_set_objective_max_benefit(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP dist_benefit_dataSEXP, SEXP benefit_colSEXP) {
+Rcpp::List rcpp_set_objective_max_benefit(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_benefit_data, std::string benefit_col, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_set_objective_max_benefit(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP dist_benefit_dataSEXP, SEXP benefit_colSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -322,13 +332,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_benefit_data(dist_benefit_dataSEXP);
     Rcpp::traits::input_parameter< std::string >::type benefit_col(benefit_colSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_max_benefit(x, dist_actions_data, dist_benefit_data, benefit_col));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_max_benefit(x, dist_actions_data, dist_benefit_data, benefit_col, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_max_net_profit
-bool rcpp_set_objective_max_net_profit(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_profit_data, std::string profit_col, bool include_pu_cost, bool include_action_cost);
-RcppExport SEXP _prioriactions_rcpp_set_objective_max_net_profit(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_actions_dataSEXP, SEXP dist_profit_dataSEXP, SEXP profit_colSEXP, SEXP include_pu_costSEXP, SEXP include_action_costSEXP) {
+Rcpp::List rcpp_set_objective_max_net_profit(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_profit_data, std::string profit_col, bool include_pu_cost, bool include_action_cost, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_set_objective_max_net_profit(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_actions_dataSEXP, SEXP dist_profit_dataSEXP, SEXP profit_colSEXP, SEXP include_pu_costSEXP, SEXP include_action_costSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -339,13 +351,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type profit_col(profit_colSEXP);
     Rcpp::traits::input_parameter< bool >::type include_pu_cost(include_pu_costSEXP);
     Rcpp::traits::input_parameter< bool >::type include_action_cost(include_action_costSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_max_net_profit(x, pu_data, dist_actions_data, dist_profit_data, profit_col, include_pu_cost, include_action_cost));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_max_net_profit(x, pu_data, dist_actions_data, dist_profit_data, profit_col, include_pu_cost, include_action_cost, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_max_profit
-bool rcpp_set_objective_max_profit(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_profit_data, std::string profit_col);
-RcppExport SEXP _prioriactions_rcpp_set_objective_max_profit(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP dist_profit_dataSEXP, SEXP profit_colSEXP) {
+Rcpp::List rcpp_set_objective_max_profit(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_profit_data, std::string profit_col, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_set_objective_max_profit(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP dist_profit_dataSEXP, SEXP profit_colSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -353,26 +367,30 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_profit_data(dist_profit_dataSEXP);
     Rcpp::traits::input_parameter< std::string >::type profit_col(profit_colSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_max_profit(x, dist_actions_data, dist_profit_data, profit_col));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_max_profit(x, dist_actions_data, dist_profit_data, profit_col, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_max_representation
-bool rcpp_set_objective_max_representation(SEXP x, Rcpp::DataFrame dist_features_data, std::string amount_col);
-RcppExport SEXP _prioriactions_rcpp_set_objective_max_representation(SEXP xSEXP, SEXP dist_features_dataSEXP, SEXP amount_colSEXP) {
+Rcpp::List rcpp_set_objective_max_representation(SEXP x, Rcpp::DataFrame dist_features_data, std::string amount_col, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_set_objective_max_representation(SEXP xSEXP, SEXP dist_features_dataSEXP, SEXP amount_colSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_features_data(dist_features_dataSEXP);
     Rcpp::traits::input_parameter< std::string >::type amount_col(amount_colSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_max_representation(x, dist_features_data, amount_col));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_max_representation(x, dist_features_data, amount_col, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_min_cost
-bool rcpp_set_objective_min_cost(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame dist_actions_data, bool include_pu_cost, bool include_action_cost);
-RcppExport SEXP _prioriactions_rcpp_set_objective_min_cost(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_actions_dataSEXP, SEXP include_pu_costSEXP, SEXP include_action_costSEXP) {
+Rcpp::List rcpp_set_objective_min_cost(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame dist_actions_data, bool include_pu_cost, bool include_action_cost, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_set_objective_min_cost(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_actions_dataSEXP, SEXP include_pu_costSEXP, SEXP include_action_costSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -381,13 +399,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
     Rcpp::traits::input_parameter< bool >::type include_pu_cost(include_pu_costSEXP);
     Rcpp::traits::input_parameter< bool >::type include_action_cost(include_action_costSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_cost(x, pu_data, dist_actions_data, include_pu_cost, include_action_cost));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_cost(x, pu_data, dist_actions_data, include_pu_cost, include_action_cost, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_min_fragmentation
-bool rcpp_set_objective_min_fragmentation(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame relation_data, double weight_multiplier);
-RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation(SEXP xSEXP, SEXP pu_dataSEXP, SEXP relation_dataSEXP, SEXP weight_multiplierSEXP) {
+Rcpp::List rcpp_set_objective_min_fragmentation(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame relation_data, double weight_multiplier, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation(SEXP xSEXP, SEXP pu_dataSEXP, SEXP relation_dataSEXP, SEXP weight_multiplierSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -395,13 +415,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type pu_data(pu_dataSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type relation_data(relation_dataSEXP);
     Rcpp::traits::input_parameter< double >::type weight_multiplier(weight_multiplierSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation(x, pu_data, relation_data, weight_multiplier));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation(x, pu_data, relation_data, weight_multiplier, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_min_fragmentation_actions_by_action
-bool rcpp_set_objective_min_fragmentation_actions_by_action(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame relation_data, Rcpp::Nullable<Rcpp::IntegerVector> actions_to_use, Rcpp::Nullable<Rcpp::NumericVector> action_weights, double weight_multiplier);
-RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP relation_dataSEXP, SEXP actions_to_useSEXP, SEXP action_weightsSEXP, SEXP weight_multiplierSEXP) {
+bool rcpp_set_objective_min_fragmentation_actions_by_action(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame relation_data, Rcpp::Nullable<Rcpp::IntegerVector> actions_to_use, Rcpp::Nullable<Rcpp::NumericVector> action_weights, double weight_multiplier, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP relation_dataSEXP, SEXP actions_to_useSEXP, SEXP action_weightsSEXP, SEXP weight_multiplierSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -411,13 +433,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::IntegerVector> >::type actions_to_use(actions_to_useSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type action_weights(action_weightsSEXP);
     Rcpp::traits::input_parameter< double >::type weight_multiplier(weight_multiplierSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation_actions_by_action(x, dist_actions_data, relation_data, actions_to_use, action_weights, weight_multiplier));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation_actions_by_action(x, dist_actions_data, relation_data, actions_to_use, action_weights, weight_multiplier, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_min_fragmentation_interventions
-bool rcpp_set_objective_min_fragmentation_interventions(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame relation_data, double weight_multiplier);
-RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation_interventions(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP relation_dataSEXP, SEXP weight_multiplierSEXP) {
+Rcpp::List rcpp_set_objective_min_fragmentation_interventions(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame relation_data, double weight_multiplier, std::string block_name, std::string tag);
+RcppExport SEXP _prioriactions_rcpp_set_objective_min_fragmentation_interventions(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP relation_dataSEXP, SEXP weight_multiplierSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -425,7 +449,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type relation_data(relation_dataSEXP);
     Rcpp::traits::input_parameter< double >::type weight_multiplier(weight_multiplierSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation_interventions(x, dist_actions_data, relation_data, weight_multiplier));
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_set_objective_min_fragmentation_interventions(x, dist_actions_data, relation_data, weight_multiplier, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }

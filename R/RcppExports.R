@@ -37,24 +37,24 @@ rcpp_add_exclude_conservation_when_actions <- function(x, dist_features_data, di
     .Call(`_prioriactions_rcpp_add_exclude_conservation_when_actions`, x, dist_features_data, dist_actions_data, dist_effects_data, benefit_col_sexp, tol)
 }
 
-rcpp_add_linear_constraint <- function(model_ptr, j0, x, sense, rhs, name = "") {
-    .Call(`_prioriactions_rcpp_add_linear_constraint`, model_ptr, j0, x, sense, rhs, name)
+rcpp_add_linear_constraint <- function(model_ptr, j0, x, sense, rhs, name = "", block_name = "linear_constraint", tag = "") {
+    .Call(`_prioriactions_rcpp_add_linear_constraint`, model_ptr, j0, x, sense, rhs, name, block_name, tag)
 }
 
-rcpp_add_linking_x_le_w <- function(x, dist_actions_data) {
-    .Call(`_prioriactions_rcpp_add_linking_x_le_w`, x, dist_actions_data)
+rcpp_add_linking_x_le_w <- function(x, dist_actions_data, block_name = "linking_x_le_w", tag = "") {
+    .Call(`_prioriactions_rcpp_add_linking_x_le_w`, x, dist_actions_data, block_name, tag)
 }
 
-rcpp_add_linking_z_le_w <- function(x, dist_features_data) {
-    .Call(`_prioriactions_rcpp_add_linking_z_le_w`, x, dist_features_data)
+rcpp_add_linking_z_le_w <- function(x, dist_features_data, block_name = "linking_z_le_w", tag = "") {
+    .Call(`_prioriactions_rcpp_add_linking_z_le_w`, x, dist_features_data, block_name, tag)
 }
 
-rcpp_add_pu_locks <- function(x, pu_data) {
-    .Call(`_prioriactions_rcpp_add_pu_locks`, x, pu_data)
+rcpp_add_pu_locks <- function(x, pu_data, block_name = "pu_locks", tag = "") {
+    .Call(`_prioriactions_rcpp_add_pu_locks`, x, pu_data, block_name, tag)
 }
 
-rcpp_add_target_conservation <- function(x, features_data, dist_features_data, target_col_sexp = NULL, tol = 1e-12) {
-    .Call(`_prioriactions_rcpp_add_target_conservation`, x, features_data, dist_features_data, target_col_sexp, tol)
+rcpp_add_target_conservation <- function(x, features_data, dist_features_data, target_col_sexp = NULL, tol = 1e-12, block_name = "targets_conservation", tag = "") {
+    .Call(`_prioriactions_rcpp_add_target_conservation`, x, features_data, dist_features_data, target_col_sexp, tol, block_name, tag)
 }
 
 rcpp_add_target_mixed_total <- function(x, features_data, dist_features_data, dist_benefit_data, dist_actions_data, target_col_sexp = NULL, tol = 1e-12) {
@@ -81,40 +81,40 @@ rcpp_objective_max_coverage <- function(x, pu_data, features_data, dist_features
     .Call(`_prioriactions_rcpp_objective_max_coverage`, x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, boundary_data, blm, curve)
 }
 
-rcpp_objective_min_set <- function(x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, boundary_data, blm, curve) {
-    .Call(`_prioriactions_rcpp_objective_min_set`, x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, boundary_data, blm, curve)
+rcpp_objective_min_set <- function(x, pu_data, threats_data, dist_threats_data, boundary_data, blm, curve, block_name = "objective_min_set", tag = "") {
+    .Call(`_prioriactions_rcpp_objective_min_set`, x, pu_data, threats_data, dist_threats_data, boundary_data, blm, curve, block_name, tag)
 }
 
-rcpp_set_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit") {
-    .Call(`_prioriactions_rcpp_set_objective_max_benefit`, x, dist_actions_data, dist_benefit_data, benefit_col)
+rcpp_set_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit", block_name = "objective_max_benefit", tag = "") {
+    .Call(`_prioriactions_rcpp_set_objective_max_benefit`, x, dist_actions_data, dist_benefit_data, benefit_col, block_name, tag)
 }
 
-rcpp_set_objective_max_net_profit <- function(x, pu_data, dist_actions_data, dist_profit_data, profit_col = "profit", include_pu_cost = TRUE, include_action_cost = TRUE) {
-    .Call(`_prioriactions_rcpp_set_objective_max_net_profit`, x, pu_data, dist_actions_data, dist_profit_data, profit_col, include_pu_cost, include_action_cost)
+rcpp_set_objective_max_net_profit <- function(x, pu_data, dist_actions_data, dist_profit_data, profit_col = "profit", include_pu_cost = TRUE, include_action_cost = TRUE, block_name = "objective_max_net_profit", tag = "") {
+    .Call(`_prioriactions_rcpp_set_objective_max_net_profit`, x, pu_data, dist_actions_data, dist_profit_data, profit_col, include_pu_cost, include_action_cost, block_name, tag)
 }
 
-rcpp_set_objective_max_profit <- function(x, dist_actions_data, dist_profit_data, profit_col = "profit") {
-    .Call(`_prioriactions_rcpp_set_objective_max_profit`, x, dist_actions_data, dist_profit_data, profit_col)
+rcpp_set_objective_max_profit <- function(x, dist_actions_data, dist_profit_data, profit_col = "profit", block_name = "objective_max_profit", tag = "") {
+    .Call(`_prioriactions_rcpp_set_objective_max_profit`, x, dist_actions_data, dist_profit_data, profit_col, block_name, tag)
 }
 
-rcpp_set_objective_max_representation <- function(x, dist_features_data, amount_col = "amount") {
-    .Call(`_prioriactions_rcpp_set_objective_max_representation`, x, dist_features_data, amount_col)
+rcpp_set_objective_max_representation <- function(x, dist_features_data, amount_col = "amount", block_name = "objective_max_representation", tag = "") {
+    .Call(`_prioriactions_rcpp_set_objective_max_representation`, x, dist_features_data, amount_col, block_name, tag)
 }
 
-rcpp_set_objective_min_cost <- function(x, pu_data, dist_actions_data, include_pu_cost = TRUE, include_action_cost = TRUE) {
-    .Call(`_prioriactions_rcpp_set_objective_min_cost`, x, pu_data, dist_actions_data, include_pu_cost, include_action_cost)
+rcpp_set_objective_min_cost <- function(x, pu_data, dist_actions_data, include_pu_cost = TRUE, include_action_cost = TRUE, block_name = "objective_min_cost", tag = "") {
+    .Call(`_prioriactions_rcpp_set_objective_min_cost`, x, pu_data, dist_actions_data, include_pu_cost, include_action_cost, block_name, tag)
 }
 
-rcpp_set_objective_min_fragmentation <- function(x, pu_data, relation_data, weight_multiplier = 1.0) {
-    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation`, x, pu_data, relation_data, weight_multiplier)
+rcpp_set_objective_min_fragmentation <- function(x, pu_data, relation_data, weight_multiplier = 1.0, block_name = "objective_min_fragmentation", tag = "") {
+    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation`, x, pu_data, relation_data, weight_multiplier, block_name, tag)
 }
 
-rcpp_set_objective_min_fragmentation_actions_by_action <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, action_weights = NULL, weight_multiplier = 1.0) {
-    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action`, x, dist_actions_data, relation_data, actions_to_use, action_weights, weight_multiplier)
+rcpp_set_objective_min_fragmentation_actions_by_action <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, action_weights = NULL, weight_multiplier = 1.0, block_name = "objective_min_fragmentation_actions_by_action", tag = "") {
+    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action`, x, dist_actions_data, relation_data, actions_to_use, action_weights, weight_multiplier, block_name, tag)
 }
 
-rcpp_set_objective_min_fragmentation_interventions <- function(x, dist_actions_data, relation_data, weight_multiplier = 1.0) {
-    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation_interventions`, x, dist_actions_data, relation_data, weight_multiplier)
+rcpp_set_objective_min_fragmentation_interventions <- function(x, dist_actions_data, relation_data, weight_multiplier = 1.0, block_name = "objective_min_fragmentation_interventions", tag = "") {
+    .Call(`_prioriactions_rcpp_set_objective_min_fragmentation_interventions`, x, dist_actions_data, relation_data, weight_multiplier, block_name, tag)
 }
 
 rcpp_set_objective_min_loss <- function(x, dist_actions_data, dist_effects_data, loss_col = "loss") {

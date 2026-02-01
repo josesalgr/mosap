@@ -112,6 +112,8 @@ Rcpp::List rcpp_add_target_recovery_power(
     if (pa_to_xrow.find(k) != pa_to_xrow.end()) {
       Rcpp::stop("Duplicate (internal_pu, internal_action) in dist_actions_data.");
     }
+    // NOTE: assumes dist_actions row order matches x var order.
+    // If you prefer robust mapping, use internal_row and map to (internal_row-1).
     pa_to_xrow[k] = r; // 0-based row
   }
 
@@ -124,7 +126,6 @@ Rcpp::List rcpp_add_target_recovery_power(
 
   // ------------------------------------------------------------
   // 1) Group rows by (internal_pu, internal_feature)
-  //    (binary legacy assumption: benefit constant within each group)
   // ------------------------------------------------------------
   std::unordered_map<long long, int> group_index;
   group_index.reserve((std::size_t)n_db * 2);
@@ -152,7 +153,7 @@ Rcpp::List rcpp_add_target_recovery_power(
       Rcpp::stop("dist_benefit has (internal_pu, internal_action) not found in dist_actions_data.");
     }
     const int x_row = itx->second;
-    const int x_col = op->_x_offset + x_row; // 0-based variable index
+    const int x_col = op->_x_offset + x_row; // 0-based var index
 
     const long long k_pf = key2_int(ipu, ifeat);
     auto itg = group_index.find(k_pf);
@@ -197,11 +198,30 @@ Rcpp::List rcpp_add_target_recovery_power(
   const int K = segments + 1; // breakpoints u_j, j=0..segments
 
   // ------------------------------------------------------------
-  // 2) Add per-group vars: t_g (C), y_g (C), deltas (B)
-  //    and constraints:
-  //      t_g = (1/d) * sum x
-  //      sum_j delta_gj = 1
-  //      y_g <= a_j + b_j t_g + M(1-delta_gj)  (max-of-tangents via binaries)
+  // Registry: we will register:
+  // - a VARIABLE block for all aux vars appended (t,y,delta)
+  // - a CONSTRAINT block for all rows added by this function
+  // ------------------------------------------------------------
+  const std::size_t var_start = op->ncol_used();
+  const std::size_t row_start = op->nrow_used();
+
+  std::string base_tag =
+    "mode=power_piecewise_max_of_tangents_noSOS2"
+    ";exponent=" + std::to_string(exponent) +
+      ";segments=" + std::to_string(segments) +
+      ";K=" + std::to_string(K) +
+      ";tol=" + std::to_string(tol) +
+      ";target_col=" + target_col +
+      ";id_col=" + id_col +
+      ";n_groups=" + std::to_string(n_groups) +
+      ";n_da=" + std::to_string(n_da) +
+      ";n_db=" + std::to_string(n_db);
+
+  // We'll open the constraint block once, before adding any constraints
+  const std::size_t constr_bid = op->beginConstraintBlock("target_recovery_power", base_tag);
+
+  // ------------------------------------------------------------
+  // 2) Add per-group vars and constraints
   // ------------------------------------------------------------
   int n_t_vars_added = 0;
   int n_y_vars_added = 0;
@@ -261,7 +281,7 @@ Rcpp::List rcpp_add_target_recovery_power(
         vals.push_back(-inv_d);
       }
 
-      op->addRow(cols, vals, "<=", 0.0);
+      op->addRow(cols, vals, "<=", 0.0, "recovery_power_link_t");
       ++n_link_rows_added;
     }
 
@@ -280,7 +300,7 @@ Rcpp::List rcpp_add_target_recovery_power(
         vals.push_back(inv_d);
       }
 
-      op->addRow(cols, vals, "<=", 0.0);
+      op->addRow(cols, vals, "<=", 0.0, "recovery_power_link_t");
       ++n_link_rows_added;
     }
 
@@ -296,18 +316,18 @@ Rcpp::List rcpp_add_target_recovery_power(
         vals.push_back(1.0);
       }
 
-      op->addRow(cols, vals, "==", 1.0);
+      op->addRow(cols, vals, "==", 1.0, "recovery_power_delta_sum");
       ++n_delta_rows_added;
     }
 
-    // Tangent selection constraints (max of tangents):
-    // y <= a_j + b_j t + M(1-delta)
-    // => y - b_j t + M*delta <= a_j + M
+    // Tangent selection constraints:
+    // y - b_j t + M*delta <= a_j + M
     for (int j = 0; j < K; ++j) {
       const double u = (double)j / (double)segments;
 
       const double fu  = std::pow(u, exponent);
-      const double fpu = (u > 0.0) ? (exponent * std::pow(u, exponent - 1.0))
+      const double fpu = (u > 0.0)
+        ? (exponent * std::pow(u, exponent - 1.0))
         : ((std::fabs(exponent - 1.0) < 1e-15) ? 1.0 : 0.0);
 
       const double a = fu - fpu * u;
@@ -329,14 +349,13 @@ Rcpp::List rcpp_add_target_recovery_power(
 
       const double rhs = a + M;
 
-      op->addRow(cols, vals, "<=", rhs);
+      op->addRow(cols, vals, "<=", rhs, "recovery_power_tangent_sel");
       ++n_tangent_rows_added;
     }
   }
 
   // ------------------------------------------------------------
-  // 3) Add recovery target constraints per feature:
-  //    sum_{groups with feature} amount_is * y_g >= T
+  // 3) Add recovery target constraints per feature
   // ------------------------------------------------------------
   int n_target_rows_added = 0;
 
@@ -383,9 +402,37 @@ Rcpp::List rcpp_add_target_recovery_power(
       );
     }
 
-    op->addRow(cols, vals, ">=", T);
+    op->addRow(cols, vals, ">=", T, "recovery_power_target");
     ++n_target_rows_added;
   }
+
+  // ------------------------------------------------------------
+  // Close registry blocks
+  // ------------------------------------------------------------
+  const std::size_t var_end = op->ncol_used();
+  const std::size_t row_end = op->nrow_used();
+
+  // Register variable block only if vars were added
+  std::size_t var_block_id = 0;
+  if (var_end > var_start) {
+    std::string vtag =
+      base_tag +
+      ";t_vars=" + std::to_string(n_t_vars_added) +
+      ";y_vars=" + std::to_string(n_y_vars_added) +
+      ";delta_vars=" + std::to_string(n_delta_vars_added);
+
+    var_block_id = op->register_variable_block("recovery_power_aux_vars", var_start, var_end, vtag);
+  }
+
+  op->endConstraintBlock(constr_bid);
+
+  auto range_to_R = [](std::size_t start0, std::size_t end0) {
+    if (end0 <= start0) return Rcpp::NumericVector::create(NA_REAL, NA_REAL);
+    return Rcpp::NumericVector::create(
+      static_cast<double>(start0 + 1), // 1-based start
+      static_cast<double>(end0)        // 1-based end inclusive-friendly
+    );
+  };
 
   return Rcpp::List::create(
     Rcpp::Named("n_groups")             = n_groups,
@@ -400,6 +447,13 @@ Rcpp::List rcpp_add_target_recovery_power(
     Rcpp::Named("exponent")             = exponent,
     Rcpp::Named("segments")             = segments,
     Rcpp::Named("target_col_used")      = target_col,
-    Rcpp::Named("id_col_used")          = id_col
+    Rcpp::Named("id_col_used")          = id_col,
+
+    // registry outputs
+    Rcpp::Named("var_block_id")     = (var_block_id == 0 ? NA_REAL : static_cast<double>(var_block_id)),
+    Rcpp::Named("var_col_range")    = range_to_R(var_start, var_end),
+    Rcpp::Named("constr_block_id")  = static_cast<double>(constr_bid),
+    Rcpp::Named("constr_row_range") = range_to_R(row_start, row_end),
+    Rcpp::Named("tag")              = base_tag
   );
 }

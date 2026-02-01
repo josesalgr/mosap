@@ -3,6 +3,9 @@
 #include "OptimizationProblem.h"
 
 #include <unordered_set>
+#include <string>
+#include <cmath>
+#include <algorithm>
 
 // clave 64-bit para (ipu, ifeat)
 static inline long long key2(int a, int b) {
@@ -36,9 +39,24 @@ Rcpp::List rcpp_fix_z_ineligible_by_positive_delta(SEXP x,
   }
 
   if (op->_z_offset < 0) Rcpp::stop("op->_z_offset is not initialized.");
-  const int n_df = dist_features_data.nrows();
 
-  const int last_z_col = op->_z_offset + n_df - 1;
+  const int n_df = dist_features_data.nrows();
+  if (n_df <= 0) {
+    return Rcpp::List::create(
+      Rcpp::Named("n_pairs_with_improvement") = 0,
+      Rcpp::Named("n_z_fixed") = 0,
+      Rcpp::Named("n_z_already_zero") = 0,
+      Rcpp::Named("eps") = eps,
+      Rcpp::Named("z_var_block_id") = NA_REAL,
+      Rcpp::Named("z_col_range") = Rcpp::NumericVector::create(NA_REAL, NA_REAL),
+      Rcpp::Named("tag") = ""
+    );
+  }
+
+  const int z0 = op->_z_offset;           // 0-based start col for z
+  const int z1 = op->_z_offset + n_df;    // 0-based end (exclusive)
+  const int last_z_col = z1 - 1;
+
   if (last_z_col >= (int)op->_ub.size()) {
     Rcpp::stop("Index out of bounds: op->_ub smaller than z variables range. "
                  "Create base variables (including z) before calling this.");
@@ -58,7 +76,7 @@ Rcpp::List rcpp_fix_z_ineligible_by_positive_delta(SEXP x,
 
   for (int r = 0; r < n_db; ++r) {
     const double delta = db_ben[r];
-    if (!(delta > eps)) continue;  // OJO: solo mejoras, no pérdidas
+    if (!(delta > eps)) continue;  // solo mejoras
 
     const int ipu = db_ipu[r];
     const int ife = db_ifeat[r];
@@ -98,10 +116,47 @@ Rcpp::List rcpp_fix_z_ineligible_by_positive_delta(SEXP x,
     ++n_fixed;
   }
 
+  // ---- Registry: variable block describing a bounds update affecting z range
+  double z_var_block_id = NA_REAL;
+  std::string tag = "";
+
+  if ((n_fixed + n_already_zero) > 0) {
+    tag =
+      "mode=fix_z_ineligible_by_positive_delta"
+      ";fix_lb_too=" + std::string(fix_lb_too ? "true" : "false") +
+        ";eps=" + std::to_string(eps) +
+        ";n_pairs_with_improvement=" + std::to_string((int)has_improvement.size()) +
+        ";n_z_fixed=" + std::to_string(n_fixed) +
+        ";n_z_already_zero=" + std::to_string(n_already_zero);
+
+    const std::size_t bid = op->register_variable_block(
+      "z_bounds_update_ineligible",
+      (std::size_t)z0,
+      (std::size_t)z1,
+      tag
+    );
+
+    z_var_block_id = static_cast<double>(bid);
+  }
+
+  // 1-based friendly col range for z
+  auto col_range_to_R = [](int start0, int end0) {
+    if (end0 <= start0) return Rcpp::NumericVector::create(NA_REAL, NA_REAL);
+    return Rcpp::NumericVector::create(
+      static_cast<double>(start0 + 1),
+      static_cast<double>(end0)       // end0 is exclusive in 0-based; this becomes inclusive in 1-based
+    );
+  };
+
   return Rcpp::List::create(
     Rcpp::Named("n_pairs_with_improvement") = (int)has_improvement.size(),
     Rcpp::Named("n_z_fixed") = n_fixed,
     Rcpp::Named("n_z_already_zero") = n_already_zero,
-    Rcpp::Named("eps") = eps
+    Rcpp::Named("eps") = eps,
+
+    // registry outputs (variable-side)
+    Rcpp::Named("z_var_block_id") = z_var_block_id,
+    Rcpp::Named("z_col_range")    = col_range_to_R(z0, z1),
+    Rcpp::Named("tag")            = tag
   );
 }

@@ -315,14 +315,17 @@ solve <- function(x, ...) {
 
   } else if (solver == "cbc") {
 
-    constraints_minus_equal <- which(model$sense != "<=")
-    constraints_plus_equal  <- which(model$sense == "<=")
+    row_lb <- rep(-Inf, length(model$rhs))
+    row_ub <- rep( Inf, length(model$rhs))
 
-    row_ub <- model$rhs
-    row_ub[constraints_minus_equal] <- Inf
+    ii_le <- which(model$sense == "<=")
+    ii_ge <- which(model$sense == ">=")
+    ii_eq <- which(model$sense == "==" | model$sense == "=")
 
-    row_lb <- model$rhs
-    row_lb[constraints_plus_equal] <- -Inf
+    row_ub[ii_le] <- rhs[ii_le]
+    row_lb[ii_ge] <- rhs[ii_ge]
+    row_lb[ii_eq] <- rhs[ii_eq]
+    row_ub[ii_eq] <- rhs[ii_eq]
 
     cbc_args <- list(
       threads = cores,

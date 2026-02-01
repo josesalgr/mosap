@@ -19,28 +19,27 @@ extern SEXP _prioriactions_rcpp_objective_min_set(SEXP, SEXP, SEXP, SEXP, SEXP, 
 extern SEXP _prioriactions_rcpp_objective_max_coverage(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 extern SEXP _prioriactions_rcpp_add_action_locks(SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_min_cost(SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_add_pu_locks(SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_add_linking_x_le_w(SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_add_base_variables(SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_add_linking_z_le_w(SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_min_cost(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_pu_locks(SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_linking_x_le_w(SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_base_variables(SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_linking_z_le_w(SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_fix_z_ineligible_by_positive_delta(SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_add_target_conservation(SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_add_target_recovery(SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_target_conservation(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_target_recovery(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_add_target_mixed_total(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_max_benefit(SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_max_benefit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_set_objective_min_loss(SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_max_profit(SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_max_net_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_max_net_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_max_representation(SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_add_linear_constraint(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_max_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_max_net_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_max_representation(SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_linear_constraint(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_add_target_mixed_total_power(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_add_target_recovery_power(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_add_exclude_conservation_when_actions(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation(SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation_interventions(SEXP, SEXP, SEXP, SEXP);
-extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action(SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation_interventions(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 
 static const R_CallMethodDef CallEntries[] = {
@@ -53,27 +52,27 @@ static const R_CallMethodDef CallEntries[] = {
   {"_prioriactions_rcpp_objective_min_set", (DL_FUNC) &_prioriactions_rcpp_objective_min_set, 9},
   {"_prioriactions_rcpp_objective_max_coverage", (DL_FUNC) &_prioriactions_rcpp_objective_max_coverage, 9},
   {"_prioriactions_rcpp_add_action_locks", (DL_FUNC) &_prioriactions_rcpp_add_action_locks, 2},
-  {"_prioriactions_rcpp_set_objective_min_cost", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_cost, 5},
-  {"_prioriactions_rcpp_add_pu_locks", (DL_FUNC) &_prioriactions_rcpp_add_pu_locks, 2},
-  {"_prioriactions_rcpp_add_linking_x_le_w", (DL_FUNC) &_prioriactions_rcpp_add_linking_x_le_w, 2},
-  {"_prioriactions_rcpp_add_base_variables", (DL_FUNC) &_prioriactions_rcpp_add_base_variables, 3},
-  {"_prioriactions_rcpp_add_linking_z_le_w", (DL_FUNC) &_prioriactions_rcpp_add_linking_z_le_w, 2},
+  {"_prioriactions_rcpp_set_objective_min_cost", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_cost, 7},
+  {"_prioriactions_rcpp_add_pu_locks", (DL_FUNC) &_prioriactions_rcpp_add_pu_locks, 4},
+  {"_prioriactions_rcpp_add_linking_x_le_w", (DL_FUNC) &_prioriactions_rcpp_add_linking_x_le_w, 4},
+  {"_prioriactions_rcpp_add_base_variables", (DL_FUNC) &_prioriactions_rcpp_add_base_variables, 5},
+  {"_prioriactions_rcpp_add_linking_z_le_w", (DL_FUNC) &_prioriactions_rcpp_add_linking_z_le_w, 4},
   {"_prioriactions_rcpp_fix_z_ineligible_by_positive_delta", (DL_FUNC) &_prioriactions_rcpp_fix_z_ineligible_by_positive_delta, 5},
-  {"_prioriactions_rcpp_add_target_conservation", (DL_FUNC) &_prioriactions_rcpp_add_target_conservation, 5},
-  {"_prioriactions_rcpp_add_target_recovery", (DL_FUNC) &_prioriactions_rcpp_add_target_recovery, 5},
+  {"_prioriactions_rcpp_add_target_conservation", (DL_FUNC) &_prioriactions_rcpp_add_target_conservation, 7},
+  {"_prioriactions_rcpp_add_target_recovery", (DL_FUNC) &_prioriactions_rcpp_add_target_recovery, 6},
   {"_prioriactions_rcpp_add_target_mixed_total", (DL_FUNC) &_prioriactions_rcpp_add_target_mixed_total, 7},
-  {"_prioriactions_rcpp_set_objective_max_benefit", (DL_FUNC) &_prioriactions_rcpp_set_objective_max_benefit, 4},
+  {"_prioriactions_rcpp_set_objective_max_benefit", (DL_FUNC) &_prioriactions_rcpp_set_objective_max_benefit, 6},
   {"_prioriactions_rcpp_set_objective_min_loss", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_loss, 4},
-  {"_prioriactions_rcpp_set_objective_max_profit", (DL_FUNC) &_prioriactions_rcpp_set_objective_max_profit, 4},
-  {"_prioriactions_rcpp_set_objective_max_net_profit", (DL_FUNC) &_prioriactions_rcpp_set_objective_max_net_profit, 7},
-  {"_prioriactions_rcpp_set_objective_max_representation", (DL_FUNC) &_prioriactions_rcpp_set_objective_max_representation, 3},
-  {"_prioriactions_rcpp_add_linear_constraint", (DL_FUNC) &_prioriactions_rcpp_add_linear_constraint, 6},
+  {"_prioriactions_rcpp_set_objective_max_profit", (DL_FUNC) &_prioriactions_rcpp_set_objective_max_profit, 6},
+  {"_prioriactions_rcpp_set_objective_max_net_profit", (DL_FUNC) &_prioriactions_rcpp_set_objective_max_net_profit, 9},
+  {"_prioriactions_rcpp_set_objective_max_representation", (DL_FUNC) &_prioriactions_rcpp_set_objective_max_representation, 5},
+  {"_prioriactions_rcpp_add_linear_constraint", (DL_FUNC) &_prioriactions_rcpp_add_linear_constraint, 8},
   {"_prioriactions_rcpp_add_target_mixed_total_power", (DL_FUNC) &_prioriactions_rcpp_add_target_mixed_total_power, 9},
   {"_prioriactions_rcpp_add_target_recovery_power", (DL_FUNC) &_prioriactions_rcpp_add_target_recovery_power, 8},
   {"_prioriactions_rcpp_add_exclude_conservation_when_actions", (DL_FUNC) &_prioriactions_rcpp_add_exclude_conservation_when_actions, 6},
-  {"_prioriactions_rcpp_set_objective_min_fragmentation", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation, 4},
-  {"_prioriactions_rcpp_set_objective_min_fragmentation_interventions", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation_interventions, 4},
-  {"_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action, 4},
+  {"_prioriactions_rcpp_set_objective_min_fragmentation", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation, 6},
+  {"_prioriactions_rcpp_set_objective_min_fragmentation_interventions", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation_interventions, 6},
+  {"_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action, 8},
   {NULL, NULL, 0}
 
 };

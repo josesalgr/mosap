@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <cmath>
 
 static inline long long key2(int a, int b) {
   return ( (static_cast<long long>(a) << 32) ^ static_cast<unsigned int>(b) );
@@ -17,7 +18,7 @@ Rcpp::List rcpp_add_target_mixed_total(
     Rcpp::DataFrame dist_features_data,
     Rcpp::DataFrame dist_benefit_data,
     Rcpp::DataFrame dist_actions_data,
-    SEXP target_col_sexp = R_NilValue,   // robust: can be character (new) or logical (legacy)
+    SEXP target_col_sexp = R_NilValue,
     double tol = 1e-12) {
 
   Rcpp::XPtr<OptimizationProblem> op = Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
@@ -50,14 +51,12 @@ Rcpp::List rcpp_add_target_mixed_total(
   }
 
   // ---- Determine target column name
-  // Default for mixed_total (you can pass a different one from R)
   std::string target_col = "target_mixed_total";
 
   if (!Rf_isNull(target_col_sexp)) {
     if (TYPEOF(target_col_sexp) == STRSXP && Rf_length(target_col_sexp) >= 1) {
       target_col = Rcpp::as<std::string>(target_col_sexp);
     } else if (TYPEOF(target_col_sexp) == LGLSXP && Rf_length(target_col_sexp) >= 1) {
-      // legacy: FALSE -> "target", TRUE -> keep default
       int flag = LOGICAL(target_col_sexp)[0];
       if (flag == 0) target_col = "target";
     } else {
@@ -65,14 +64,14 @@ Rcpp::List rcpp_add_target_mixed_total(
     }
   }
 
-  // ---- Extract feature ids and targets (prefer target_col, else fallback to 'target')
+  // ---- Extract feature ids and targets
   Rcpp::IntegerVector f_id = features_data[id_col];
 
   Rcpp::NumericVector f_t;
   if (features_data.containsElementNamed(target_col.c_str())) {
     f_t = features_data[target_col.c_str()];
   } else if (features_data.containsElementNamed("target")) {
-    target_col = "target"; // legacy fallback
+    target_col = "target";
     f_t = features_data["target"];
   } else {
     Rcpp::stop("features_data must contain target column '" + target_col +
@@ -102,6 +101,9 @@ Rcpp::List rcpp_add_target_mixed_total(
     if (pa_to_xrow.find(k) != pa_to_xrow.end()) {
       Rcpp::stop("Duplicate (internal_pu, internal_action) in dist_actions_data.");
     }
+
+    // NOTE: This assumes dist_actions_data row order matches x variable order.
+    // If you want it robust, use internal_row and map to (internal_row-1).
     pa_to_xrow[k] = r;
   }
 
@@ -111,6 +113,22 @@ Rcpp::List rcpp_add_target_mixed_total(
   Rcpp::IntegerVector db_ifeat = dist_benefit_data["internal_feature"];
   Rcpp::NumericVector db_ben   = dist_benefit_data["benefit"];
   const int n_db = dist_benefit_data.nrows();
+
+  // ------------------------------------------------------------
+  // Registry: begin constraint block
+  // ------------------------------------------------------------
+  const std::size_t row_start = op->nrow_used();
+
+  std::string tag =
+    "mode=mixed_total_baseline_plus_recovery"
+    ";target_col=" + target_col +
+      ";id_col=" + id_col +
+      ";tol=" + std::to_string(tol) +
+      ";n_features=" + std::to_string((int)f_id.size()) +
+      ";n_df=" + std::to_string(n_df) +
+      ";n_db=" + std::to_string(n_db);
+
+  const std::size_t bid = op->beginConstraintBlock("target_mixed_total", tag);
 
   int added = 0;
 
@@ -125,7 +143,7 @@ Rcpp::List rcpp_add_target_mixed_total(
     cols.reserve(1024);
     vals.reserve(1024);
 
-    // ---- Baseline part: sum(amount * z) for this feature
+    // ---- Baseline part: sum(amount * z)
     for (int r = 0; r < n_df; ++r) {
       if (df_ifeat[r] != ifeat) continue;
 
@@ -136,7 +154,7 @@ Rcpp::List rcpp_add_target_mixed_total(
       vals.push_back(a);
     }
 
-    // ---- Recovery part: sum(benefit * x) for this feature
+    // ---- Recovery part: sum(benefit * x)
     for (int r = 0; r < n_db; ++r) {
       if (db_ifeat[r] != ifeat) continue;
 
@@ -161,14 +179,35 @@ Rcpp::List rcpp_add_target_mixed_total(
       );
     }
 
-    op->addRow(cols, vals, ">=", T);
+    // Optional: name per constraint (stable) or per feature
+    // std::string cname = "target_mixed_total_f" + std::to_string(ifeat);
+    std::string cname = "target_mixed_total";
+
+    op->addRow(cols, vals, ">=", T, cname);
     ++added;
   }
 
+  const std::size_t row_end = op->nrow_used();
+  op->endConstraintBlock(bid);
+
+  auto range_to_R = [](std::size_t start0, std::size_t end0) {
+    if (end0 <= start0) return Rcpp::NumericVector::create(NA_REAL, NA_REAL);
+    return Rcpp::NumericVector::create(
+      static_cast<double>(start0 + 1), // 1-based start
+      static_cast<double>(end0)        // 1-based end inclusive-friendly
+    );
+  };
+
   return Rcpp::List::create(
+    // original outputs
     Rcpp::Named("n_constraints_added") = added,
     Rcpp::Named("mode") = "mixed_total_baseline_plus_recovery",
     Rcpp::Named("target_col_used") = target_col,
-    Rcpp::Named("id_col_used") = id_col
+    Rcpp::Named("id_col_used") = id_col,
+
+    // registry outputs
+    Rcpp::Named("block_id") = static_cast<double>(bid),
+    Rcpp::Named("row_range") = range_to_R(row_start, row_end),
+    Rcpp::Named("tag") = tag
   );
 }

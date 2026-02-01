@@ -101,8 +101,7 @@ Rcpp::List rcpp_add_exclude_conservation_when_actions(
     const long long k_pa = key2_int(ipu, iact);
     auto it = pa_to_xcol.find(k_pa);
     if (it == pa_to_xcol.end()) {
-      // This can happen if effects include actions that were filtered out of dist_actions_model
-      // Better to skip than to crash.
+      // effects may include rows filtered out of dist_actions_model; skip safely
       continue;
     }
 
@@ -112,6 +111,12 @@ Rcpp::List rcpp_add_exclude_conservation_when_actions(
     pf_to_xcols[k_pf].insert(x_col);
     ++n_effect_rows_used;
   }
+
+  // ---- begin constraint block (tag finalized at the end)
+  const std::size_t bid = op->beginConstraintBlock(
+    "exclude_conservation_when_actions",
+    "" // tag placeholder; we will override at end
+  );
 
   // ---- now add constraints z_row + x_col <= 1 for each dist_features row and each improving x_col
   Rcpp::IntegerVector df_ipu   = dist_features_data["internal_pu"];
@@ -145,12 +150,24 @@ Rcpp::List rcpp_add_exclude_conservation_when_actions(
     }
   }
 
+  // ---- finalize block tag and close
+  std::string tag =
+    "benefit_col=" + benefit_col +
+    ";tol=" + std::to_string(tol) +
+    ";n_constraints=" + std::to_string(added) +
+    ";n_effect_rows_used=" + std::to_string(n_effect_rows_used) +
+    ";n_df_rows_with_any_improving_action=" + std::to_string(rows_with_any_improving_action);
+
+  // drop_if_empty=true => returns 0 if no rows were added
+  const std::size_t block_id = op->endConstraintBlock(bid, /*drop_if_empty=*/true, tag);
+
   return Rcpp::List::create(
     Rcpp::Named("n_constraints_added") = added,
     Rcpp::Named("n_effect_rows_used") = n_effect_rows_used,
     Rcpp::Named("n_df_rows_with_any_improving_action") = rows_with_any_improving_action,
     Rcpp::Named("benefit_col_used") = benefit_col,
     Rcpp::Named("tol") = tol,
-    Rcpp::Named("mode") = "exclude_conservation_when_actions_improve_same_feature"
+    Rcpp::Named("mode") = "exclude_conservation_when_actions_improve_same_feature",
+    Rcpp::Named("block_id") = (double)block_id
   );
 }

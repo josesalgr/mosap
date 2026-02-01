@@ -846,54 +846,13 @@ available_to_solve <- function(package = ""){
 
   if (is.null(x$data$model_ptr)) return(x)
 
-  model_list <- rcpp_optimization_problem_as_list(x$data$model_ptr)
-
-  # build sparse A defensively
-  if (all(c("A_i", "A_j", "A_x") %in% names(model_list)) &&
-      length(model_list$A_i) == length(model_list$A_j) &&
-      length(model_list$A_i) == length(model_list$A_x)) {
-
-    model_list$A <- Matrix::sparseMatrix(
-      i = model_list$A_i + 1,
-      j = model_list$A_j + 1,
-      x = model_list$A_x
-    )
-
-    if (isTRUE(drop_triplets)) {
-      model_list$A_i <- NULL
-      model_list$A_j <- NULL
-      model_list$A_x <- NULL
-    }
-
-  } else {
-    # fallback: empty sparse matrix if missing triplets
-    # try to infer dims from obj/rhs
-    n_con <- if (!is.null(model_list$rhs)) length(model_list$rhs) else 0L
-    n_var <- if (!is.null(model_list$obj)) length(model_list$obj) else 0L
-    model_list$A <- Matrix::sparseMatrix(i = integer(0), j = integer(0), x = numeric(0),
-                                         dims = c(n_con, n_var))
-  }
-
-  x$data$model_list <- model_list
-
-  # optional: store dims for fast printing
-  if (is.null(x$data$model_args)) x$data$model_args <- list()
-  x$data$model_args$n_constraints <- if (!is.null(model_list$rhs)) length(model_list$rhs) else NA_integer_
-  x$data$model_args$n_variables   <- if (!is.null(model_list$obj)) length(model_list$obj) else NA_integer_
-  x$data$model_args$nnz           <- Matrix::nnzero(model_list$A)
-
-  x
-}
-
-.pa_model_from_ptr <- function(op, args = list(), drop_triplets = TRUE) {
-
   if (!requireNamespace("Matrix", quietly = TRUE)) {
     stop("Package 'Matrix' is required to build sparse constraint matrix.", call. = FALSE)
   }
 
-  model_list <- rcpp_optimization_problem_as_list(op)
+  model_list <- rcpp_optimization_problem_as_list(x$data$model_ptr)
 
-  # build sparse A defensively (A_i/A_j are 0-based -> +1)
+  # Build sparse A defensively (A_i/A_j are 0-based in C++ -> +1 in R)
   if (all(c("A_i", "A_j", "A_x") %in% names(model_list)) &&
       length(model_list$A_i) == length(model_list$A_j) &&
       length(model_list$A_i) == length(model_list$A_x)) {
@@ -911,8 +870,63 @@ available_to_solve <- function(package = ""){
     }
 
   } else {
+    # fallback: empty sparse matrix if missing triplets
     n_con <- if (!is.null(model_list$rhs)) length(model_list$rhs) else 0L
     n_var <- if (!is.null(model_list$obj)) length(model_list$obj) else 0L
+    model_list$A <- Matrix::sparseMatrix(
+      i = integer(0), j = integer(0), x = numeric(0),
+      dims = c(n_con, n_var)
+    )
+  }
+
+  # Keep args attached if you use them downstream (optional but handy)
+  model_list$args <- x$data$model_args %||% list()
+
+  x$data$model_list <- model_list
+
+  # Optional: store dims for fast printing
+  x$data$model_args <- x$data$model_args %||% list()
+  x$data$model_args$n_constraints <- if (!is.null(model_list$rhs)) length(model_list$rhs) else NA_integer_
+  x$data$model_args$n_variables   <- if (!is.null(model_list$obj)) length(model_list$obj) else NA_integer_
+  x$data$model_args$nnz           <- Matrix::nnzero(model_list$A)
+
+  x
+}
+
+
+.pa_model_from_ptr <- function(op, args = list(), drop_triplets = TRUE) {
+
+  if (!requireNamespace("Matrix", quietly = TRUE)) {
+    stop("Package 'Matrix' is required to build sparse constraint matrix.", call. = FALSE)
+  }
+
+  model_list <- rcpp_optimization_problem_as_list(op)
+
+  # n_con / n_var siempre desde rhs/obj
+  n_con <- if (!is.null(model_list$rhs)) length(model_list$rhs) else 0L
+  n_var <- if (!is.null(model_list$obj)) length(model_list$obj) else 0L
+
+  # build sparse A defensively (A_i/A_j are 0-based -> +1)
+  if (all(c("A_i", "A_j", "A_x") %in% names(model_list)) &&
+      length(model_list$A_i) == length(model_list$A_j) &&
+      length(model_list$A_i) == length(model_list$A_x) &&
+      length(model_list$A_i) > 0L) {
+
+    model_list$A <- Matrix::sparseMatrix(
+      i = as.integer(model_list$A_i) + 1L,
+      j = as.integer(model_list$A_j) + 1L,
+      x = as.numeric(model_list$A_x),
+      dims = c(n_con, n_var)   # <<< CRÍTICO: fija dimensiones reales
+    )
+
+    if (isTRUE(drop_triplets)) {
+      model_list$A_i <- NULL
+      model_list$A_j <- NULL
+      model_list$A_x <- NULL
+    }
+
+  } else {
+
     model_list$A <- Matrix::sparseMatrix(
       i = integer(0), j = integer(0), x = numeric(0),
       dims = c(n_con, n_var)
@@ -922,8 +936,14 @@ available_to_solve <- function(package = ""){
   # attach model args (needed for curve/segments and any other solver params)
   model_list$args <- args %||% list()
 
+  # registry: ya viene desde C++ como data.frame en model_list$registry.
+  # No lo toques aquí; solo asegúrate de no borrarlo por error.
+  # (si quisieras, podrías validar que exista)
+  # if (is.null(model_list$registry)) model_list$registry <- data.frame()
+
   model_list
 }
+
 
 
 # -------------------------------------------------------------------------
@@ -1926,9 +1946,21 @@ available_to_solve <- function(package = ""){
   n_x  <- as.integer(ml$n_x  %||% 0L)
   n_z  <- as.integer(ml$n_z  %||% 0L)
 
+  # NEW auxiliaries
+  n_y_pu <- as.integer(ml$n_y_pu %||% 0L)
+  n_y_action <- as.integer(ml$n_y_action %||% 0L)
+  n_u_intervention <- as.integer(ml$n_u_intervention %||% 0L)
+  n_y_intervention <- as.integer(ml$n_y_intervention %||% 0L)
+
   w_off <- as.integer(ml$w_offset %||% 0L)
   x_off <- as.integer(ml$x_offset %||% 0L)
   z_off <- as.integer(ml$z_offset %||% 0L)
+
+  # NEW offsets
+  y_pu_off <- as.integer(ml$y_pu_offset %||% 0L)
+  y_action_off <- as.integer(ml$y_action_offset %||% 0L)
+  u_int_off <- as.integer(ml$u_intervention_offset %||% 0L)
+  y_int_off <- as.integer(ml$y_intervention_offset %||% 0L)
 
   # --- safe slice helper
   slice_safe <- function(v, start1, end1) {
@@ -1943,6 +1975,12 @@ available_to_solve <- function(package = ""){
   w  <- if (n_pu > 0L) slice_safe(sol, w_off + 1L, w_off + n_pu) else numeric(0)
   xv <- if (n_x  > 0L) slice_safe(sol, x_off + 1L, x_off + n_x ) else numeric(0)
   zv <- if (n_z  > 0L) slice_safe(sol, z_off + 1L, z_off + n_z ) else numeric(0)
+
+  # NEW: auxiliary var slices
+  y_pu <- if (n_y_pu > 0L) slice_safe(sol, y_pu_off + 1L, y_pu_off + n_y_pu) else numeric(0)
+  y_action <- if (n_y_action > 0L) slice_safe(sol, y_action_off + 1L, y_action_off + n_y_action) else numeric(0)
+  u_int <- if (n_u_intervention > 0L) slice_safe(sol, u_int_off + 1L, u_int_off + n_u_intervention) else numeric(0)
+  y_int <- if (n_y_intervention > 0L) slice_safe(sol, y_int_off + 1L, y_int_off + n_y_intervention) else numeric(0)
 
   # -------------------------
   # 1) PU selection table
@@ -2008,7 +2046,7 @@ available_to_solve <- function(package = ""){
     )
   }
 
-  # recovery from benefits (respect benefit_col if defined)
+  # recovery from effects/benefits (respect columns if defined)
   args  <- x$data$model_args %||% list()
   oid   <- args$objective_id %||% NA_character_
   oargs <- args$objective_args %||% list()
@@ -2018,16 +2056,14 @@ available_to_solve <- function(package = ""){
   value_col <- if (identical(oid, "min_loss")) {
     oargs$loss_col %||% "loss"
   } else {
-    # default for max_benefit / others
     oargs$benefit_col %||% "benefit"
   }
 
-  # ... luego usa de en vez de db, y value_col en vez de benefit_col
-
-  #db <- x$data$dist_benefit_model %||% x$data$dist_benefit
   rec_by_feat <- data.frame(internal_feature = integer(0), recovery_contrib = numeric(0))
 
-  if (!is.null(de) && inherits(de, "data.frame") && nrow(de) > 0 &&
+  # If objective is representation, there is no action-based recovery component.
+  if (!identical(oid, "max_representation") &&
+      !is.null(de) && inherits(de, "data.frame") && nrow(de) > 0 &&
       length(xv) > 0 &&
       all(c("internal_pu","internal_action","internal_feature") %in% names(de)) &&
       value_col %in% names(de) &&
@@ -2037,14 +2073,16 @@ available_to_solve <- function(package = ""){
     key_da <- paste0(da_out$internal_pu, ":", da_out$internal_action)
     map <- stats::setNames(seq_len(nrow(da_out)), key_da)
 
-    key_db <- paste0(de$internal_pu, ":", de$internal_action)
-    xrow <- unname(map[key_db])
+    key_de <- paste0(de$internal_pu, ":", de$internal_action)
+    xrow <- unname(map[key_de])
 
     ok <- !is.na(xrow)
     if (!all(ok)) {
-      # ignora beneficios sin acción factible (pero avisa)
-      warning(sum(!ok), " rows in dist_benefit have no matching (pu,action) in dist_actions_model and were ignored.",
-              call. = FALSE)
+      warning(
+        sum(!ok),
+        " rows in dist_effects have no matching (pu,action) in dist_actions_model and were ignored.",
+        call. = FALSE
+      )
       de <- de[ok, , drop = FALSE]
       xrow <- xrow[ok]
     }
@@ -2099,13 +2137,109 @@ available_to_solve <- function(package = ""){
     tgt_out$gap <- tgt_out$achieved - tgt_out$target_value
   }
 
+  # -------------------------
+  # 5) Aux tables for fragmentation/debug
+  # -------------------------
+  aux <- list()
+
+  rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
+  rel_model <- NULL
+
+  if (!is.null(x$data$spatial_relations_model) &&
+      is.list(x$data$spatial_relations_model) &&
+      !is.null(x$data$spatial_relations_model[[rel_name]])) {
+    rel_model <- x$data$spatial_relations_model[[rel_name]]
+  } else if (!is.null(x$data$spatial_relations) &&
+             is.list(x$data$spatial_relations) &&
+             !is.null(x$data$spatial_relations[[rel_name]])) {
+    rel_model <- x$data$spatial_relations[[rel_name]]
+  }
+
+  # (A) PU fragmentation edges: y_pu aligned with relation edges
+  if (length(y_pu) > 0 &&
+      inherits(rel_model, "data.frame") &&
+      nrow(rel_model) == length(y_pu) &&
+      all(c("internal_pu1","internal_pu2","weight") %in% names(rel_model))) {
+
+    aux$fragmentation_pu_edges <- data.frame(
+      internal_edge = seq_len(nrow(rel_model)),
+      internal_pu1  = as.integer(rel_model$internal_pu1),
+      internal_pu2  = as.integer(rel_model$internal_pu2),
+      weight        = as.numeric(rel_model$weight),
+      y             = as.numeric(y_pu),
+      cut           = as.integer(y_pu > threshold),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  # (B) Action fragmentation: y_action is (edge, action_used) with e-major ordering
+  if (length(y_action) > 0 &&
+      inherits(rel_model, "data.frame") &&
+      all(c("internal_pu1","internal_pu2","weight") %in% names(rel_model))) {
+
+    m_edges <- nrow(rel_model)
+
+    # infer action list used in the objective (default: all)
+    actions_used <- oargs$actions_to_use %||% NULL
+    if (!is.null(actions_used)) {
+      A <- as.integer(actions_used)
+      A <- A[!is.na(A)]
+      A <- A[A >= 1L]
+    } else {
+      n_actions <- if (!is.null(x$data$actions) && inherits(x$data$actions, "data.frame")) nrow(x$data$actions) else 0L
+      A <- if (n_actions > 0L) seq_len(n_actions) else integer(0)
+    }
+
+    if (m_edges > 0L && length(A) > 0L && length(y_action) == (m_edges * length(A))) {
+      aux$fragmentation_action_edges <- data.frame(
+        internal_edge   = rep.int(seq_len(m_edges), each = length(A)),
+        internal_action = rep.int(A, times = m_edges),
+        internal_pu1    = rep.int(as.integer(rel_model$internal_pu1), each = length(A)),
+        internal_pu2    = rep.int(as.integer(rel_model$internal_pu2), each = length(A)),
+        weight          = rep.int(as.numeric(rel_model$weight), each = length(A)),
+        y               = as.numeric(y_action),
+        cut             = as.integer(y_action > threshold),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  # (C) Intervention fragmentation: u_i per PU
+  if (length(u_int) > 0L && nrow(pu_out) == length(u_int)) {
+    aux$intervention_u <- data.frame(
+      internal_pu = seq_len(nrow(pu_out)),
+      u           = as.numeric(u_int),
+      intervened  = as.integer(u_int > threshold),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  # (D) Intervention fragmentation edges: y_int aligned with relation edges
+  if (length(y_int) > 0 &&
+      inherits(rel_model, "data.frame") &&
+      nrow(rel_model) == length(y_int) &&
+      all(c("internal_pu1","internal_pu2","weight") %in% names(rel_model))) {
+
+    aux$fragmentation_intervention_edges <- data.frame(
+      internal_edge = seq_len(nrow(rel_model)),
+      internal_pu1  = as.integer(rel_model$internal_pu1),
+      internal_pu2  = as.integer(rel_model$internal_pu2),
+      weight        = as.numeric(rel_model$weight),
+      y             = as.numeric(y_int),
+      cut           = as.integer(y_int > threshold),
+      stringsAsFactors = FALSE
+    )
+  }
+
   list(
     pu = pu_out,
     actions = da_out,
     features = feat_tbl,
-    targets = tgt_out
+    targets = tgt_out,
+    aux = aux
   )
 }
+
 
 
 # -------------------------------------------------------------------------

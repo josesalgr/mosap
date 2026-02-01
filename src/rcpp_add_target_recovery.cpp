@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <cmath>
 
 static inline long long key2(int a, int b) {
   return ( (static_cast<long long>(a) << 32) ^ static_cast<unsigned int>(b) );
@@ -16,7 +17,7 @@ Rcpp::List rcpp_add_target_recovery(
     Rcpp::DataFrame features_data,
     Rcpp::DataFrame dist_actions_data,
     Rcpp::DataFrame dist_benefit_data,
-    SEXP target_col_sexp = R_NilValue,   // <- clave: NO std::string aquí
+    SEXP target_col_sexp = R_NilValue,
     double tol = 1e-12) {
 
   Rcpp::XPtr<OptimizationProblem> op = Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
@@ -47,15 +48,11 @@ Rcpp::List rcpp_add_target_recovery(
   std::string target_col = "target_recovery";
 
   if (!Rf_isNull(target_col_sexp)) {
-    // New expected type: character scalar
     if (TYPEOF(target_col_sexp) == STRSXP && Rf_length(target_col_sexp) >= 1) {
       target_col = Rcpp::as<std::string>(target_col_sexp);
-
-      // Backward compat: old builds might pass logical here
     } else if (TYPEOF(target_col_sexp) == LGLSXP && Rf_length(target_col_sexp) >= 1) {
       int flag = LOGICAL(target_col_sexp)[0];
       if (flag == 0) target_col = "target";  // legacy
-      // if TRUE, keep default "target_recovery"
     } else {
       Rcpp::stop("Argument 'target_col' must be a character scalar (preferred) or logical (legacy).");
     }
@@ -68,7 +65,7 @@ Rcpp::List rcpp_add_target_recovery(
   if (features_data.containsElementNamed(target_col.c_str())) {
     f_t = features_data[target_col.c_str()];
   } else if (features_data.containsElementNamed("target")) {
-    target_col = "target";           // legacy fallback
+    target_col = "target"; // legacy fallback
     f_t = features_data["target"];
   } else {
     Rcpp::stop("features_data must contain target column '" + target_col +
@@ -93,6 +90,8 @@ Rcpp::List rcpp_add_target_recovery(
     if (pa_to_xrow.find(k) != pa_to_xrow.end()) {
       Rcpp::stop("Duplicate (internal_pu, internal_action) in dist_actions_data.");
     }
+    // NOTE: assumes dist_actions row order matches x var order.
+    // If you want robust mapping, use internal_row and map to (internal_row-1).
     pa_to_xrow[k] = r;
   }
 
@@ -102,6 +101,22 @@ Rcpp::List rcpp_add_target_recovery(
   Rcpp::IntegerVector db_ifeat = dist_benefit_data["internal_feature"];
   Rcpp::NumericVector db_ben   = dist_benefit_data["benefit"];
   const int n_db = dist_benefit_data.nrows();
+
+  // ------------------------
+  // Registry: constraint block
+  // ------------------------
+  const std::size_t row_start = op->nrow_used();
+
+  std::string tag =
+    "mode=recovery_only"
+    ";tol=" + std::to_string(tol) +
+      ";target_col=" + target_col +
+      ";id_col=" + id_col +
+      ";n_features=" + std::to_string((int)f_id.size()) +
+      ";n_da=" + std::to_string(n_da) +
+      ";n_db=" + std::to_string(n_db);
+
+  const std::size_t bid = op->beginConstraintBlock("target_recovery", tag);
 
   int added = 0;
 
@@ -139,14 +154,30 @@ Rcpp::List rcpp_add_target_recovery(
       );
     }
 
-    op->addRow(cols, vals, ">=", T);
+    op->addRow(cols, vals, ">=", T, "target_recovery");
     ++added;
   }
+
+  const std::size_t row_end = op->nrow_used();
+  op->endConstraintBlock(bid);
+
+  auto range_to_R = [](std::size_t start0, std::size_t end0) {
+    if (end0 <= start0) return Rcpp::NumericVector::create(NA_REAL, NA_REAL);
+    return Rcpp::NumericVector::create(
+      static_cast<double>(start0 + 1), // 1-based start
+      static_cast<double>(end0)        // 1-based end
+    );
+  };
 
   return Rcpp::List::create(
     Rcpp::Named("n_constraints_added") = added,
     Rcpp::Named("mode") = "recovery_only",
     Rcpp::Named("target_col_used") = target_col,
-    Rcpp::Named("id_col_used") = id_col
+    Rcpp::Named("id_col_used") = id_col,
+
+    // registry outputs
+    Rcpp::Named("constr_block_id")  = static_cast<double>(bid),
+    Rcpp::Named("constr_row_range") = range_to_R(row_start, row_end),
+    Rcpp::Named("tag")              = tag
   );
 }

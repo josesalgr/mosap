@@ -2,297 +2,217 @@
 #include "functions.h"
 #include "OptimizationProblem.h"
 
+#include <string>
+#include <vector>
+#include <cmath>
+
 // [[Rcpp::export]]
-bool rcpp_objective_min_set(SEXP x,
-                            DataFrame pu_data,
-                            DataFrame features_data,
-                            DataFrame dist_features_data,
-                            DataFrame threats_data,
-                            DataFrame dist_threats_data,
-                            DataFrame boundary_data,
-                            double blm,
-                            int curve){
-  // initialization
+Rcpp::List rcpp_objective_min_set(
+    SEXP x,
+    Rcpp::DataFrame pu_data,
+    Rcpp::DataFrame threats_data,
+    Rcpp::DataFrame dist_threats_data,
+    Rcpp::DataFrame boundary_data,
+    double blm,
+    int curve, // (lo dejamos por compat; aquí no se usa si no hay b/b' vars)
+    std::string block_name = "objective_min_set",
+    std::string tag = ""
+) {
   Rcpp::XPtr<OptimizationProblem> op = Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
-  op->_modelsense = "min";
 
-  //------------------------------------------------------------------------------------------
-  //--------------------- (coefficients associated with w[i] variables) ----------------------
-  //------------------------------------------------------------------------------------------
-
-  //variables
-  int number_of_units = pu_data.nrows();
-  int boundary_size = boundary_data.nrows();
-  NumericVector unit_costs = pu_data["monitoring_cost"];
-  NumericVector connectivity_units(number_of_units);
-  arma::sp_mat matrix_boundary_extended;
-
-  if(boundary_size != 0){
-    matrix_boundary_extended = create_boundary_matrix_extended(boundary_data, number_of_units);
+  // ------------------------------------------------------------
+  // Checks básicos (pipeline nuevo: variables ya existen)
+  // ------------------------------------------------------------
+  if (op->_obj.empty()) {
+    Rcpp::stop("Model has zero variables. Call rcpp_add_base_variables() first.");
+  }
+  if (op->_n_pu <= 0) {
+    // fallback: infer from pu_data
+    op->_n_pu = pu_data.nrows();
+  }
+  if (op->_n_x <= 0) {
+    // fallback: infer from dist_threats_data rows (si x representa acciones)
+    op->_n_x = dist_threats_data.nrows();
   }
 
-  if(boundary_size != 0 && blm != 0){
-    arma::sp_mat z = matrix_boundary_extended.t();
+  const int n_pu = pu_data.nrows();
+  const int n_actions = dist_threats_data.nrows();
+  const int boundary_size = boundary_data.nrows();
 
-    for(arma::sp_mat::const_iterator it = z.begin(); it != z.end(); ++it) {
-      if(it.row() != it.col()){
+  if (n_pu != op->_n_pu) {
+    Rcpp::stop("pu_data.nrows() != op->_n_pu. Ensure consistent build order / inputs.");
+  }
+  if (n_actions > 0 && (op->_x_offset + n_actions) > (int)op->_obj.size()) {
+    Rcpp::stop("x block out of bounds. Ensure x variables were created and offsets are correct.");
+  }
+
+  if (!pu_data.containsElementNamed("monitoring_cost")) {
+    Rcpp::stop("pu_data must contain column 'monitoring_cost'.");
+  }
+  if (!threats_data.containsElementNamed("blm_actions")) {
+    Rcpp::stop("threats_data must contain column 'blm_actions'.");
+  }
+  for (auto nm : {"internal_pu", "internal_threat", "action_cost", "amount"}) {
+    if (!dist_threats_data.containsElementNamed(nm)) {
+      Rcpp::stop(std::string("dist_threats_data must contain column '") + nm + "'.");
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Set modelsense + reset objective vector
+  // ------------------------------------------------------------
+  op->_modelsense = "min";
+  for (std::size_t j = 0; j < op->_obj.size(); ++j) op->_obj[j] = 0.0;
+
+  // ------------------------------------------------------------
+  // Compute boundary connectivity terms for w and x
+  // (reusa tus helpers existentes)
+  // ------------------------------------------------------------
+  Rcpp::NumericVector unit_costs = pu_data["monitoring_cost"];
+  Rcpp::NumericVector blm_actions = threats_data["blm_actions"];
+
+  Rcpp::IntegerVector dist_pu_id = dist_threats_data["internal_pu"];      // 1-based
+  Rcpp::IntegerVector dist_thr_id = dist_threats_data["internal_threat"]; // 1-based
+  Rcpp::NumericVector action_costs = dist_threats_data["action_cost"];
+
+  // Build boundary matrix extended if available
+  arma::sp_mat matrix_boundary_extended;
+  if (boundary_size != 0) {
+    matrix_boundary_extended = create_boundary_matrix_extended(boundary_data, n_pu);
+  }
+
+  // ---- connectivity for units (w)
+  Rcpp::NumericVector connectivity_units(n_pu);
+  if (boundary_size != 0 && blm != 0) {
+    arma::sp_mat z = matrix_boundary_extended.t();
+    for (arma::sp_mat::const_iterator it = z.begin(); it != z.end(); ++it) {
+      if (it.row() != it.col()) {
         connectivity_units[it.col()] = connectivity_units[it.col()] + (*it);
       }
     }
   }
 
-  for(int i = 0; i < number_of_units; i++){
-    op->_obj.push_back(blm*connectivity_units[i] + unit_costs[i]);
-    op->_vtype.push_back("B");
-    op->_lb.push_back(0);
-    op->_ub.push_back(1);
-  }
+  // ---- connectivity for actions (x): depends on threat-specific blm_actions
+  Rcpp::NumericVector connectivity_actions(n_actions);
 
-  //------------------------------------------------------------------------------------------
-  //--------------------- (coefficients associated with x[i,k] variables) --------------------
-  //------------------------------------------------------------------------------------------
+  // dist_threats_extended: (pu x threat) sparse amounts (uses your helper)
+  const int n_threats = threats_data.nrows();
+  arma::sp_mat dist_threats_extended = create_dist_threats_extended(
+    dist_threats_data, n_pu, n_threats, dist_threats_data["amount"]
+  );
 
-  //variables
-  int number_of_threats = threats_data.nrows();
-  int number_of_actions = dist_threats_data.nrows();
-  NumericVector action_costs = dist_threats_data["action_cost"];
-  NumericVector blm_actions = threats_data["blm_actions"];
-  NumericVector connectivity_actions(number_of_actions);
+  // Precompute 0-based ids for speed
+  Rcpp::IntegerVector pu0 = Rcpp::clone(dist_pu_id);  pu0 = pu0 - 1;
+  Rcpp::IntegerVector thr0 = Rcpp::clone(dist_thr_id); thr0 = thr0 - 1;
 
-  IntegerVector dist_threats_data_pu_id = dist_threats_data["internal_pu"];
-  IntegerVector pu_id1_threat = clone(dist_threats_data_pu_id);
-  pu_id1_threat = pu_id1_threat - 1;
+  for (int a = 0; a < n_actions; ++a) {
+    const int ipu = pu0[a];
+    const int ith = thr0[a];
+    if (ipu < 0 || ith < 0) continue;
 
-  IntegerVector dist_threats_data_threat_id = dist_threats_data["internal_threat"];
-  IntegerVector threat_id = clone(dist_threats_data_threat_id);
-  threat_id = threat_id - 1;
+    // if threat has blm_actions != 0 and boundary exists
+    const double blm_a = (ith < blm_actions.size()) ? (double)blm_actions[ith] : 0.0;
+    if (boundary_size != 0 && blm_a != 0.0) {
 
-  arma::sp_mat dist_threats_extended = create_dist_threats_extended(dist_threats_data,
-                                                                    number_of_units,
-                                                                    number_of_threats,
-                                                                    dist_threats_data["amount"]);
-  for(int a = 0; a < number_of_actions; a++){
-    if(boundary_size != 0 && blm_actions[threat_id[a]] != 0){
-      int pu_id2_threat = 0;
+      for (auto it = dist_threats_extended.begin_col(ith);
+           it != dist_threats_extended.end_col(ith); ++it) {
 
-      for (auto it = dist_threats_extended.begin_col(threat_id[a]);
-          it != dist_threats_extended.end_col(threat_id[a]); ++it) {
-        pu_id2_threat = it.row();
+        const int pu2 = it.row();
+        if (pu2 == ipu) continue;
 
-        if(pu_id1_threat[a] != pu_id2_threat && matrix_boundary_extended(pu_id1_threat[a], pu_id2_threat) != 0){
-          connectivity_actions[a] = connectivity_actions[a] + matrix_boundary_extended(pu_id1_threat[a], pu_id2_threat);
-        }
-      }
-    }
-    op->_obj.push_back(blm_actions[threat_id[a]]*connectivity_actions[a] + action_costs[a]);
-    op->_vtype.push_back("B");
-    op->_lb.push_back(0);
-    op->_ub.push_back(1);
-  }
-
-  //------------------------------------------------------------------------------------------
-  //--------------------- (coefficients associated with b[i,s] variables) --------------------
-  //------------------------------------------------------------------------------------------
-
-  //variables
-  int number_of_features = features_data.nrows();
-  arma::sp_mat dist_features_extended = create_dist_features_extended(dist_features_data, number_of_units, number_of_features);
-
-  for(int s = 0; s < number_of_features; s++){
-    for (auto it_species = dist_features_extended.begin_col(s);
-         it_species != dist_features_extended.end_col(s); ++it_species) {
-
-      //b_is
-      op->_obj.push_back(0);
-      op->_vtype.push_back("C");
-      op->_lb.push_back(0);
-      op->_ub.push_back(1);
-
-    }
-  }
-
-  //------------------------------------------------------------------------------------------
-  //--------------------- (coefficients associated with b'[i,s] variables) --------------------
-  //------------------------------------------------------------------------------------------
-
-  //variables
-  int col_constraint = op->_obj.size();
-
-  if(curve != 1){
-    for(int s = 0; s < number_of_features; s++){
-      for (auto it_species = dist_features_extended.begin_col(s);
-           it_species != dist_features_extended.end_col(s); ++it_species) {
-        op->_obj.push_back(0);
-        op->_vtype.push_back("C");
-        op->_lb.push_back(0);
-        op->_ub.push_back(1);
-
-        //curve
-        op->_id_pow_variables.push_back(col_constraint);
-
-        col_constraint++;
-      }
-    }
-  }
-
-  //------------------------------------------------------------------------------------------
-  //--------------------- (coefficients associated with y[i1,i2] variables) ------------------
-  // auxiliary variables to normalize no-linear objective function
-  //------------------------------------------------------------------------------------------
-
-  double connectivityCoeff = 0.0;
-  int row_constraint = op->_rhs.size();
-  int number_y_variables = 0;
-  col_constraint = op->_obj.size();
-
-  if(boundary_size != 0  && blm != 0){
-    arma::sp_mat z = matrix_boundary_extended.t();
-
-    for(arma::sp_mat::const_iterator it = z.begin(); it != z.end(); ++it) {
-      if(it.row() != it.col()){
-        number_y_variables++;
-        connectivityCoeff = -1*(*it);
-
-        // objective vector
-        op->_obj.push_back(blm*connectivityCoeff);
-        op->_vtype.push_back("B");
-        op->_lb.push_back(0);
-        op->_ub.push_back(1);
-
-        //matrix A
-        //Constraint number 1 (Y[i1,i2] - W[i1] <= 0)
-        op->_A_i.push_back(row_constraint);
-        op->_A_j.push_back(col_constraint);
-        op->_A_x.push_back(1);
-
-        op->_A_i.push_back(row_constraint);
-        op->_A_j.push_back(it.row());
-        op->_A_x.push_back(-1);
-
-        op->_rhs.push_back(0);
-        op->_sense.push_back("<=");
-
-        row_constraint++;
-
-        //Constraint number 2 (Y[i1,i2] - W[i2] <= 0)
-        op->_A_i.push_back(row_constraint);
-        op->_A_j.push_back(col_constraint);
-        op->_A_x.push_back(1);
-
-        op->_A_i.push_back(row_constraint);
-        op->_A_j.push_back(it.col());
-        op->_A_x.push_back(-1);
-
-        op->_rhs.push_back(0);
-        op->_sense.push_back("<=");
-
-        row_constraint++;
-
-        //Constraint number 3 (Y[i1,i2] - W[i1] - W[i2] => -1)
-        op->_A_i.push_back(row_constraint);
-        op->_A_j.push_back(col_constraint);
-        op->_A_x.push_back(1);
-
-        op->_A_i.push_back(row_constraint);
-        op->_A_j.push_back(it.row());
-        op->_A_x.push_back(-1);
-        op->_A_i.push_back(row_constraint);
-        op->_A_j.push_back(it.col());
-        op->_A_x.push_back(-1);
-
-        op->_rhs.push_back(-1);
-        op->_sense.push_back(">=");
-
-        row_constraint++;
-        col_constraint++;
-      }
-    }
-  }
-  op->_boundary_size = number_y_variables;
-
-  //------------------------------------------------------------------------------------------
-  //--------------------- (coefficients associated with p[i1,i2,k] variables) ------------------
-  // auxiliary variables to normalize no-linear objective function
-  //------------------------------------------------------------------------------------------
-
-  row_constraint = op->_rhs.size();
-  col_constraint = op->_obj.size();
-  int col_action = 0;
-  arma::sp_mat actions_extended = create_actions_extended(dist_threats_data, number_of_units, number_of_threats);
-
-  for(int a = 0; a < number_of_actions; a++){
-    if(boundary_size != 0 && blm_actions[threat_id[a]] != 0){
-      int pu_id2_threat = 0;
-
-      for (auto it = dist_threats_extended.begin_col(threat_id[a]);
-           it != dist_threats_extended.end_col(threat_id[a]); ++it) {
-        pu_id2_threat = it.row();
-
-        if(pu_id1_threat[a] != pu_id2_threat && matrix_boundary_extended(pu_id1_threat[a], pu_id2_threat) != 0){
-          connectivityCoeff = -1*matrix_boundary_extended(pu_id1_threat[a], pu_id2_threat);
-
-          // objective vector
-          op->_obj.push_back(blm_actions[threat_id[a]]*connectivityCoeff);
-          op->_vtype.push_back("B");
-          op->_lb.push_back(0);
-          op->_ub.push_back(1);
-
-          //matrix A
-          //Constraint number 1 (P[i1,i2,k] - X[i1,k] <= 0)
-          col_action = number_of_units + actions_extended(pu_id1_threat[a], threat_id[a]) - 1;
-
-          op->_A_i.push_back(row_constraint);
-          op->_A_j.push_back(col_constraint);
-          op->_A_x.push_back(1);
-
-          op->_A_i.push_back(row_constraint);
-          op->_A_j.push_back(col_action);
-          op->_A_x.push_back(-1);
-
-          op->_rhs.push_back(0);
-          op->_sense.push_back("<=");
-
-          row_constraint++;
-
-          //Constraint number 2 (P[i1,i2,k] - X[i2,k] <= 0)
-          col_action = number_of_units + actions_extended(pu_id2_threat, threat_id[a]) - 1;
-
-          op->_A_i.push_back(row_constraint);
-          op->_A_j.push_back(col_constraint);
-          op->_A_x.push_back(1);
-
-          op->_A_i.push_back(row_constraint);
-          op->_A_j.push_back(col_action);
-          op->_A_x.push_back(-1);
-
-          op->_rhs.push_back(0);
-          op->_sense.push_back("<=");
-
-          row_constraint++;
-
-          //Constraint number 3 (P[i1,i2,k] - X[i1,k] - X[i2,k] => -1)
-          op->_A_i.push_back(row_constraint);
-          op->_A_j.push_back(col_constraint);
-          op->_A_x.push_back(1);
-
-          col_action = number_of_units + actions_extended(pu_id1_threat[a], threat_id[a]) - 1;
-          op->_A_i.push_back(row_constraint);
-          op->_A_j.push_back(col_action);
-          op->_A_x.push_back(-1);
-
-          col_action = number_of_units + actions_extended(pu_id2_threat, threat_id[a]) - 1;
-          op->_A_i.push_back(row_constraint);
-          op->_A_j.push_back(col_action);
-          op->_A_x.push_back(-1);
-
-          op->_rhs.push_back(-1);
-          op->_sense.push_back(">=");
-
-          row_constraint++;
-          col_constraint++;
+        const double bnd = matrix_boundary_extended(ipu, pu2);
+        if (bnd != 0.0) {
+          connectivity_actions[a] = connectivity_actions[a] + bnd;
         }
       }
     }
   }
-  return true;
+
+  // ------------------------------------------------------------
+  // Write objective coefficients to existing w and x vars
+  // w_i: unit_cost + blm * connectivity_units
+  // x_a: action_cost + blm_actions[threat] * connectivity_actions[a]
+  // ------------------------------------------------------------
+  int n_w_nonzero = 0;
+  int n_x_nonzero = 0;
+  double sum_w = 0.0;
+  double sum_x = 0.0;
+
+  // w block range
+  const std::size_t w0 = (std::size_t)op->_w_offset;
+  const std::size_t w1 = w0 + (std::size_t)n_pu;
+
+  for (int i = 0; i < n_pu; ++i) {
+    const double c = (double)unit_costs[i];
+    const double conn = (double)connectivity_units[i];
+    const double coef = c + blm * conn;
+
+    op->_obj[op->_w_offset + i] = coef;
+
+    if (coef != 0.0 && std::isfinite(coef)) {
+      ++n_w_nonzero;
+      sum_w += coef;
+    }
+  }
+
+  // x block range
+  const std::size_t x0 = (std::size_t)op->_x_offset;
+  const std::size_t x1 = x0 + (std::size_t)n_actions;
+
+  for (int a = 0; a < n_actions; ++a) {
+    const int ith = thr0[a];
+    const double c = (double)action_costs[a];
+    const double blm_a = (ith >= 0 && ith < blm_actions.size()) ? (double)blm_actions[ith] : 0.0;
+    const double conn = (double)connectivity_actions[a];
+    const double coef = c + blm_a * conn;
+
+    op->_obj[op->_x_offset + a] = coef;
+
+    if (coef != 0.0 && std::isfinite(coef)) {
+      ++n_x_nonzero;
+      sum_x += coef;
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Registry: since OptimizationProblem.h has no objective block,
+  // we register as variable blocks with tag kind=objective
+  // ------------------------------------------------------------
+  std::string base_tag = tag;
+  if (!base_tag.empty()) base_tag += ";";
+  base_tag += "kind=objective"
+  ";modelsense=min"
+  ";blm=" + std::to_string(blm) +
+    ";curve=" + std::to_string(curve) +
+    ";boundary_size=" + std::to_string(boundary_size);
+
+  const std::size_t w_block_id = op->register_variable_block(
+    block_name + "::w", w0, w1,
+    base_tag +
+      ";n_nonzero=" + std::to_string(n_w_nonzero) +
+      ";sum=" + std::to_string(sum_w)
+  );
+
+  const std::size_t x_block_id = op->register_variable_block(
+    block_name + "::x", x0, x1,
+    base_tag +
+      ";n_nonzero=" + std::to_string(n_x_nonzero) +
+      ";sum=" + std::to_string(sum_x)
+  );
+
+  return Rcpp::List::create(
+    Rcpp::Named("modelsense") = op->_modelsense,
+    Rcpp::Named("w_block_id") = (double)w_block_id,
+    Rcpp::Named("x_block_id") = (double)x_block_id,
+    Rcpp::Named("w_range") = Rcpp::NumericVector::create((double)(w0 + 1), (double)w1),
+    Rcpp::Named("x_range") = Rcpp::NumericVector::create((double)(x0 + 1), (double)x1),
+    Rcpp::Named("n_w_nonzero") = n_w_nonzero,
+    Rcpp::Named("n_x_nonzero") = n_x_nonzero,
+    Rcpp::Named("sum_w") = sum_w,
+    Rcpp::Named("sum_x") = sum_x,
+    Rcpp::Named("note") =
+      "Objective written into existing w/x variables. "
+      "No b/b'/y/p variables are created here (pipeline-new). "
+      "Objective registry stored via register_variable_block(kind=objective tag)."
+  );
 }

@@ -361,19 +361,26 @@
   x$data$dist_actions_model <- da
 
   # dist_effects model-ready
+  # dist_effects model-ready (MUST carry internal_pu/internal_action)
   de <- x$data$dist_effects
   if (.has_rows(de) && .has_rows(da)) {
     n_before <- nrow(de)
+
     if ("pu" %in% names(de)) de$pu <- as.integer(de$pu)
     if ("action" %in% names(de)) de$action <- as.character(de$action)
-    de <- dplyr::inner_join(de, da[, c("pu", "action"), drop = FALSE], by = c("pu", "action"))
+
+    da_key <- da[, intersect(names(da), c("pu","action","internal_pu","internal_action","internal_row")), drop = FALSE]
+
+    # join keeps internal ids for C++
+    de <- dplyr::inner_join(de, da_key, by = c("pu","action"))
+
     n_after <- nrow(de)
     dropped <- n_before - n_after
     if (dropped > 0) x <- .pa_log_add(x, "filtered_effects_rows", dropped)
   }
   x$data$dist_effects_model <- de
 
-  # dist_benefit_model derived
+  # dist_benefit_model derived (now has internal_* too)
   db <- NULL
   if (.has_rows(de) && "benefit" %in% names(de)) {
     db <- de
@@ -381,13 +388,18 @@
   }
   x$data$dist_benefit_model <- db
 
-  # dist_profit model-ready
+  # dist_profit model-ready (MUST carry internal_pu/internal_action)
   dp <- x$data$dist_profit
   if (.has_rows(dp) && .has_rows(da)) {
     n_before <- nrow(dp)
+
     if ("pu" %in% names(dp)) dp$pu <- as.integer(dp$pu)
     if ("action" %in% names(dp)) dp$action <- as.character(dp$action)
-    dp <- dplyr::inner_join(dp, da[, c("pu", "action"), drop = FALSE], by = c("pu", "action"))
+
+    da_key <- da[, intersect(names(da), c("pu","action","internal_pu","internal_action","internal_row")), drop = FALSE]
+
+    dp <- dplyr::inner_join(dp, da_key, by = c("pu","action"))
+
     n_after <- nrow(dp)
     dropped <- n_before - n_after
     if (dropped > 0) x <- .pa_log_add(x, "filtered_profit_rows", dropped)
@@ -548,18 +560,24 @@
 
   # structural constraints
   if (!is.null(x$data$dist_actions_model) && nrow(x$data$dist_actions_model) > 0) {
-    rcpp_add_linking_x_le_w(op, x$data$dist_actions_model)
+    res_locks <- rcpp_add_linking_x_le_w(op, x$data$dist_actions_model)
+    x$data$model_registry$cons$x_le_w <- res_locks
   }
   if (exists("rcpp_add_linking_z_le_w", mode = "function")) {
-    rcpp_add_linking_z_le_w(op, x$data$dist_features)
+    res_locks <- rcpp_add_linking_z_le_w(op, x$data$dist_features)
+    x$data$model_registry$cons$z_le_w <- res_locks
   }
   if (exists("rcpp_add_pu_locks", mode = "function")) {
-    rcpp_add_pu_locks(op, x$data$pu)
+    res_locks <- rcpp_add_pu_locks(op, x$data$pu)
+    x$data$model_registry$cons$pu_locks <- res_locks
   }
   if (!is.null(x$data$dist_actions_model) && nrow(x$data$dist_actions_model) > 0 &&
       exists("rcpp_add_action_locks", mode = "function")) {
-    rcpp_add_action_locks(op, x$data$dist_actions_model)
+
+    res_locks <- rcpp_add_action_locks(op, x$data$dist_actions_model)
+    x$data$model_registry$cons$action_locks <- res_locks
   }
+
 
   x$data$model_ptr   <- op
   x$data$model_index <- idx
@@ -603,7 +621,7 @@
       .pa_abort("Missing rcpp_set_objective_min_cost() in the package.")
     }
 
-    rcpp_set_objective_min_cost(
+    res <- rcpp_set_objective_min_cost(
       op,
       pu_data = x$data$pu,
       dist_actions_data = x$data$dist_actions_model,
@@ -611,6 +629,7 @@
       include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE)
     )
 
+    x$data$model_registry$objective$cpp <- res
     objective_id <- "min_cost"
     modelsense   <- "min"
 
@@ -621,13 +640,14 @@
     }
 
     bcol <- as.character(oargs$benefit_col %||% "benefit")[1]
-    rcpp_set_objective_max_benefit(
+    res <- rcpp_set_objective_max_benefit(
       op,
       dist_actions_data = x$data$dist_actions_model,
-      dist_benefit_data = x$data$dist_effects_model,
+      dist_benefit_data = x$data$dist_benefit_model,
       benefit_col = bcol
     )
 
+    x$data$model_registry$objective$cpp <- res
     objective_id <- "max_benefit"
     modelsense   <- "max"
 
@@ -638,13 +658,14 @@
     }
 
     lcol <- as.character(oargs$loss_col %||% "loss")[1]
-    rcpp_set_objective_min_loss(
+    res <- rcpp_set_objective_min_loss(
       op,
       dist_actions_data = x$data$dist_actions_model,
       dist_effects_data = x$data$dist_effects_model,
       loss_col = lcol
     )
 
+    x$data$model_registry$objective$cpp <- res
     objective_id <- "min_loss"
     modelsense   <- "min"
 
@@ -654,13 +675,14 @@
       .pa_abort("Missing rcpp_set_objective_max_profit() in the package.")
     }
 
-    rcpp_set_objective_max_profit(
+    res <- rcpp_set_objective_max_profit(
       op,
       dist_actions_data = x$data$dist_actions_model,
       dist_profit_data  = x$data$dist_profit_model,
       profit_col = as.character(oargs$profit_col %||% "profit")[1]
     )
 
+    x$data$model_registry$objective$cpp <- res
     objective_id <- "max_profit"
     modelsense   <- "max"
 
@@ -670,7 +692,7 @@
       .pa_abort("Missing rcpp_set_objective_max_net_profit() in the package.")
     }
 
-    rcpp_set_objective_max_net_profit(
+    res <- rcpp_set_objective_max_net_profit(
       op,
       pu_data = x$data$pu,
       dist_actions_data = x$data$dist_actions_model,
@@ -680,6 +702,7 @@
       include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE)
     )
 
+    x$data$model_registry$objective$cpp <- res
     objective_id <- "max_net_profit"
     modelsense   <- "max"
 
@@ -690,12 +713,13 @@
     }
 
     acol <- as.character(oargs$amount_col %||% "amount")[1]
-    rcpp_set_objective_max_representation(
+    res <- rcpp_set_objective_max_representation(
       op,
       dist_features_data = x$data$dist_features,
       amount_col = acol
     )
 
+    x$data$model_registry$objective$cpp <- res
     objective_id <- "max_representation"
     modelsense   <- "max"
 
@@ -712,20 +736,21 @@
     x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
     x$data$spatial_relations_model[[rel_name]] <- rel_model
 
-    rcpp_set_objective_min_fragmentation(
+    res <- rcpp_set_objective_min_fragmentation(
       op,
       pu_data = x$data$pu,
       relation_data = rel_model,
       weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
     )
 
+    x$data$model_registry$objective$cpp <- res
     objective_id <- "min_fragmentation"
     modelsense   <- "min"
 
   } else if (identical(mtype, "minimizeActionFragmentation")) {
 
-    if (!exists("rcpp_set_objective_min_action_fragmentation", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_min_action_fragmentation() in the package.")
+    if (!exists("rcpp_set_objective_min_fragmentation_actions_by_action", mode = "function")) {
+      .pa_abort("Missing rcpp_set_objective_min_fragmentation_actions_by_action() in the package.")
     }
 
     rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
@@ -738,24 +763,27 @@
     aw_vec <- .pa_action_weights_vector(
       actions_df = x$data$actions,
       action_weights = oargs$action_weights %||% NULL,
-      subset_actions = oargs$actions %||% NULL
+      subset_actions = oargs$actions_to_use %||% oargs$actions %||% NULL
     )
 
-    rcpp_set_objective_min_fragmentation_actions_by_action(
+    res <- rcpp_set_objective_min_fragmentation_actions_by_action(
       op,
       dist_actions_data = x$data$dist_actions_model,
       relation_data = rel_model,
+      actions_to_use = oargs$actions_to_use %||% NULL,
       action_weights = aw_vec,
       weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
     )
 
     objective_id <- "min_action_fragmentation"
     modelsense   <- "min"
+    x$data$model_registry$objective$cpp <- res
+
 
   } else if (identical(mtype, "minimizeInterventionFragmentation")) {
 
-    if (!exists("rcpp_set_objective_min_intervention_fragmentation", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_min_intervention_fragmentation() in the package.")
+    if (!exists("rcpp_set_objective_min_fragmentation_interventions", mode = "function")) {
+      .pa_abort("Missing rcpp_set_objective_min_fragmentation_interventions() in the package.")
     }
 
     rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
@@ -765,7 +793,7 @@
     x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
     x$data$spatial_relations_model[[rel_name]] <- rel_model
 
-    rcpp_set_objective_min_fragmentation_interventions(
+    res <- rcpp_set_objective_min_fragmentation_interventions(
       op,
       dist_actions_data = x$data$dist_actions_model,
       relation_data = rel_model,
@@ -774,6 +802,8 @@
 
     objective_id <- "min_intervention_fragmentation"
     modelsense   <- "min"
+    x$data$model_registry$objective$cpp <- res
+
 
   } else {
     .pa_abort("Unknown model_type in x$data$model_args$model_type: ", mtype)

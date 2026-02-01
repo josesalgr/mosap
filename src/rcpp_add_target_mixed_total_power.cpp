@@ -33,7 +33,7 @@ Rcpp::List rcpp_add_target_mixed_total_power(
     Rcpp::DataFrame targets_df,           // columns: internal_id, target_value (or target)
     double exponent = 2.0,
     int segments = 6,
-    SEXP amount_col_sexp = R_NilValue,    // optional: column name for baseline amount in dist_features
+    SEXP amount_col_sexp = R_NilValue,
     double tol = 1e-12) {
 
   Rcpp::XPtr<OptimizationProblem> op = Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
@@ -46,30 +46,28 @@ Rcpp::List rcpp_add_target_mixed_total_power(
   }
 
   // ---- Check required columns
-  for (auto nm : {"internal_feature"}) {
-    if (!dist_features_data.containsElementNamed(nm)) {
-      Rcpp::stop(std::string("dist_features_data must contain column '") + nm + "'.");
-    }
+  if (!dist_features_data.containsElementNamed("internal_feature")) {
+    Rcpp::stop("dist_features_data must contain column 'internal_feature'.");
   }
+
   if (!dist_actions_data.containsElementNamed("internal_pu") ||
       !dist_actions_data.containsElementNamed("internal_action") ||
       !dist_actions_data.containsElementNamed("internal_row")) {
       Rcpp::stop("dist_actions_data must contain columns: internal_pu, internal_action, internal_row.");
   }
+
   if (!dist_benefit_data.containsElementNamed("internal_pu") ||
       !dist_benefit_data.containsElementNamed("internal_action") ||
       !dist_benefit_data.containsElementNamed("internal_feature") ||
       !dist_benefit_data.containsElementNamed("benefit")) {
       Rcpp::stop("dist_benefit_data must contain columns: internal_pu, internal_action, internal_feature, benefit.");
   }
+
   if (!targets_df.containsElementNamed("internal_id")) {
     Rcpp::stop("targets_df must contain column 'internal_id'.");
   }
   if (!targets_df.containsElementNamed("target_value")) {
-    // backward compat: allow 'target'
-    if (targets_df.containsElementNamed("target")) {
-      // ok
-    } else {
+    if (!targets_df.containsElementNamed("target")) {
       Rcpp::stop("targets_df must contain column 'target_value' (or legacy column 'target').");
     }
   }
@@ -122,9 +120,7 @@ Rcpp::List rcpp_add_target_mixed_total_power(
   Rcpp::NumericVector db_ben   = dist_benefit_data["benefit"];
   const int n_db = dist_benefit_data.nrows();
 
-  // For each (ipu,ifeat) we need:
-  //   B = sum_r benefit_r (positive)
-  //   list of (xcol, benefit_r)
+  // For each (ipu,ifeat):
   struct PFBlock {
     double B = 0.0;
     std::vector<int> xcols;
@@ -145,16 +141,17 @@ Rcpp::List rcpp_add_target_mixed_total_power(
       ++dropped_nonpos_benefit;
       continue;
     }
-    const int ipu = db_ipu[r];
-    const int ia  = db_iact[r];
+    const int ipu   = db_ipu[r];
+    const int ia    = db_iact[r];
     const int ifeat = db_ifeat[r];
 
     const long long k_pa = key2(ipu, ia);
     auto it = pa_to_xrow.find(k_pa);
     if (it == pa_to_xrow.end()) {
       ++dropped_missing_action;
-      continue; // defensive: benefit row with no action var
+      continue;
     }
+
     const int x_row0 = it->second;
     const int x_col  = op->_x_offset + x_row0; // 0-based col index
 
@@ -165,74 +162,124 @@ Rcpp::List rcpp_add_target_mixed_total_power(
     blk.bvals.push_back(b);
   }
 
-  // ---- Create (t,y) vars and constraints for each (ipu,ifeat) with B>0:
-  // 1) Linking: sum(b_r * x_r) - B * t = 0
-  // 2) Tangent underestimator for y <= t^p:
-  //    y - m_k * t <= c_k  for k=1..segments with u_k = k/segments
-  //    (t,y bounds are [0,1])
+  // ------------------------------------------------------------
+  // (1) Create all (t,y) vars first, then register ONE var block
+  // ------------------------------------------------------------
+  const std::size_t col_start = op->ncol_used(); // 0-based start (before adding)
+
   int n_pf_blocks = 0;
+  for (auto &kv : pf_map) {
+    PFBlock &blk = kv.second;
+    if (!(std::isfinite(blk.B) && blk.B > tol)) continue;
+
+    blk.t_col = add_cont_var(op, 0.0, 1.0, 0.0);
+    blk.y_col = add_cont_var(op, 0.0, 1.0, 0.0);
+    ++n_pf_blocks;
+  }
+
+  const std::size_t col_end = op->ncol_used(); // 0-based end (exclusive)
+
+  std::size_t var_block_id = 0;
+  if (col_end > col_start) {
+    std::string vtag =
+      "type=ty_power"
+      ";exponent=" + std::to_string(exponent) +
+        ";segments=" + std::to_string(segments) +
+        ";n_pf_blocks=" + std::to_string(n_pf_blocks);
+
+    var_block_id = op->register_variable_block("power_ty_vars", col_start, col_end, vtag);
+  }
+
+  // ------------------------------------------------------------
+  // (2) Linking constraints block: sum(b*x) - B*t = 0
+  // ------------------------------------------------------------
+  const std::size_t link_row_start = op->nrow_used();
+  std::string link_tag =
+    "exponent=" + std::to_string(exponent) +
+    ";segments=" + std::to_string(segments);
+
+  const std::size_t link_bid = op->beginConstraintBlock("power_linking", link_tag);
+
   int n_link_rows = 0;
+
+  for (auto &kv : pf_map) {
+    PFBlock &blk = kv.second;
+    if (!(std::isfinite(blk.B) && blk.B > tol)) continue;
+    if (blk.t_col < 0) continue;
+
+    std::vector<int> cols;
+    std::vector<double> vals;
+    cols.reserve(blk.xcols.size() + 1);
+    vals.reserve(blk.bvals.size() + 1);
+
+    for (std::size_t j = 0; j < blk.xcols.size(); ++j) {
+      cols.push_back(blk.xcols[j]);
+      vals.push_back(blk.bvals[j]);
+    }
+    cols.push_back(blk.t_col);
+    vals.push_back(-blk.B);
+
+    op->addRow(cols, vals, "==", 0.0, "power_link");
+    ++n_link_rows;
+  }
+
+  const std::size_t link_row_end = op->nrow_used();
+  op->endConstraintBlock(link_bid);
+
+  // ------------------------------------------------------------
+  // (3) Tangent constraints block: y - m t <= c
+  // ------------------------------------------------------------
+  const std::size_t tan_row_start = op->nrow_used();
+  std::string tan_tag =
+    "exponent=" + std::to_string(exponent) +
+    ";segments=" + std::to_string(segments);
+
+  const std::size_t tan_bid = op->beginConstraintBlock("power_tangents", tan_tag);
+
   int n_tangent_rows = 0;
 
   for (auto &kv : pf_map) {
     PFBlock &blk = kv.second;
-    if (!(std::isfinite(blk.B) && blk.B > tol)) {
-      continue;
-    }
+    if (!(std::isfinite(blk.B) && blk.B > tol)) continue;
+    if (blk.t_col < 0 || blk.y_col < 0) continue;
 
-    // Add t and y variables at end
-    blk.t_col = add_cont_var(op, 0.0, 1.0, 0.0);
-    blk.y_col = add_cont_var(op, 0.0, 1.0, 0.0);
-
-    // Linking equality: sum(b*x) - B*t = 0
-    {
-      std::vector<int> cols;
-      std::vector<double> vals;
-      cols.reserve(blk.xcols.size() + 1);
-      vals.reserve(blk.bvals.size() + 1);
-
-      for (std::size_t j = 0; j < blk.xcols.size(); ++j) {
-        cols.push_back(blk.xcols[j]);
-        vals.push_back(blk.bvals[j]);
-      }
-      cols.push_back(blk.t_col);
-      vals.push_back(-blk.B);
-
-      op->addRow(cols, vals, "==", 0.0);
-      ++n_link_rows;
-    }
-
-    // Tangent constraints at u_k = k/segments, k=1..segments
     for (int k = 1; k <= segments; ++k) {
-      const double u = (double)k / (double)segments;             // in (0,1]
-      const double m = exponent * std::pow(u, exponent - 1.0);   // slope
+      const double u  = (double)k / (double)segments;            // (0,1]
+      const double m  = exponent * std::pow(u, exponent - 1.0);
       const double fu = std::pow(u, exponent);
-      const double c  = fu - m * u;                              // intercept
+      const double c  = fu - m * u;
 
-      // y - m t <= c
-      std::vector<int> cols(2);
-      std::vector<double> vals(2);
-      cols[0] = blk.y_col; vals[0] = 1.0;
-      cols[1] = blk.t_col; vals[1] = -m;
-      op->addRow(cols, vals, "<=", c);
+      op->addRow(
+          std::vector<int>{blk.y_col, blk.t_col},
+          std::vector<double>{1.0, -m},
+          "<=",
+          c,
+          "power_tangent"
+      );
       ++n_tangent_rows;
     }
-
-    ++n_pf_blocks;
   }
 
-  // ---- Targets extraction
+  const std::size_t tan_row_end = op->nrow_used();
+  op->endConstraintBlock(tan_bid);
+
+  // ------------------------------------------------------------
+  // (4) Target constraints block:
+  // baseline(z) + sum(B*y) >= T
+  // ------------------------------------------------------------
   Rcpp::IntegerVector targ_feat = targets_df["internal_id"];
   Rcpp::NumericVector targ_val;
-  if (targets_df.containsElementNamed("target_value")) {
-    targ_val = targets_df["target_value"];
-  } else {
-    targ_val = targets_df["target"];
-  }
+  if (targets_df.containsElementNamed("target_value")) targ_val = targets_df["target_value"];
+  else targ_val = targets_df["target"];
 
-  // ---- For each feature with T>0 add:
-  // sum_{rows in dist_features with that feature} amount * z_row
-  // + sum_{(ipu,ifeat)=feature} B_{ipu,ifeat} * y_{ipu,ifeat}  >= T
+  const std::size_t targ_row_start = op->nrow_used();
+  std::string targ_tag =
+    "exponent=" + std::to_string(exponent) +
+    ";segments=" + std::to_string(segments) +
+    ";amount_col=" + amount_col;
+
+  const std::size_t targ_bid = op->beginConstraintBlock("target_mixed_total_power", targ_tag);
+
   int n_target_rows = 0;
 
   for (int s = 0; s < targ_feat.size(); ++s) {
@@ -245,21 +292,21 @@ Rcpp::List rcpp_add_target_mixed_total_power(
     cols.reserve(1024);
     vals.reserve(1024);
 
-    // Baseline part: dist_features rows correspond 1:1 to z vars in order
+    // Baseline: z vars aligned with dist_features rows
     for (int r = 0; r < n_df; ++r) {
       if (df_ifeat[r] != ifeat) continue;
       const double a = (double)df_amt[r];
       if (!(std::isfinite(a) && a > tol)) continue;
-      const int z_col = op->_z_offset + r; // 0-based, because z vars created in dist_features row order
+
+      const int z_col = op->_z_offset + r;
       cols.push_back(z_col);
       vals.push_back(a);
     }
 
-    // Powered action part: for each (ipu,ifeat) block, add B * y
-    double total_B_for_feature = 0.0;
+    // Powered action part: sum over blocks for this feature: B * y
     for (auto &kv : pf_map) {
       const long long k_pf = kv.first;
-      const int ifeat_k = (int)(k_pf & 0xFFFFFFFFu); // lower 32 bits
+      const int ifeat_k = (int)(static_cast<unsigned int>(k_pf)); // low 32 bits
       if (ifeat_k != ifeat) continue;
 
       PFBlock &blk = kv.second;
@@ -268,7 +315,6 @@ Rcpp::List rcpp_add_target_mixed_total_power(
 
       cols.push_back(blk.y_col);
       vals.push_back(blk.B);
-      total_B_for_feature += blk.B;
     }
 
     if (cols.empty()) {
@@ -278,25 +324,53 @@ Rcpp::List rcpp_add_target_mixed_total_power(
       );
     }
 
-    // Optional: strict feasibility check — if no action blocks and no baseline, already stopped.
-    // If no baseline but there are action blocks, that's ok.
-    // If baseline exists but action blocks absent, it's ok: reduces to conservation-only.
-
-    op->addRow(cols, vals, ">=", T);
+    op->addRow(cols, vals, ">=", T, "target_mixed_power");
     ++n_target_rows;
   }
 
+  const std::size_t targ_row_end = op->nrow_used();
+  op->endConstraintBlock(targ_bid);
+
+  // ------------------------------------------------------------
+  // Return: include block ids + ranges (R-friendly)
+  // ------------------------------------------------------------
+  auto range_to_R = [](std::size_t start0, std::size_t end0) {
+    if (end0 <= start0) return Rcpp::NumericVector::create(NA_REAL, NA_REAL);
+    return Rcpp::NumericVector::create(
+      static_cast<double>(start0 + 1), // 1-based start
+      static_cast<double>(end0)        // 1-based end inclusive-friendly (end0 is exclusive in 0-based)
+    );
+  };
+
   return Rcpp::List::create(
+    // counts
     Rcpp::Named("n_pf_blocks") = n_pf_blocks,
     Rcpp::Named("n_link_rows") = n_link_rows,
     Rcpp::Named("n_tangent_rows") = n_tangent_rows,
     Rcpp::Named("n_target_rows") = n_target_rows,
+
+    // inputs
     Rcpp::Named("exponent") = exponent,
     Rcpp::Named("segments") = segments,
     Rcpp::Named("amount_col_used") = amount_col,
     Rcpp::Named("dropped_nonpos_benefit") = dropped_nonpos_benefit,
     Rcpp::Named("dropped_missing_action") = dropped_missing_action,
+
+    // variable block
+    Rcpp::Named("var_block_id") = (var_block_id == 0 ? NA_REAL : static_cast<double>(var_block_id)),
+    Rcpp::Named("var_col_range") = range_to_R(col_start, col_end),
+
+    // constraint blocks
+    Rcpp::Named("link_block_id") = static_cast<double>(link_bid),
+    Rcpp::Named("link_row_range") = range_to_R(link_row_start, link_row_end),
+
+    Rcpp::Named("tangent_block_id") = static_cast<double>(tan_bid),
+    Rcpp::Named("tangent_row_range") = range_to_R(tan_row_start, tan_row_end),
+
+    Rcpp::Named("target_block_id") = static_cast<double>(targ_bid),
+    Rcpp::Named("target_row_range") = range_to_R(targ_row_start, targ_row_end),
+
     Rcpp::Named("note") =
-      "Uses tangent underestimator y <= t^p (convex p>1). No SOS2. Adds continuous (t,y) vars per (pu,feature) block."
+      "Registers: 1 var block (t,y) + 3 constraint blocks (linking, tangents, targets)."
   );
 }

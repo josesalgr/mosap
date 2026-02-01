@@ -11,19 +11,70 @@ SEXP rcpp_new_optimization_problem(std::size_t nrow = 1000000,
   return(op);
 }
 
+
+static inline Rcpp::DataFrame registry_to_df(const OptimizationProblem* op) {
+  const std::size_t n = op->_registry.size();
+
+  Rcpp::NumericVector id(n);
+  Rcpp::CharacterVector kind(n), name(n), tag(n);
+  Rcpp::NumericVector start1(n), end1(n); // 1-based inclusive-ish friendly
+
+  for (std::size_t i = 0; i < n; ++i) {
+    const auto& b = op->_registry[i];
+    id[i]    = (double)b.id;
+    kind[i]  = b.kind;
+    name[i]  = b.name;
+    tag[i]   = b.tag;
+
+    // internally [start,end) 0-based
+    // expose as [start+1, end] (end is inclusive-friendly)
+    start1[i] = (b.end > b.start) ? (double)(b.start + 1) : NA_REAL;
+    end1[i]   = (b.end > b.start) ? (double)(b.end)       : NA_REAL;
+  }
+
+  return Rcpp::DataFrame::create(
+    Rcpp::Named("id") = id,
+    Rcpp::Named("kind") = kind,
+    Rcpp::Named("name") = name,
+    Rcpp::Named("start") = start1,
+    Rcpp::Named("end") = end1,
+    Rcpp::Named("tag") = tag,
+    Rcpp::_["stringsAsFactors"] = false
+  );
+}
+
+
 // [[Rcpp::export]]
 Rcpp::List rcpp_optimization_problem_as_list(SEXP x) {
-  // initialization
+
   Rcpp::XPtr<OptimizationProblem> op =
     Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
 
-  // create bounds
-  List bounds = List::create(Rcpp::Named("lower") = List::create(Rcpp::Named("ind") = seq(1,op->_obj.size()),
-                        Rcpp::Named("val") = op->_lb),
-                        Rcpp::Named("upper") = List::create(Rcpp::Named("ind") = seq(1,op->_obj.size()),
-                        Rcpp::Named("val") = op->_ub));
+  // --- defensive consistency checks
+  if (op->_lb.size() != op->_obj.size())
+    Rcpp::stop("Inconsistent model: lb.size() != obj.size().");
+  if (op->_ub.size() != op->_obj.size())
+    Rcpp::stop("Inconsistent model: ub.size() != obj.size().");
+  if (op->_vtype.size() != op->_obj.size())
+    Rcpp::stop("Inconsistent model: vtype.size() != obj.size().");
 
-  // create list
+  if (op->_sense.size() != op->_rhs.size())
+    Rcpp::stop("Inconsistent model: sense.size() != rhs.size().");
+  if (op->_name.size() != op->_rhs.size())
+    Rcpp::stop("Inconsistent model: name.size() != rhs.size().");
+
+  // bounds (tal cual lo tenías)
+  Rcpp::List bounds = Rcpp::List::create(
+    Rcpp::Named("lower") = Rcpp::List::create(
+      Rcpp::Named("ind") = Rcpp::seq(1, (double)op->_obj.size()),
+      Rcpp::Named("val") = op->_lb
+    ),
+    Rcpp::Named("upper") = Rcpp::List::create(
+      Rcpp::Named("ind") = Rcpp::seq(1, (double)op->_obj.size()),
+      Rcpp::Named("val") = op->_ub
+    )
+  );
+
   return Rcpp::List::create(
     Rcpp::Named("modelsense") = op->_modelsense,
     Rcpp::Named("A_i") = op->_A_i,
@@ -51,8 +102,11 @@ Rcpp::List rcpp_optimization_problem_as_list(SEXP x) {
     Rcpp::Named("y_pu_offset") = op->_y_pu_offset,
     Rcpp::Named("y_action_offset") = op->_y_action_offset,
     Rcpp::Named("u_intervention_offset") = op->_u_intervention_offset,
-    Rcpp::Named("y_intervention_offset") = op->_y_intervention_offset);
+    Rcpp::Named("y_intervention_offset") = op->_y_intervention_offset,
+    Rcpp::Named("registry") = op->registry_as_df()
+  );
 }
+
 
 // [[Rcpp::export]]
 std::size_t rcpp_get_optimization_problem_ncol(SEXP x) {
@@ -73,5 +127,3 @@ std::size_t rcpp_get_optimization_problem_ncell(SEXP x) {
 Rcpp::List rcpp_get_optimization_problem_A(SEXP x) {
   return(Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x)->A());
 }
-
-

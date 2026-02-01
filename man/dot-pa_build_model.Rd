@@ -15,7 +15,4 @@ Updated \code{Data} object with model pointer and model snapshot.
 \description{
 Materializes (builds) the optimization model using the current state of the \code{Data} object:
 prepared data tables, stored objective settings, and stored constraints (e.g., targets).
-
-The configuration (objective type, budget, blm, etc.) is expected to be stored in
-\code{x$data$model_args} by other functions (e.g., \verb{set_objective_*()}, \code{add_budget()}, etc.).
 }
