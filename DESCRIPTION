@@ -91,6 +91,7 @@ Collate:
     'add_targets.R'
     'build_model.R'
     'data-class.R'
+    'get_solution.R'
     'inputData.R'
     'inputDataSpatial.R'
     'package.R'

@@ -5,10 +5,16 @@
 #' \code{x$data$solve_args} (typically set via \code{set_solver()} / \code{set_solver_*()}).
 #'
 #' @param x A \code{Data} object created with \code{inputData()} or \code{inputDataSpatial()}.
+#' @param ... Optional legacy solver arguments (deprecated).
 #'
 #' @return A \code{Solution} object.
 #' @export
 solve <- function(x, ...) {
+  UseMethod("solve")
+}
+
+#' @export
+solve.Data <- function(x, ...) {
 
   assertthat::assert_that(inherits(x, "Data"))
 
@@ -315,6 +321,7 @@ solve <- function(x, ...) {
 
   } else if (solver == "cbc") {
 
+    # build row bounds from sense + rhs
     row_lb <- rep(-Inf, length(model$rhs))
     row_ub <- rep( Inf, length(model$rhs))
 
@@ -322,10 +329,10 @@ solve <- function(x, ...) {
     ii_ge <- which(model$sense == ">=")
     ii_eq <- which(model$sense == "==" | model$sense == "=")
 
-    row_ub[ii_le] <- rhs[ii_le]
-    row_lb[ii_ge] <- rhs[ii_ge]
-    row_lb[ii_eq] <- rhs[ii_eq]
-    row_ub[ii_eq] <- rhs[ii_eq]
+    row_ub[ii_le] <- model$rhs[ii_le]
+    row_lb[ii_ge] <- model$rhs[ii_ge]
+    row_lb[ii_eq] <- model$rhs[ii_eq]
+    row_ub[ii_eq] <- model$rhs[ii_eq]
 
     cbc_args <- list(
       threads = cores,
@@ -366,6 +373,7 @@ solve <- function(x, ...) {
     objval <- sol_cbc$objective_value %||% NA_real_
     solvec <- sol_cbc$column_solution %||% numeric(0)
     gap    <- if (isTRUE(status_code == 0L)) gap_limit else NA_real_
+
 
   } else if (solver == "cplex") {
 
@@ -461,6 +469,46 @@ solve <- function(x, ...) {
 
   } else {
     stop("Internal error: unknown solver '", solver, "'.", call. = FALSE)
+  }
+
+  # ------------------------------------------------------------
+  # Hard fail if solver returned no usable solution
+  # ------------------------------------------------------------
+  if (length(solvec) == 0L || all(is.na(solvec))) {
+    msg <- paste0(
+      "Solver returned an empty solution vector.\n",
+      "solver: ", solver, "\n",
+      "status_code: ", status_code, "\n",
+      "objval: ", as.character(objval), "\n",
+      "Possible causes: infeasible model, time limit before first feasible, or solver error.\n",
+      "Tip: try increasing time_limit, relaxing constraints, or inspect solver logs (if available)."
+    )
+    stop(msg, call. = FALSE)
+  }
+
+  # Ensure solution length is consistent with model offsets
+  n_pu_chk <- as.integer(model$n_pu %||% 0L)
+  n_x_chk  <- as.integer(model$n_x  %||% 0L)
+  n_z_chk  <- as.integer(model$n_z  %||% 0L)
+  w0_chk <- as.integer(model$w_offset %||% 0L)
+  x0_chk <- as.integer(model$x_offset %||% 0L)
+  z0_chk <- as.integer(model$z_offset %||% 0L)
+
+  needed_len <- max(
+    w0_chk + n_pu_chk,
+    x0_chk + n_x_chk,
+    z0_chk + n_z_chk,
+    0L
+  )
+
+  if (length(solvec) < needed_len) {
+    stop(
+      "Solver returned a solution vector of length ", length(solvec),
+      " but the model requires at least ", needed_len, " variables ",
+      "(based on offsets + variable counts). ",
+      "This indicates a mismatch between the built model and the decoded metadata.",
+      call. = FALSE
+    )
   }
 
   # ------------------------------------------------------------

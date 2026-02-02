@@ -8,6 +8,8 @@ solve(x, ...)
 }
 \arguments{
 \item{x}{A \code{Data} object created with \code{inputData()} or \code{inputDataSpatial()}.}
+
+\item{...}{Optional legacy solver arguments (deprecated).}
 }
 \value{
 A \code{Solution} object.

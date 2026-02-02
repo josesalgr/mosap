@@ -1,3 +1,71 @@
+#' @include internal.R
+#'
+#' Create a prioritization planning problem input object
+#'
+#' @description
+#' Builds a \code{Data} object (class \code{"Data"}) from either tabular inputs or spatial inputs.
+#' This is the entry point for the \pkg{prioriactions} workflow.
+#'
+#' The function supports three input styles.
+#'
+#' If \code{pu}, \code{features}, and \code{dist_features} are \code{data.frame}s, a purely tabular
+#' workflow is used (no spatial packages required).
+#'
+#' If \code{dist_features} is missing (or \code{NULL}) and \code{pu}/\code{features} are spatial,
+#' a spatial workflow is used. In the vector-PU workflow, planning units are polygons and feature
+#' amounts are aggregated by polygon.
+#'
+#' If \code{dist_features} is missing (or \code{NULL}) and \code{pu} and \code{features} are rasters,
+#' a fast raster workflow is used where each valid raster cell becomes a planning unit. In this mode,
+#' cells are considered valid if \code{cost} is finite and \code{cost > 0}, and \code{pu} is used
+#' as a mask/template (cells with \code{NA} in \code{pu} are excluded). This avoids raster-to-polygon
+#' conversion and is substantially faster for large grids.
+#'
+#' @param pu Planning units input. Either a \code{data.frame} with an \code{id} column,
+#'   a spatial vector (e.g. \code{terra::SpatVector} or a vector file path), or a raster
+#'   (e.g. \code{terra::SpatRaster} or a raster file path).
+#' @param features Features input. Either a \code{data.frame} with \code{id} (and optionally \code{name}),
+#'   or a raster stack/brick with one layer per feature (as \code{terra::SpatRaster} or file path).
+#' @param dist_features Distribution of features. A \code{data.frame} with columns \code{pu}, \code{feature},
+#'   and \code{amount}. If missing or \code{NULL}, spatial workflows derive it automatically.
+#' @param boundary Optional boundary information. In tabular mode, a \code{data.frame} with columns
+#'   \code{id1}, \code{id2}, \code{boundary}. In spatial vector mode, use \code{"auto"} to derive adjacency
+#'   from PU polygons (requires \pkg{sf}). In raster-cell mode, \code{"auto"} derives rook adjacency
+#'   on the grid; you can also set \code{"none"}, \code{"rook"}, or \code{"queen"}.
+#' @param cost In spatial modes, required. Either a column name in the PU vector attribute table
+#'   (vector-PU mode) or a raster/file path (vector-PU or raster-cell mode). In raster-cell mode,
+#'   cells with \code{cost <= 0} or \code{NA} are excluded (no PU is created).
+#' @param pu_id_col For vector-PU mode, the name of the id column in the PU layer.
+#' @param locked_in_col For vector-PU mode, the name of a logical column indicating locked-in PUs.
+#' @param locked_out_col For vector-PU mode, the name of a logical column indicating locked-out PUs.
+#' @param pu_status Optional (vector-PU or raster-cell) status input. Either a column name or a raster/file path.
+#'   Values \code{2} mark locked-in and \code{3} mark locked-out (Marxan-style).
+#' @param cost_aggregation In vector-PU mode, how to aggregate cell costs to polygons when \code{cost} is a raster.
+#'   Either \code{"mean"} or \code{"sum"}.
+#' @param ... Additional arguments forwarded to internal builders (including legacy mode args in your tabular impl).
+#'
+#' @return A \code{Data} object used by downstream functions (\code{problem()}, \code{add_*()}, \code{solve()}, etc.).
+#'
+#' @examples
+#' \dontrun{
+#' # Tabular
+#' pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
+#' features <- data.frame(id = 1:2, name = c("sp1", "sp2"))
+#' dist_features <- data.frame(pu = c(1,1,2,3), feature = c(1,2,2,1), amount = c(1,5,2,1))
+#' x <- inputData(pu, features, dist_features)
+#'
+#' # Raster-cell fast mode
+#' library(terra)
+#' pu_mask <- rast("pu_mask.tif")     # NA outside study area
+#' cost_r  <- rast("cost.tif")        # cost per cell
+#' feat_r  <- rast(c("sp1.tif","sp2.tif"))  # layers = features
+#' x <- inputData(pu = pu_mask, features = feat_r, cost = cost_r, boundary = "auto")
+#'
+#' # Vector-PU spatial mode
+#' pu_v <- vect("pus.gpkg")
+#' x <- inputData(pu = pu_v, features = feat_r, cost = cost_r, boundary = "auto")
+#' }
+#'
 #' @export
 #' @rdname inputData
 methods::setGeneric(
@@ -21,474 +89,233 @@ methods::setGeneric(
 )
 
 # =========================================================
-# Internal: TABULAR implementation (pure tabular + legacy)
+# Internal helpers (minimal, self-contained for spatial paths)
 # =========================================================
-.pa_inputData_tabular_impl <- function(pu, features, dist_features, boundary = NULL, ...) {
 
-  dots <- list(...)
-  `%||%` <- function(a, b) if (!is.null(a)) a else b
+.pa_is_raster_path <- function(x) {
+  is.character(x) && length(x) == 1L && !is.na(x) && file.exists(x) &&
+    grepl("\\.(tif|tiff|grd|img|nc|asc|sdat)$", tolower(x))
+}
 
-  # -------------------------
-  # Detect legacy inputs
-  # -------------------------
-  has_legacy <- !is.null(dots$threats) || !is.null(dots$dist_threats) || !is.null(dots$sensitivity)
+.pa_is_vector_path <- function(x) {
+  is.character(x) && length(x) == 1L && !is.na(x) && file.exists(x) &&
+    grepl("\\.(gpkg|shp|geojson|json|gml|kml)$", tolower(x))
+}
 
-  format <- dots$format %||% "auto"
-  if (!format %in% c("auto", "new", "legacy")) {
-    stop("`format` must be one of: 'auto', 'new', 'legacy'.", call. = FALSE)
+.pa_read_rast <- function(x) {
+  if (!requireNamespace("terra", quietly = TRUE)) return(NULL)
+  if (inherits(x, "SpatRaster")) return(x)
+  if (.pa_is_raster_path(x)) {
+    out <- tryCatch(terra::rast(x), error = function(e) NULL)
+    return(out)
   }
-  if (format == "new" && has_legacy) {
-    stop("You provided legacy inputs (threats/dist_threats/sensitivity) but format='new'.", call. = FALSE)
+  NULL
+}
+
+.pa_read_vect <- function(x) {
+  if (!requireNamespace("terra", quietly = TRUE)) return(NULL)
+  if (inherits(x, "SpatVector")) return(x)
+  if (inherits(x, "sf")) return(tryCatch(terra::vect(x), error = function(e) NULL))
+  if (.pa_is_vector_path(x)) {
+    out <- tryCatch(terra::vect(x), error = function(e) NULL)
+    return(out)
   }
-  if (format == "legacy" && (!is.data.frame(dots$threats) || !is.data.frame(dots$dist_threats))) {
-    stop("format='legacy' requires `threats` and `dist_threats` (data.frame) in ...", call. = FALSE)
-  }
+  NULL
+}
 
-  pu_coords <- NULL
+.pa_fun_from_name <- function(x) {
+  x <- match.arg(x, c("mean", "sum"))
+  if (identical(x, "mean")) return(function(v) mean(v, na.rm = TRUE))
+  function(v) sum(v, na.rm = TRUE)
+}
 
+# Grid adjacency builder for raster-cell mode
+.pa_boundary_from_grid <- function(template_r, idx_cells, mode = c("rook", "queen")) {
+  mode <- match.arg(mode)
 
-  # helper: coerce ids to integer safely
-  .as_int_id <- function(x, what) {
-    if (is.factor(x)) x <- as.character(x)
-    if (is.character(x)) {
-      if (any(grepl("[^0-9\\-]", x))) {
-        stop(what, " must be numeric/integer ids (got non-numeric strings).", call. = FALSE)
-      }
-      x <- as.integer(x)
-    } else {
-      x <- as.integer(x)
+  ncell <- terra::ncell(template_r)
+  ncol  <- terra::ncol(template_r)
+  nrow  <- terra::nrow(template_r)
+
+  cell_to_pu <- integer(ncell)
+  cell_to_pu[idx_cells] <- seq_along(idx_cells)
+
+  rc <- terra::rowColFromCell(template_r, idx_cells)
+  r <- rc[, 1]; c <- rc[, 2]
+  base_cell <- idx_cells
+
+  offsets <- c(-1L, 1L, -ncol, ncol)
+  if (mode == "queen") offsets <- c(offsets, -ncol-1L, -ncol+1L, ncol-1L, ncol+1L)
+
+  id1_all <- integer(0)
+  id2_all <- integer(0)
+
+  for (off in offsets) {
+    nb_cell <- base_cell + off
+
+    inb <- nb_cell >= 1L & nb_cell <= ncell
+
+    if (off %in% c(-1L, -ncol-1L, ncol-1L)) inb <- inb & (c > 1L)
+    if (off %in% c(1L, -ncol+1L, ncol+1L))   inb <- inb & (c < ncol)
+    if (off %in% c(-ncol, -ncol-1L, -ncol+1L)) inb <- inb & (r > 1L)
+    if (off %in% c(ncol, ncol-1L, ncol+1L))     inb <- inb & (r < nrow)
+
+    nb_cell <- nb_cell[inb]
+    id1 <- cell_to_pu[base_cell[inb]]
+    id2 <- cell_to_pu[nb_cell]
+
+    keep <- id2 != 0L
+    id1 <- id1[keep]; id2 <- id2[keep]
+
+    swap <- id1 > id2
+    if (any(swap)) {
+      tmp <- id1[swap]
+      id1[swap] <- id2[swap]
+      id2[swap] <- tmp
     }
-    if (anyNA(x)) stop(what, " contains NA after coercion to integer.", call. = FALSE)
-    x
+
+    keep2 <- id1 < id2
+    if (any(keep2)) {
+      id1_all <- c(id1_all, id1[keep2])
+      id2_all <- c(id2_all, id2[keep2])
+    }
   }
 
-  # =========================
-  # PU: validate + normalize
-  # =========================
-  assertthat::assert_that(
-    inherits(pu, "data.frame"),
-    assertthat::has_name(pu, "id"),
-    nrow(pu) > 0,
-    assertthat::noNA(pu$id)
+  if (!length(id1_all)) return(NULL)
+
+  boundary_df <- data.frame(id1 = id1_all, id2 = id2_all, boundary = 1, stringsAsFactors = FALSE)
+
+  key <- paste(boundary_df$id1, boundary_df$id2, sep = "||")
+  if (anyDuplicated(key)) boundary_df <- stats::aggregate(boundary ~ id1 + id2, boundary_df, sum)
+
+  boundary_df
+}
+
+# =========================================================
+# Internal: fast raster-cell implementation (1 PU per valid cell)
+# =========================================================
+.pa_inputData_raster_cells_impl <- function(
+    pu,
+    features,
+    cost,
+    boundary = c("none", "auto", "rook", "queen"),
+    pu_status = NULL,
+    ...
+) {
+  if (!requireNamespace("terra", quietly = TRUE)) {
+    stop("Raster-cell mode requires the 'terra' package.", call. = FALSE)
+  }
+
+  boundary <- match.arg(boundary)
+
+  pu_r   <- .pa_read_rast(pu)
+  feat_r <- .pa_read_rast(features)
+  cost_r <- .pa_read_rast(cost)
+
+  if (is.null(pu_r) || is.null(feat_r) || is.null(cost_r)) {
+    stop(
+      "Raster-cell mode requires `pu`, `features`, and `cost` to be terra::SpatRaster ",
+      "objects or valid raster file paths.",
+      call. = FALSE
+    )
+  }
+  if (terra::nlyr(cost_r) != 1) stop("`cost` raster must have exactly 1 layer.", call. = FALSE)
+
+  if (!terra::compareGeom(pu_r, cost_r, stopOnError = FALSE) ||
+      !terra::compareGeom(pu_r, feat_r, stopOnError = FALSE)) {
+    stop("`pu`, `features`, and `cost` rasters must share extent/resolution/CRS.", call. = FALSE)
+  }
+
+  # valid = inside mask AND finite cost AND cost > 0
+  cvals <- terra::values(cost_r, mat = FALSE)
+  ok <- !is.na(terra::values(pu_r, mat = FALSE)) & !is.na(cvals) & is.finite(cvals) & (cvals > 0)
+
+  idx_cells <- which(ok)
+  if (!length(idx_cells)) {
+    stop("No valid cells found after applying mask and cost rules (cost must be finite and > 0).", call. = FALSE)
+  }
+
+  # pu table
+  pu_df <- data.frame(
+    id = seq_along(idx_cells),
+    cost = cvals[idx_cells],
+    locked_in = FALSE,
+    locked_out = FALSE,
+    stringsAsFactors = FALSE
   )
 
-  pu$id <- .as_int_id(pu$id, "pu$id")
-  if (anyDuplicated(pu$id) != 0) stop("pu$id must be unique.", call. = FALSE)
+  # optional status raster: 2 locked_in, 3 locked_out
+  if (!is.null(pu_status)) {
+    st_r <- .pa_read_rast(pu_status)
+    if (is.null(st_r) || terra::nlyr(st_r) != 1) {
+      stop("In raster-cell mode, `pu_status` must be a single-layer SpatRaster or raster file path.", call. = FALSE)
+    }
+    if (!terra::compareGeom(pu_r, st_r, stopOnError = FALSE)) {
+      stop("`pu_status` raster must match `pu` geometry.", call. = FALSE)
+    }
+    st <- terra::values(st_r, mat = FALSE)[idx_cells]
+    pu_df$locked_in  <- st == 2
+    pu_df$locked_out <- st == 3
+    if (any(pu_df$locked_in & pu_df$locked_out, na.rm = TRUE)) {
+      stop("Some cells are both locked_in and locked_out (status raster inconsistent).", call. = FALSE)
+    }
+  }
 
-  # accept cost or monitoring_cost -> normalize to cost
-  if ("cost" %in% names(pu)) {
-    assertthat::assert_that(is.numeric(pu$cost), assertthat::noNA(pu$cost))
-  } else if ("monitoring_cost" %in% names(pu)) {
-    assertthat::assert_that(is.numeric(pu$monitoring_cost), assertthat::noNA(pu$monitoring_cost))
-    pu$cost <- pu$monitoring_cost
+  # coordinates (cell centers)
+  xy <- terra::xyFromCell(cost_r, idx_cells)
+  pu_coords <- data.frame(id = pu_df$id, x = xy[, 1], y = xy[, 2], stringsAsFactors = FALSE)
+
+  # features table + dist_features (read once, subset valid cells)
+  feat_names <- names(feat_r)
+  if (is.null(feat_names) || any(feat_names == "")) {
+    feat_names <- paste0("feature.", seq_len(terra::nlyr(feat_r)))
+  }
+  features_df <- data.frame(
+    id = seq_len(terra::nlyr(feat_r)),
+    name = feat_names,
+    stringsAsFactors = FALSE
+  )
+
+  M <- terra::values(feat_r, mat = TRUE)
+  M <- M[idx_cells, , drop = FALSE]
+  M[is.na(M)] <- 0
+
+  w <- which(M > 0, arr.ind = TRUE)
+  dist_features_df <- if (!nrow(w)) {
+    data.frame(pu = integer(0), feature = integer(0), amount = numeric(0))
   } else {
-    stop("pu must contain either a 'cost' column or a 'monitoring_cost' column.", call. = FALSE)
-  }
-
-  # locks: accept locked_in/locked_out or status (Marxan style)
-  has_locked_cols <- ("locked_in" %in% names(pu)) || ("locked_out" %in% names(pu))
-  if (has_locked_cols) {
-    if (!("locked_in" %in% names(pu))) pu$locked_in <- FALSE
-    if (!("locked_out" %in% names(pu))) pu$locked_out <- FALSE
-    pu$locked_in  <- as.logical(pu$locked_in)
-    pu$locked_out <- as.logical(pu$locked_out)
-  } else if ("status" %in% names(pu)) {
-    pu$status <- as.integer(pu$status)
-    pu$locked_in  <- pu$status == 2L
-    pu$locked_out <- pu$status == 3L
-  } else {
-    pu$locked_in  <- FALSE
-    pu$locked_out <- FALSE
-  }
-
-  if (any(pu$locked_in & pu$locked_out, na.rm = TRUE)) {
-    stop("Some planning units are both locked_in and locked_out. Please fix pu input.", call. = FALSE)
-  }
-
-  # optional: store coordinates if present (tabular users)
-  if (all(c("x", "y") %in% names(pu))) {
-    pu_coords <- data.frame(
-      id = pu$id,
-      x  = as.numeric(pu$x),
-      y  = as.numeric(pu$y),
+    data.frame(
+      pu = w[, 1],
+      feature = w[, 2],
+      amount = M[w],
       stringsAsFactors = FALSE
     )
-    if (any(!is.finite(pu_coords$x) | !is.finite(pu_coords$y))) {
-      stop("pu$x/pu$y contain non-finite values.", call. = FALSE)
+  }
+
+  # boundary
+  boundary_df <- NULL
+  if (is.character(boundary)) {
+    if (boundary == "auto") boundary <- "rook"
+    if (boundary %in% c("rook", "queen")) {
+      boundary_df <- .pa_boundary_from_grid(cost_r, idx_cells, mode = boundary)
     }
   }
 
-
-  pu <- pu[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
-  pu <- pu[order(pu$id), , drop = FALSE]
-
-  # internal ids + lookup
-  pu$internal_id <- seq_len(nrow(pu))
-  pu_index <- stats::setNames(pu$internal_id, as.character(pu$id))
-
-  # =========================
-  # FEATURES: validate + normalize
-  # =========================
-  assertthat::assert_that(
-    inherits(features, "data.frame"),
-    assertthat::has_name(features, "id"),
-    nrow(features) > 0,
-    assertthat::noNA(features$id)
+  # build via stable tabular impl (your existing function)
+  x <- .pa_inputData_tabular_impl(
+    pu = pu_df,
+    features = features_df,
+    dist_features = dist_features_df,
+    boundary = boundary_df,
+    ...
   )
 
-  features$id <- .as_int_id(features$id, "features$id")
-  if (anyDuplicated(features$id) != 0) stop("features$id must be unique.", call. = FALSE)
-
-  if (!("name" %in% names(features))) {
-    features$name <- paste0("feature.", seq_len(nrow(features)))
-  } else {
-    features$name <- as.character(features$name)
-    assertthat::assert_that(assertthat::noNA(features$name))
-    if (anyDuplicated(features$name) != 0) stop("features$name must be unique.", call. = FALSE)
-  }
-
-  # legacy-only: require targets
-  if ((format == "legacy") || (format == "auto" && has_legacy)) {
-    if (!("target_recovery" %in% names(features))) {
-      stop("Legacy mode requires features$target_recovery.", call. = FALSE)
-    }
-    assertthat::assert_that(is.numeric(features$target_recovery), assertthat::noNA(features$target_recovery))
-    if (!("target_conservation" %in% names(features))) features$target_conservation <- 0
-    assertthat::assert_that(is.numeric(features$target_conservation), assertthat::noNA(features$target_conservation))
-  }
-
-  features <- features[, c("id", "name", setdiff(names(features), c("id", "name"))), drop = FALSE]
-  features <- features[order(features$id), , drop = FALSE]
-
-  features$internal_id <- seq_len(nrow(features))
-  feature_index <- stats::setNames(features$internal_id, as.character(features$id))
-
-  # =========================
-  # DIST_FEATURES: validate + normalize
-  # =========================
-  assertthat::assert_that(
-    inherits(dist_features, "data.frame"),
-    assertthat::has_name(dist_features, "pu"),
-    assertthat::has_name(dist_features, "feature"),
-    assertthat::has_name(dist_features, "amount"),
-    nrow(dist_features) > 0,
-    assertthat::noNA(dist_features$pu),
-    assertthat::noNA(dist_features$feature),
-    assertthat::noNA(dist_features$amount),
-    is.numeric(dist_features$amount),
-    all(dist_features$amount >= 0)
-  )
-
-  dist_features$pu      <- .as_int_id(dist_features$pu, "dist_features$pu")
-  dist_features$feature <- .as_int_id(dist_features$feature, "dist_features$feature")
-
-  if (!all(dist_features$pu %in% pu$id)) {
-    bad <- unique(dist_features$pu[!dist_features$pu %in% pu$id])
-    stop("dist_features contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
-  }
-  if (!all(dist_features$feature %in% features$id)) {
-    bad <- unique(dist_features$feature[!dist_features$feature %in% features$id])
-    stop("dist_features contains unknown feature ids: ", paste(bad, collapse = ", "), call. = FALSE)
-  }
-
-  dist_features <- dist_features[dist_features$amount != 0, , drop = FALSE]
-
-  key <- paste(dist_features$pu, dist_features$feature, sep = "||")
-  if (anyDuplicated(key) != 0) stop("There are duplicate (pu, feature) pairs in dist_features.", call. = FALSE)
-
-  dist_features$internal_pu      <- unname(pu_index[as.character(dist_features$pu)])
-  dist_features$internal_feature <- unname(feature_index[as.character(dist_features$feature)])
-
-  dist_features <- dist_features[order(dist_features$internal_pu, dist_features$internal_feature), , drop = FALSE]
-  dist_features$internal_row <- seq_len(nrow(dist_features))
-
-  # =========================
-  # BOUNDARY: validate + normalize
-  # =========================
-  assertthat::assert_that(inherits(boundary, c("NULL", "data.frame")))
-  if (inherits(boundary, "data.frame")) {
-    assertthat::assert_that(
-      assertthat::has_name(boundary, "id1"),
-      assertthat::has_name(boundary, "id2"),
-      assertthat::has_name(boundary, "boundary"),
-      assertthat::noNA(boundary$id1),
-      assertthat::noNA(boundary$id2),
-      assertthat::noNA(boundary$boundary),
-      is.numeric(boundary$boundary)
-    )
-
-    boundary$id1 <- .as_int_id(boundary$id1, "boundary$id1")
-    boundary$id2 <- .as_int_id(boundary$id2, "boundary$id2")
-    boundary$boundary <- base::round(as.numeric(boundary$boundary), 3)
-
-    if (!all(boundary$id1 %in% pu$id) || !all(boundary$id2 %in% pu$id)) {
-      warning("boundary contains PU ids not present in pu; they will be removed.", call. = FALSE, immediate. = TRUE)
-      keep <- boundary$id1 %in% pu$id & boundary$id2 %in% pu$id
-      boundary <- boundary[keep, , drop = FALSE]
-    }
-
-    if (nrow(boundary) == 0) boundary <- NULL
-  }
-
-  # =========================
-  # rounding
-  # =========================
-  pu$cost <- base::round(pu$cost, 3)
-  dist_features$amount <- base::round(dist_features$amount, 3)
-
-  # =========================
-  # useful warnings
-  # =========================
-  dif_pu <- setdiff(unique(pu$id), unique(dist_features$pu))
-  if (length(dif_pu) != 0L) {
-    warning(
-      paste0("The following pu's do not contain features: ", paste(dif_pu, collapse = " ")),
-      call. = FALSE, immediate. = TRUE
-    )
-  }
-
-  dif_features <- setdiff(unique(features$id), unique(dist_features$feature))
-  if (length(dif_features) != 0L) {
-    warning(
-      paste0("The following features are not represented in dist_features: ", paste(dif_features, collapse = " ")),
-      call. = FALSE, immediate. = TRUE
-    )
-  }
-
-  # =========================
-  # LEGACY BLOCK (optional)
-  # =========================
-  threats <- NULL
-  dist_threats <- NULL
-  sensitivity <- NULL
-  threat_index <- NULL
-
-  if ((format == "legacy") || (format == "auto" && has_legacy)) {
-
-    threats <- dots$threats
-    dist_threats <- dots$dist_threats
-    sensitivity <- dots$sensitivity %||% NULL
-
-    if (!inherits(threats, "data.frame") || !inherits(dist_threats, "data.frame")) {
-      stop("Legacy inputs require `threats` and `dist_threats` as data.frame (passed via ...).", call. = FALSE)
-    }
-
-    # ---- threats
-    assertthat::assert_that(
-      assertthat::has_name(threats, "id"),
-      nrow(threats) > 0,
-      assertthat::noNA(threats$id)
-    )
-    threats$id <- .as_int_id(threats$id, "threats$id")
-    if (anyDuplicated(threats$id) != 0) stop("threats$id must be unique.", call. = FALSE)
-
-    if (!("name" %in% names(threats))) threats$name <- paste0("threat.", seq_len(nrow(threats)))
-    threats$name <- as.character(threats$name)
-    if (anyDuplicated(threats$name) != 0) stop("threats$name must be unique.", call. = FALSE)
-
-    if (!("blm_actions" %in% names(threats))) threats$blm_actions <- 0
-    assertthat::assert_that(is.numeric(threats$blm_actions), all(threats$blm_actions >= 0))
-
-    threats <- threats[order(threats$id), , drop = FALSE]
-    threats$internal_id <- seq_len(nrow(threats))
-    threat_index <- stats::setNames(threats$internal_id, as.character(threats$id))
-
-    # ---- dist_threats
-    assertthat::assert_that(
-      assertthat::has_name(dist_threats, "pu"),
-      assertthat::has_name(dist_threats, "threat"),
-      assertthat::has_name(dist_threats, "amount"),
-      assertthat::has_name(dist_threats, "action_cost"),
-      nrow(dist_threats) > 0,
-      assertthat::noNA(dist_threats$pu),
-      assertthat::noNA(dist_threats$threat),
-      assertthat::noNA(dist_threats$amount),
-      assertthat::noNA(dist_threats$action_cost),
-      is.numeric(dist_threats$amount),
-      is.numeric(dist_threats$action_cost),
-      all(dist_threats$amount >= 0)
-    )
-
-    dist_threats$pu     <- .as_int_id(dist_threats$pu, "dist_threats$pu")
-    dist_threats$threat <- .as_int_id(dist_threats$threat, "dist_threats$threat")
-
-    if (!all(dist_threats$pu %in% pu$id)) {
-      bad <- unique(dist_threats$pu[!dist_threats$pu %in% pu$id])
-      stop("dist_threats contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
-    }
-    if (!all(dist_threats$threat %in% threats$id)) {
-      bad <- unique(dist_threats$threat[!dist_threats$threat %in% threats$id])
-      stop("dist_threats contains unknown threat ids: ", paste(bad, collapse = ", "), call. = FALSE)
-    }
-
-    # status handling (optional)
-    if ("status" %in% names(dist_threats)) {
-      dist_threats$status <- as.integer(dist_threats$status)
-      ok <- dist_threats$status %in% c(0L, 2L, 3L)
-      if (!all(ok, na.rm = TRUE)) stop("dist_threats$status must be in {0,2,3}.", call. = FALSE)
-
-      locked_out_pus <- pu$id[pu$locked_out]
-      if (length(locked_out_pus)) {
-        idx <- dist_threats$pu %in% locked_out_pus & dist_threats$status == 2L
-        if (any(idx, na.rm = TRUE)) {
-          warning("Some actions were locked-in inside locked-out PU(s); setting them to locked-out.", call. = FALSE, immediate. = TRUE)
-          dist_threats$status[idx] <- 3L
-        }
-        idx2 <- dist_threats$pu %in% locked_out_pus
-        dist_threats$status[idx2] <- 3L
-      }
-    } else {
-      dist_threats$status <- 0L
-    }
-
-    dist_threats <- dist_threats[dist_threats$amount != 0, , drop = FALSE]
-    key_t <- paste(dist_threats$pu, dist_threats$threat, sep = "||")
-    if (anyDuplicated(key_t) != 0) stop("There are duplicate (pu, threat) pairs in dist_threats.", call. = FALSE)
-
-    dist_threats$internal_pu <- unname(pu_index[as.character(dist_threats$pu)])
-    dist_threats$internal_threat <- unname(threat_index[as.character(dist_threats$threat)])
-
-    # ---- sensitivity
-    if (is.null(sensitivity)) {
-      sensitivity <- base::expand.grid(feature = features$id, threat = threats$id)
-    } else {
-      assertthat::assert_that(
-        inherits(sensitivity, "data.frame"),
-        assertthat::has_name(sensitivity, "feature"),
-        assertthat::has_name(sensitivity, "threat"),
-        nrow(sensitivity) > 0,
-        assertthat::noNA(sensitivity$feature),
-        assertthat::noNA(sensitivity$threat)
-      )
-    }
-
-    sensitivity$feature <- .as_int_id(sensitivity$feature, "sensitivity$feature")
-    sensitivity$threat  <- .as_int_id(sensitivity$threat,  "sensitivity$threat")
-
-    sensitivity <- sensitivity[sensitivity$feature %in% features$id & sensitivity$threat %in% threats$id, , drop = FALSE]
-    if (nrow(sensitivity) == 0) stop("After filtering, sensitivity has 0 valid rows.", call. = FALSE)
-
-    if (!("delta1" %in% names(sensitivity))) sensitivity$delta1 <- 0
-    if (!("delta2" %in% names(sensitivity))) sensitivity$delta2 <- NA
-    if (!("delta3" %in% names(sensitivity))) sensitivity$delta3 <- 0
-    if (!("delta4" %in% names(sensitivity))) sensitivity$delta4 <- 1
-
-    sensitivity$delta1[is.na(sensitivity$delta1)] <- 0
-    sensitivity$delta3[is.na(sensitivity$delta3)] <- 0
-    sensitivity$delta4[is.na(sensitivity$delta4)] <- 1
-
-    max_int <- stats::aggregate(dist_threats$amount, by = list(threat = dist_threats$threat), FUN = max)
-    names(max_int)[2] <- "max_amount"
-    idx_map <- match(sensitivity$threat, max_int$threat)
-    fill_vals <- max_int$max_amount[idx_map]
-    sensitivity$delta2[is.na(sensitivity$delta2)] <- fill_vals[is.na(sensitivity$delta2)]
-
-    if (!all(sensitivity$delta2 > sensitivity$delta1)) stop("Each delta2 must be > delta1.", call. = FALSE)
-    if (!all(sensitivity$delta4 > sensitivity$delta3)) stop("Each delta4 must be > delta3.", call. = FALSE)
-
-    sensitivity$internal_feature <- unname(feature_index[as.character(sensitivity$feature)])
-    sensitivity$internal_threat  <- unname(threat_index[as.character(sensitivity$threat)])
-
-    threats$blm_actions <- base::round(threats$blm_actions, 3)
-    dist_threats$amount <- base::round(dist_threats$amount, 3)
-    dist_threats$action_cost <- base::round(dist_threats$action_cost, 3)
-    sensitivity$delta1 <- base::round(sensitivity$delta1, 3)
-    sensitivity$delta2 <- base::round(sensitivity$delta2, 3)
-    sensitivity$delta3 <- base::round(sensitivity$delta3, 3)
-    sensitivity$delta4 <- base::round(sensitivity$delta4, 3)
-
-    if (isTRUE(dots$warn_legacy %||% TRUE)) {
-      if (requireNamespace("lifecycle", quietly = TRUE)) {
-        lifecycle::deprecate_warn(
-          when = "1.0.1",
-          what = "inputData()",
-          with = "add_actions()",
-          details = paste(
-            "Legacy inputs detected (threats/dist_threats/sensitivity).",
-            "New workflow example:",
-            "inputData(...) %>% add_actions(...) %>% add_effects(...) %>% solve()"
-          )
-        )
-      } else {
-        warning(
-          "Legacy inputs detected (threats/dist_threats/sensitivity). Consider migrating to the new format.",
-          call. = FALSE, immediate. = TRUE
-        )
-      }
-    }
-  }
-
-  # =========================
-  # build Data object (FIXED: assign to x and return it)
-  # =========================
-  x <- pproto(
-    NULL, Data,
-    data = list(
-      pu = pu,
-      features = features,
-      dist_features = dist_features,
-
-      # ---- NEW: spatial storage
-      pu_coords = pu_coords,
-      spatial_relations = list(),
-
-      # legacy (optional)
-      threats = threats,
-      dist_threats = dist_threats,
-      sensitivity = sensitivity,
-
-      index = list(
-        pu = pu_index,
-        feature = feature_index,
-        threat = threat_index,
-        feature_name_to_id = stats::setNames(features$id, features$name)
-      ),
-
-      meta = list(
-        input_format = if ((format == "legacy") || (format == "auto" && has_legacy)) "legacy" else "new",
-        dist_features_meaning = "baseline_amount",
-        dist_benefit_meaning  = "delta_by_default"
-      ),
-
-      # new workflow placeholders
-      actions = NULL,
-      dist_actions = NULL,
-      dist_benefit = NULL,
-      locked_actions = NULL,
-      targets = NULL,
-      objective = NULL,
-      decisions = NULL,
-      solver = NULL
-    )
-  )
-
-
-  # =========================
-  # boundary -> spatial relation ("boundary")
-  # =========================
-  if (!is.null(boundary) && inherits(boundary, "data.frame") && nrow(boundary) > 0) {
-
-    rel <- data.frame(
-      internal_pu1 = unname(pu_index[as.character(boundary$id1)]),
-      internal_pu2 = unname(pu_index[as.character(boundary$id2)]),
-      weight       = as.numeric(boundary$boundary),
-      source       = "boundary_table",
-      stringsAsFactors = FALSE
-    )
-
-    # por si acaso (aunque ya filtraste ids), chequeo defensivo:
-    if (anyNA(rel$internal_pu1) || anyNA(rel$internal_pu2)) {
-      stop("boundary contains PU ids not present in pu (after filtering).", call. = FALSE)
-    }
-
-    rel <- .pa_validate_relation(rel, n_pu = nrow(pu), allow_self = FALSE, dup_agg = "sum")
-    rel$relation_name <- "boundary"
-
-    if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
-      x$data$spatial_relations <- list()
-    }
-    x$data$spatial_relations[["boundary"]] <- rel
-  }
+  # store raster artifacts for later spatial ops (optional but useful)
+  x$data$pu_coords <- pu_coords
+  x$data$cell_index <- idx_cells
+  x$data$pu_raster_mask <- pu_r
+  x$data$cost_raster <- cost_r
+  x$data$features_raster <- feat_r
 
   x
 }
@@ -514,7 +341,6 @@ methods::setMethod(
     cost_aggregation = c("mean", "sum"),
     ...
   ) {
-    # ignore spatial-only args in tabular mode
     .pa_inputData_tabular_impl(
       pu = pu,
       features = features,
@@ -527,6 +353,8 @@ methods::setMethod(
 
 # =========================================================
 # Method: SPATIAL inputs (dist_features missing)
+# This method routes to raster-cell mode when pu+features are rasters,
+# otherwise uses your existing vector-PU spatial workflow.
 # =========================================================
 #' @export
 #' @rdname inputData
@@ -551,30 +379,60 @@ methods::setMethod(
     if (is.null(cost)) {
       stop(
         "Spatial mode: `dist_features` is missing, so you must provide `cost` ",
-        "(either a PU column name for vector PUs, or a raster/file path).",
+        "(either a PU column name for vector PUs, or a raster/file path for spatial rasters).",
         call. = FALSE
       )
     }
     if (!requireNamespace("terra", quietly = TRUE)) {
       stop("Spatial mode requires the 'terra' package. Please install it.", call. = FALSE)
     }
+
+    # -----------------------------------------------------
+    # Route 1: Raster-cell fast mode (pu and features are rasters or raster paths)
+    # -----------------------------------------------------
+    pu_is_r <- inherits(pu, "SpatRaster") || .pa_is_raster_path(pu)
+    ft_is_r <- inherits(features, "SpatRaster") || .pa_is_raster_path(features)
+
+    if (pu_is_r && ft_is_r) {
+      # boundary: accept "auto"/"none"/"rook"/"queen" in this mode
+      b <- boundary
+      if (is.null(b)) b <- "none"
+      if (is.character(b) && !(b %in% c("auto", "none", "rook", "queen"))) {
+        stop("Raster-cell mode: boundary must be one of 'auto', 'none', 'rook', 'queen' (or NULL).", call. = FALSE)
+      }
+      return(
+        .pa_inputData_raster_cells_impl(
+          pu = pu,
+          features = features,
+          cost = cost,
+          boundary = if (is.null(b)) "none" else b,
+          pu_status = pu_status,
+          ...
+        )
+      )
+    }
+
+    # -----------------------------------------------------
+    # Route 2: Vector-PU spatial mode (your existing logic)
+    # -----------------------------------------------------
+    fun_cost <- .pa_fun_from_name(cost_aggregation)
+
     if (!(is.null(boundary) || is.character(boundary) || is.data.frame(boundary))) {
       stop("boundary must be NULL, 'auto', or a data.frame.", call. = FALSE)
     }
 
-    fun_cost <- .fun_from_name(cost_aggregation)
-
-    # ---- read pu
+    # ---- read pu as raster->polygons OR as vector
     pu_r <- NULL
     pu_v <- NULL
 
-    if (inherits(pu, "SpatRaster") || .is_raster_path(pu)) {
-      pu_r <- .read_rast(pu)
+    if (inherits(pu, "SpatRaster") || .pa_is_raster_path(pu)) {
+      pu_r <- .pa_read_rast(pu)
       pu_r <- terra::round(pu_r)
       pu_v <- terra::as.polygons(pu_r, dissolve = TRUE, values = TRUE, na.rm = TRUE)
       names(pu_v) <- pu_id_col
     } else {
-      pu_v <- .read_vect(pu)
+      pu_v <- .pa_read_vect(pu)
+      if (is.null(pu_v)) stop("Could not read `pu` as a vector layer.", call. = FALSE)
 
       if (!(pu_id_col %in% names(pu_v))) {
         if (identical(pu_id_col, "id")) {
@@ -600,13 +458,12 @@ methods::setMethod(
     names(pu_df)[names(pu_df) == pu_id_col] <- "id"
     pu_df$id <- as.integer(round(pu_df$id))
     pu_df <- pu_df[order(pu_df$id), , drop = FALSE]
-    if (!("id" %in% names(pu_df))) stop("Could not find planning unit ids.", call. = FALSE)
 
     # ---- cost
     if (is.character(cost) && (cost %in% names(pu_df))) {
       pu_df$cost <- pu_df[[cost]]
     } else {
-      cost_r <- .read_rast(cost)
+      cost_r <- .pa_read_rast(cost)
       if (is.null(cost_r)) {
         stop("You must provide 'cost' either as a column name in pu (vector) or as a raster/file path.", call. = FALSE)
       }
@@ -615,23 +472,21 @@ methods::setMethod(
       pu_df$cost <- cost_ex[[2]]
     }
 
-    # ---- locks (prefer columns if present)
+    # ---- locks
     pu_df$locked_in  <- FALSE
     pu_df$locked_out <- FALSE
-
-    if (locked_in_col %in% names(pu_df)) {
-      pu_df$locked_in <- as.logical(pu_df[[locked_in_col]])
-    }
-    if (locked_out_col %in% names(pu_df)) {
-      pu_df$locked_out <- as.logical(pu_df[[locked_out_col]])
-    }
+    if (locked_in_col %in% names(pu_df))  pu_df$locked_in  <- as.logical(pu_df[[locked_in_col]])
+    if (locked_out_col %in% names(pu_df)) pu_df$locked_out <- as.logical(pu_df[[locked_out_col]])
 
     # optional pu_status (0/2/3) only fills missing locks
-    if (!is.null(pu_status) && !(locked_in_col %in% names(pu_df)) && !(locked_out_col %in% names(pu_df))) {
+    if (!is.null(pu_status) &&
+        !(locked_in_col %in% names(pu_df)) &&
+        !(locked_out_col %in% names(pu_df))) {
+
       if (is.character(pu_status) && (pu_status %in% names(pu_df))) {
         st <- pu_df[[pu_status]]
       } else {
-        st_r <- .read_rast(pu_status)
+        st_r <- .pa_read_rast(pu_status)
         if (is.null(st_r)) stop("pu_status must be a column name or a raster/file path.", call. = FALSE)
         st_ex <- terra::extract(st_r, pu_v, fun = terra::modal, na.rm = TRUE)
         st <- st_ex[[2]]
@@ -644,7 +499,7 @@ methods::setMethod(
       stop("Some planning units are both locked_in and locked_out. Please fix your inputs.", call. = FALSE)
     }
 
-    # ---- centroid coordinates (terra-only, no sf required)
+    # ---- centroid coordinates
     ctr <- terra::centroids(pu_v)
     xy  <- terra::crds(ctr)
     pu_coords <- data.frame(
@@ -656,8 +511,8 @@ methods::setMethod(
 
     pu_df <- pu_df[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
 
-    # ---- features + dist_features (sum by PU)
-    feat_r <- .read_rast(features)
+    # ---- features + dist_features
+    feat_r <- .pa_read_rast(features)
     if (is.null(feat_r)) {
       stop(
         "Spatial mode: `features` must be a terra::SpatRaster (or raster file path) with one layer per feature.\n",
@@ -739,27 +594,19 @@ methods::setMethod(
       ...
     )
 
-    # store centroid coords (for knn/distance relations without sf)
     x$data$pu_coords <- pu_coords
 
-    # ensure spatial_relations container exists (defensive)
     if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
       x$data$spatial_relations <- list()
     }
 
-    # ---- store spatial artifacts (optional)
     if (!is.null(pu_r)) x$data$pu_raster_id <- pu_r
 
     if (requireNamespace("sf", quietly = TRUE)) {
       pu_sf_store <- tryCatch(sf::st_as_sf(pu_v), error = function(e) NULL)
       if (!is.null(pu_sf_store)) {
-
-        if (pu_id_col %in% names(pu_sf_store)) {
-          names(pu_sf_store)[names(pu_sf_store) == pu_id_col] <- "id"
-        }
-        if (!("id" %in% names(pu_sf_store))) {
-          pu_sf_store$id <- seq_len(nrow(pu_sf_store))
-        }
+        if (pu_id_col %in% names(pu_sf_store)) names(pu_sf_store)[names(pu_sf_store) == pu_id_col] <- "id"
+        if (!("id" %in% names(pu_sf_store))) pu_sf_store$id <- seq_len(nrow(pu_sf_store))
 
         pu_sf_store <- pu_sf_store[, "id", drop = FALSE]
         ord <- match(x$data$pu$id, pu_sf_store$id)

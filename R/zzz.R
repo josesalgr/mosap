@@ -5,6 +5,10 @@
   library.dynam.unload("prioriactions", libpath)
 }
 
+.onLoad <- function(libname, pkgname) {
+  requireNamespace("Rcpp", quietly = TRUE)
+}
+
 .onAttach <- function(libname, pkgname) {
   # define message generator function
   msg <- function() {

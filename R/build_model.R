@@ -361,24 +361,71 @@
   x$data$dist_actions_model <- da
 
   # dist_effects model-ready
-  # dist_effects model-ready (MUST carry internal_pu/internal_action)
   de <- x$data$dist_effects
   if (.has_rows(de) && .has_rows(da)) {
+
     n_before <- nrow(de)
 
-    if ("pu" %in% names(de)) de$pu <- as.integer(de$pu)
-    if ("action" %in% names(de)) de$action <- as.character(de$action)
+    # tipos base
+    if ("pu" %in% names(de))      de$pu      <- as.integer(de$pu)
+    if ("action" %in% names(de))  de$action  <- as.character(de$action)
+    if ("feature" %in% names(de)) de$feature <- as.integer(de$feature)
 
-    da_key <- da[, intersect(names(da), c("pu","action","internal_pu","internal_action","internal_row")), drop = FALSE]
-
-    # join keeps internal ids for C++
-    de <- dplyr::inner_join(de, da_key, by = c("pu","action"))
+    # filtra a (pu, action) factibles
+    de <- dplyr::inner_join(
+      de,
+      da[, c("pu", "action"), drop = FALSE],
+      by = c("pu", "action")
+    )
 
     n_after <- nrow(de)
     dropped <- n_before - n_after
     if (dropped > 0) x <- .pa_log_add(x, "filtered_effects_rows", dropped)
+
+    # --- NEW: asegurar columnas internas (legacy-safe)
+    pu_map <- x$data$pu[, c("id", "internal_id")]
+    act_map <- x$data$actions[, c("id", "internal_id")]
+    feat_map <- x$data$features[, c("id", "internal_id")]
+
+    # internal_pu
+    if (!("internal_pu" %in% names(de))) {
+      de$internal_pu <- pu_map$internal_id[match(de$pu, pu_map$id)]
+    } else {
+      de$internal_pu <- as.integer(de$internal_pu)
+    }
+
+    # internal_action
+    if (!("internal_action" %in% names(de))) {
+      de$internal_action <- act_map$internal_id[match(de$action, act_map$id)]
+    } else {
+      de$internal_action <- as.integer(de$internal_action)
+    }
+
+    # internal_feature
+    if (!("internal_feature" %in% names(de))) {
+      # ojo: algunas tablas legacy pueden usar "feature" como id
+      if (!("feature" %in% names(de))) {
+        .pa_abort("dist_effects must contain column 'feature' (feature id) to derive internal_feature in legacy mode.")
+      }
+      de$internal_feature <- feat_map$internal_id[match(de$feature, feat_map$id)]
+    } else {
+      de$internal_feature <- as.integer(de$internal_feature)
+    }
+
+    # chequeos (si hay NA, es que hay ids que no matchean con pu/actions/features)
+    if (anyNA(de$internal_pu)) {
+      .pa_abort("dist_effects has pu ids not found in x$data$pu$id (cannot derive internal_pu).")
+    }
+    if (anyNA(de$internal_action)) {
+      .pa_abort("dist_effects has action ids not found in x$data$actions$id (cannot derive internal_action).")
+    }
+    if (anyNA(de$internal_feature)) {
+      .pa_abort("dist_effects has feature ids not found in x$data$features$id (cannot derive internal_feature).")
+    }
   }
   x$data$dist_effects_model <- de
+
+
 
   # dist_benefit_model derived (now has internal_* too)
   db <- NULL

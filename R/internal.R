@@ -1193,13 +1193,16 @@ available_to_solve <- function(package = ""){
 .is_raster_path <- function(x) {
   is.character(x) && grepl("\\.(tif|tiff|grd|asc|nc)$", tolower(x))
 }
+
 .fun_from_name <- function(name) {
   switch(
     name,
-    mean = function(v) mean(v, na.rm = TRUE),
-    sum  = function(v) sum(v, na.rm = TRUE)
+    mean = function(v, ...) mean(v, na.rm = TRUE),
+    sum  = function(v, ...) sum(v, na.rm = TRUE),
+    stop("Unknown aggregation function: ", name, call. = FALSE)
   )
 }
+
 
 .pa_has_coords <- function(x) {
   is.list(x$data) && !is.null(x$data$pu_coords) &&
@@ -1942,25 +1945,18 @@ available_to_solve <- function(package = ""){
     ml <- rcpp_optimization_problem_as_list(x$data$model_ptr)
   }
 
-  n_pu <- as.integer(ml$n_pu %||% 0L)
-  n_x  <- as.integer(ml$n_x  %||% 0L)
-  n_z  <- as.integer(ml$n_z  %||% 0L)
+  # --- fallbacks if model metadata missing
+  pu_df <- x$data$pu
+  da_df <- x$data$dist_actions_model %||% x$data$dist_actions
+  df_df <- x$data$dist_features
 
-  # NEW auxiliaries
-  n_y_pu <- as.integer(ml$n_y_pu %||% 0L)
-  n_y_action <- as.integer(ml$n_y_action %||% 0L)
-  n_u_intervention <- as.integer(ml$n_u_intervention %||% 0L)
-  n_y_intervention <- as.integer(ml$n_y_intervention %||% 0L)
+  n_pu <- as.integer(ml$n_pu %||% nrow(pu_df) %||% 0L)
+  n_x  <- as.integer(ml$n_x  %||% (if (inherits(da_df, "data.frame")) nrow(da_df) else 0L))
+  n_z  <- as.integer(ml$n_z  %||% (if (inherits(df_df, "data.frame")) nrow(df_df) else 0L))
 
   w_off <- as.integer(ml$w_offset %||% 0L)
   x_off <- as.integer(ml$x_offset %||% 0L)
   z_off <- as.integer(ml$z_offset %||% 0L)
-
-  # NEW offsets
-  y_pu_off <- as.integer(ml$y_pu_offset %||% 0L)
-  y_action_off <- as.integer(ml$y_action_offset %||% 0L)
-  u_int_off <- as.integer(ml$u_intervention_offset %||% 0L)
-  y_int_off <- as.integer(ml$y_intervention_offset %||% 0L)
 
   # --- safe slice helper
   slice_safe <- function(v, start1, end1) {
@@ -1976,36 +1972,43 @@ available_to_solve <- function(package = ""){
   xv <- if (n_x  > 0L) slice_safe(sol, x_off + 1L, x_off + n_x ) else numeric(0)
   zv <- if (n_z  > 0L) slice_safe(sol, z_off + 1L, z_off + n_z ) else numeric(0)
 
-  # NEW: auxiliary var slices
-  y_pu <- if (n_y_pu > 0L) slice_safe(sol, y_pu_off + 1L, y_pu_off + n_y_pu) else numeric(0)
-  y_action <- if (n_y_action > 0L) slice_safe(sol, y_action_off + 1L, y_action_off + n_y_action) else numeric(0)
-  u_int <- if (n_u_intervention > 0L) slice_safe(sol, u_int_off + 1L, u_int_off + n_u_intervention) else numeric(0)
-  y_int <- if (n_y_intervention > 0L) slice_safe(sol, y_int_off + 1L, y_int_off + n_y_intervention) else numeric(0)
-
   # -------------------------
   # 1) PU selection table
   # -------------------------
-  pu <- x$data$pu
-  pu_out <- pu
-  pu_out$selected <- as.integer(w > threshold)
+  pu_out <- pu_df
+
+  if (!inherits(pu_out, "data.frame") || nrow(pu_out) == 0) {
+    pu_out <- data.frame()
+  } else {
+    if (length(w) != nrow(pu_out)) {
+      warning(
+        "Mismatch: nrow(pu) = ", nrow(pu_out),
+        " but length(w slice) = ", length(w),
+        ". Setting pu$selected = NA.",
+        call. = FALSE
+      )
+      pu_out$selected <- rep(NA_integer_, nrow(pu_out))
+    } else {
+      pu_out$selected <- as.integer(w > threshold)
+    }
+  }
 
   # -------------------------
   # 2) Actions selection table
   # -------------------------
-  da <- x$data$dist_actions_model %||% x$data$dist_actions
-  da_out <- da
+  da_out <- da_df
 
   if (!inherits(da_out, "data.frame") || nrow(da_out) == 0) {
     da_out <- data.frame()
   } else {
-    if (nrow(da_out) != length(xv)) {
+    if (length(xv) != nrow(da_out)) {
       warning(
         "Mismatch: nrow(dist_actions_model) = ", nrow(da_out),
         " but length(x slice) = ", length(xv),
-        ". Setting selected = NA.",
+        ". Setting actions$selected = NA.",
         call. = FALSE
       )
-      da_out$selected <- NA_integer_
+      da_out$selected <- rep(NA_integer_, nrow(da_out))
     } else {
       da_out$selected <- as.integer(xv > threshold)
     }
@@ -2016,7 +2019,7 @@ available_to_solve <- function(package = ""){
       if (anyDuplicated(key_da)) {
         stop(
           "dist_actions_model has duplicated (internal_pu, internal_action) pairs. ",
-          "This breaks mapping of benefits->x. Fix upstream (ensure unique feasible pairs).",
+          "This breaks mapping of effects->x. Fix upstream (ensure unique feasible pairs).",
           call. = FALSE
         )
       }
@@ -2026,7 +2029,7 @@ available_to_solve <- function(package = ""){
   # -------------------------
   # 3) Features achieved (baseline + recovery + total)
   # -------------------------
-  df <- x$data$dist_features
+  df <- df_df
   feats <- x$data$features
 
   # baseline from z
@@ -2044,9 +2047,16 @@ available_to_solve <- function(package = ""){
       data = df2,
       FUN = sum
     )
+  } else if (!is.null(df) && inherits(df, "data.frame") && nrow(df) > 0 && length(zv) != nrow(df)) {
+    warning(
+      "Mismatch: nrow(dist_features) = ", nrow(df),
+      " but length(z slice) = ", length(zv),
+      ". baseline_contrib set to 0.",
+      call. = FALSE
+    )
   }
 
-  # recovery from effects/benefits (respect columns if defined)
+  # recovery from effects/benefit-loss (respect objective column if configured)
   args  <- x$data$model_args %||% list()
   oid   <- args$objective_id %||% NA_character_
   oargs <- args$objective_args %||% list()
@@ -2054,16 +2064,14 @@ available_to_solve <- function(package = ""){
   de <- x$data$dist_effects_model %||% x$data$dist_effects
 
   value_col <- if (identical(oid, "min_loss")) {
-    oargs$loss_col %||% "loss"
+    as.character(oargs$loss_col %||% "loss")[1]
   } else {
-    oargs$benefit_col %||% "benefit"
+    as.character(oargs$benefit_col %||% "benefit")[1]
   }
 
   rec_by_feat <- data.frame(internal_feature = integer(0), recovery_contrib = numeric(0))
 
-  # If objective is representation, there is no action-based recovery component.
-  if (!identical(oid, "max_representation") &&
-      !is.null(de) && inherits(de, "data.frame") && nrow(de) > 0 &&
+  if (!is.null(de) && inherits(de, "data.frame") && nrow(de) > 0 &&
       length(xv) > 0 &&
       all(c("internal_pu","internal_action","internal_feature") %in% names(de)) &&
       value_col %in% names(de) &&
@@ -2087,6 +2095,18 @@ available_to_solve <- function(package = ""){
       xrow <- xrow[ok]
     }
 
+    # IMPORTANT: guard if xrow indexes exceed xv
+    ok2 <- xrow >= 1L & xrow <= length(xv)
+    if (!all(ok2)) {
+      warning(
+        sum(!ok2),
+        " mapped x rows fall outside the x slice (length(x) = ", length(xv), "); ignored.",
+        call. = FALSE
+      )
+      de <- de[ok2, , drop = FALSE]
+      xrow <- xrow[ok2]
+    }
+
     rec_contrib <- as.numeric(de[[value_col]]) * as.numeric(xv[xrow])
 
     tmp <- data.frame(
@@ -2097,17 +2117,21 @@ available_to_solve <- function(package = ""){
   }
 
   # merge feature summary
-  feat_tbl <- data.frame(
-    internal_feature = as.integer(feats$internal_id),
-    feature = as.character(feats$name),
-    stringsAsFactors = FALSE
-  )
+  if (is.null(feats) || !inherits(feats, "data.frame") || nrow(feats) == 0) {
+    feat_tbl <- data.frame()
+  } else {
+    feat_tbl <- data.frame(
+      internal_feature = as.integer(feats$internal_id),
+      feature = as.character(feats$name),
+      stringsAsFactors = FALSE
+    )
 
-  feat_tbl <- dplyr::left_join(feat_tbl, base_by_feat, by = "internal_feature")
-  feat_tbl <- dplyr::left_join(feat_tbl, rec_by_feat,  by = "internal_feature")
-  feat_tbl$baseline_contrib[is.na(feat_tbl$baseline_contrib)] <- 0
-  feat_tbl$recovery_contrib[is.na(feat_tbl$recovery_contrib)] <- 0
-  feat_tbl$total <- feat_tbl$baseline_contrib + feat_tbl$recovery_contrib
+    feat_tbl <- dplyr::left_join(feat_tbl, base_by_feat, by = "internal_feature")
+    feat_tbl <- dplyr::left_join(feat_tbl, rec_by_feat,  by = "internal_feature")
+    feat_tbl$baseline_contrib[is.na(feat_tbl$baseline_contrib)] <- 0
+    feat_tbl$recovery_contrib[is.na(feat_tbl$recovery_contrib)] <- 0
+    feat_tbl$total <- feat_tbl$baseline_contrib + feat_tbl$recovery_contrib
+  }
 
   # -------------------------
   # 4) Targets summary (si existen)
@@ -2116,7 +2140,8 @@ available_to_solve <- function(package = ""){
   tgt_out <- NULL
 
   if (inherits(tgt, "data.frame") && nrow(tgt) > 0 &&
-      all(c("feature","type","target_value") %in% names(tgt))) {
+      all(c("feature","type","target_value") %in% names(tgt)) &&
+      inherits(feat_tbl, "data.frame") && nrow(feat_tbl) > 0) {
 
     tgt2 <- tgt
     tgt2$feature <- as.integer(tgt2$feature)
@@ -2137,109 +2162,13 @@ available_to_solve <- function(package = ""){
     tgt_out$gap <- tgt_out$achieved - tgt_out$target_value
   }
 
-  # -------------------------
-  # 5) Aux tables for fragmentation/debug
-  # -------------------------
-  aux <- list()
-
-  rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
-  rel_model <- NULL
-
-  if (!is.null(x$data$spatial_relations_model) &&
-      is.list(x$data$spatial_relations_model) &&
-      !is.null(x$data$spatial_relations_model[[rel_name]])) {
-    rel_model <- x$data$spatial_relations_model[[rel_name]]
-  } else if (!is.null(x$data$spatial_relations) &&
-             is.list(x$data$spatial_relations) &&
-             !is.null(x$data$spatial_relations[[rel_name]])) {
-    rel_model <- x$data$spatial_relations[[rel_name]]
-  }
-
-  # (A) PU fragmentation edges: y_pu aligned with relation edges
-  if (length(y_pu) > 0 &&
-      inherits(rel_model, "data.frame") &&
-      nrow(rel_model) == length(y_pu) &&
-      all(c("internal_pu1","internal_pu2","weight") %in% names(rel_model))) {
-
-    aux$fragmentation_pu_edges <- data.frame(
-      internal_edge = seq_len(nrow(rel_model)),
-      internal_pu1  = as.integer(rel_model$internal_pu1),
-      internal_pu2  = as.integer(rel_model$internal_pu2),
-      weight        = as.numeric(rel_model$weight),
-      y             = as.numeric(y_pu),
-      cut           = as.integer(y_pu > threshold),
-      stringsAsFactors = FALSE
-    )
-  }
-
-  # (B) Action fragmentation: y_action is (edge, action_used) with e-major ordering
-  if (length(y_action) > 0 &&
-      inherits(rel_model, "data.frame") &&
-      all(c("internal_pu1","internal_pu2","weight") %in% names(rel_model))) {
-
-    m_edges <- nrow(rel_model)
-
-    # infer action list used in the objective (default: all)
-    actions_used <- oargs$actions_to_use %||% NULL
-    if (!is.null(actions_used)) {
-      A <- as.integer(actions_used)
-      A <- A[!is.na(A)]
-      A <- A[A >= 1L]
-    } else {
-      n_actions <- if (!is.null(x$data$actions) && inherits(x$data$actions, "data.frame")) nrow(x$data$actions) else 0L
-      A <- if (n_actions > 0L) seq_len(n_actions) else integer(0)
-    }
-
-    if (m_edges > 0L && length(A) > 0L && length(y_action) == (m_edges * length(A))) {
-      aux$fragmentation_action_edges <- data.frame(
-        internal_edge   = rep.int(seq_len(m_edges), each = length(A)),
-        internal_action = rep.int(A, times = m_edges),
-        internal_pu1    = rep.int(as.integer(rel_model$internal_pu1), each = length(A)),
-        internal_pu2    = rep.int(as.integer(rel_model$internal_pu2), each = length(A)),
-        weight          = rep.int(as.numeric(rel_model$weight), each = length(A)),
-        y               = as.numeric(y_action),
-        cut             = as.integer(y_action > threshold),
-        stringsAsFactors = FALSE
-      )
-    }
-  }
-
-  # (C) Intervention fragmentation: u_i per PU
-  if (length(u_int) > 0L && nrow(pu_out) == length(u_int)) {
-    aux$intervention_u <- data.frame(
-      internal_pu = seq_len(nrow(pu_out)),
-      u           = as.numeric(u_int),
-      intervened  = as.integer(u_int > threshold),
-      stringsAsFactors = FALSE
-    )
-  }
-
-  # (D) Intervention fragmentation edges: y_int aligned with relation edges
-  if (length(y_int) > 0 &&
-      inherits(rel_model, "data.frame") &&
-      nrow(rel_model) == length(y_int) &&
-      all(c("internal_pu1","internal_pu2","weight") %in% names(rel_model))) {
-
-    aux$fragmentation_intervention_edges <- data.frame(
-      internal_edge = seq_len(nrow(rel_model)),
-      internal_pu1  = as.integer(rel_model$internal_pu1),
-      internal_pu2  = as.integer(rel_model$internal_pu2),
-      weight        = as.numeric(rel_model$weight),
-      y             = as.numeric(y_int),
-      cut           = as.integer(y_int > threshold),
-      stringsAsFactors = FALSE
-    )
-  }
-
   list(
     pu = pu_out,
     actions = da_out,
     features = feat_tbl,
-    targets = tgt_out,
-    aux = aux
+    targets = tgt_out
   )
 }
-
 
 
 # -------------------------------------------------------------------------
@@ -2554,5 +2483,551 @@ available_to_solve <- function(package = ""){
   }
 
   model
+}
+
+
+# -------------------------------------------------------------------------
+# Internal helpers spatial relations
+# -------------------------------------------------------------------------
+.pa_inputData_tabular_impl <- function(pu, features, dist_features, boundary = NULL, ...) {
+
+  dots <- list(...)
+  `%||%` <- function(a, b) if (!is.null(a)) a else b
+
+  # -------------------------
+  # Detect legacy inputs
+  # -------------------------
+  has_legacy <- !is.null(dots$threats) || !is.null(dots$dist_threats) || !is.null(dots$sensitivity)
+
+  format <- dots$format %||% "auto"
+  if (!format %in% c("auto", "new", "legacy")) {
+    stop("`format` must be one of: 'auto', 'new', 'legacy'.", call. = FALSE)
+  }
+  if (format == "new" && has_legacy) {
+    stop("You provided legacy inputs (threats/dist_threats/sensitivity) but format='new'.", call. = FALSE)
+  }
+  if (format == "legacy" && (!is.data.frame(dots$threats) || !is.data.frame(dots$dist_threats))) {
+    stop("format='legacy' requires `threats` and `dist_threats` (data.frame) in ...", call. = FALSE)
+  }
+
+  pu_coords <- NULL
+
+
+  # helper: coerce ids to integer safely
+  .as_int_id <- function(x, what) {
+    if (is.factor(x)) x <- as.character(x)
+    if (is.character(x)) {
+      if (any(grepl("[^0-9\\-]", x))) {
+        stop(what, " must be numeric/integer ids (got non-numeric strings).", call. = FALSE)
+      }
+      x <- as.integer(x)
+    } else {
+      x <- as.integer(x)
+    }
+    if (anyNA(x)) stop(what, " contains NA after coercion to integer.", call. = FALSE)
+    x
+  }
+
+  # =========================
+  # PU: validate + normalize
+  # =========================
+  assertthat::assert_that(
+    inherits(pu, "data.frame"),
+    assertthat::has_name(pu, "id"),
+    nrow(pu) > 0,
+    assertthat::noNA(pu$id)
+  )
+
+  pu$id <- .as_int_id(pu$id, "pu$id")
+  if (anyDuplicated(pu$id) != 0) stop("pu$id must be unique.", call. = FALSE)
+
+  # accept cost or monitoring_cost -> normalize to cost
+  if ("cost" %in% names(pu)) {
+    assertthat::assert_that(is.numeric(pu$cost), assertthat::noNA(pu$cost))
+  } else if ("monitoring_cost" %in% names(pu)) {
+    assertthat::assert_that(is.numeric(pu$monitoring_cost), assertthat::noNA(pu$monitoring_cost))
+    pu$cost <- pu$monitoring_cost
+  } else {
+    stop("pu must contain either a 'cost' column or a 'monitoring_cost' column.", call. = FALSE)
+  }
+
+  # locks: accept locked_in/locked_out or status (Marxan style)
+  has_locked_cols <- ("locked_in" %in% names(pu)) || ("locked_out" %in% names(pu))
+  if (has_locked_cols) {
+    if (!("locked_in" %in% names(pu))) pu$locked_in <- FALSE
+    if (!("locked_out" %in% names(pu))) pu$locked_out <- FALSE
+    pu$locked_in  <- as.logical(pu$locked_in)
+    pu$locked_out <- as.logical(pu$locked_out)
+  } else if ("status" %in% names(pu)) {
+    pu$status <- as.integer(pu$status)
+    pu$locked_in  <- pu$status == 2L
+    pu$locked_out <- pu$status == 3L
+  } else {
+    pu$locked_in  <- FALSE
+    pu$locked_out <- FALSE
+  }
+
+  if (any(pu$locked_in & pu$locked_out, na.rm = TRUE)) {
+    stop("Some planning units are both locked_in and locked_out. Please fix pu input.", call. = FALSE)
+  }
+
+  # optional: store coordinates if present (tabular users)
+  if (all(c("x", "y") %in% names(pu))) {
+    pu_coords <- data.frame(
+      id = pu$id,
+      x  = as.numeric(pu$x),
+      y  = as.numeric(pu$y),
+      stringsAsFactors = FALSE
+    )
+    if (any(!is.finite(pu_coords$x) | !is.finite(pu_coords$y))) {
+      stop("pu$x/pu$y contain non-finite values.", call. = FALSE)
+    }
+  }
+
+
+  pu <- pu[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
+  pu <- pu[order(pu$id), , drop = FALSE]
+
+  # internal ids + lookup
+  pu$internal_id <- seq_len(nrow(pu))
+  pu_index <- stats::setNames(pu$internal_id, as.character(pu$id))
+
+  # =========================
+  # FEATURES: validate + normalize
+  # =========================
+  assertthat::assert_that(
+    inherits(features, "data.frame"),
+    assertthat::has_name(features, "id"),
+    nrow(features) > 0,
+    assertthat::noNA(features$id)
+  )
+
+  features$id <- .as_int_id(features$id, "features$id")
+  if (anyDuplicated(features$id) != 0) stop("features$id must be unique.", call. = FALSE)
+
+  if (!("name" %in% names(features))) {
+    features$name <- paste0("feature.", seq_len(nrow(features)))
+  } else {
+    features$name <- as.character(features$name)
+    assertthat::assert_that(assertthat::noNA(features$name))
+    if (anyDuplicated(features$name) != 0) stop("features$name must be unique.", call. = FALSE)
+  }
+
+  # legacy-only: require targets
+  if ((format == "legacy") || (format == "auto" && has_legacy)) {
+    if (!("target_recovery" %in% names(features))) {
+      stop("Legacy mode requires features$target_recovery.", call. = FALSE)
+    }
+    assertthat::assert_that(is.numeric(features$target_recovery), assertthat::noNA(features$target_recovery))
+    if (!("target_conservation" %in% names(features))) features$target_conservation <- 0
+    assertthat::assert_that(is.numeric(features$target_conservation), assertthat::noNA(features$target_conservation))
+  }
+
+  features <- features[, c("id", "name", setdiff(names(features), c("id", "name"))), drop = FALSE]
+  features <- features[order(features$id), , drop = FALSE]
+
+  features$internal_id <- seq_len(nrow(features))
+  feature_index <- stats::setNames(features$internal_id, as.character(features$id))
+
+  # =========================
+  # DIST_FEATURES: validate + normalize
+  # =========================
+  assertthat::assert_that(
+    inherits(dist_features, "data.frame"),
+    assertthat::has_name(dist_features, "pu"),
+    assertthat::has_name(dist_features, "feature"),
+    assertthat::has_name(dist_features, "amount"),
+    nrow(dist_features) > 0,
+    assertthat::noNA(dist_features$pu),
+    assertthat::noNA(dist_features$feature),
+    assertthat::noNA(dist_features$amount),
+    is.numeric(dist_features$amount),
+    all(dist_features$amount >= 0)
+  )
+
+  dist_features$pu      <- .as_int_id(dist_features$pu, "dist_features$pu")
+  dist_features$feature <- .as_int_id(dist_features$feature, "dist_features$feature")
+
+  if (!all(dist_features$pu %in% pu$id)) {
+    bad <- unique(dist_features$pu[!dist_features$pu %in% pu$id])
+    stop("dist_features contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
+  }
+  if (!all(dist_features$feature %in% features$id)) {
+    bad <- unique(dist_features$feature[!dist_features$feature %in% features$id])
+    stop("dist_features contains unknown feature ids: ", paste(bad, collapse = ", "), call. = FALSE)
+  }
+
+  dist_features <- dist_features[dist_features$amount != 0, , drop = FALSE]
+
+  key <- paste(dist_features$pu, dist_features$feature, sep = "||")
+  if (anyDuplicated(key) != 0) stop("There are duplicate (pu, feature) pairs in dist_features.", call. = FALSE)
+
+  dist_features$internal_pu      <- unname(pu_index[as.character(dist_features$pu)])
+  dist_features$internal_feature <- unname(feature_index[as.character(dist_features$feature)])
+
+  dist_features <- dist_features[order(dist_features$internal_pu, dist_features$internal_feature), , drop = FALSE]
+  dist_features$internal_row <- seq_len(nrow(dist_features))
+
+  # =========================
+  # BOUNDARY: validate + normalize
+  # =========================
+  assertthat::assert_that(inherits(boundary, c("NULL", "data.frame")))
+  if (inherits(boundary, "data.frame")) {
+    assertthat::assert_that(
+      assertthat::has_name(boundary, "id1"),
+      assertthat::has_name(boundary, "id2"),
+      assertthat::has_name(boundary, "boundary"),
+      assertthat::noNA(boundary$id1),
+      assertthat::noNA(boundary$id2),
+      assertthat::noNA(boundary$boundary),
+      is.numeric(boundary$boundary)
+    )
+
+    boundary$id1 <- .as_int_id(boundary$id1, "boundary$id1")
+    boundary$id2 <- .as_int_id(boundary$id2, "boundary$id2")
+    # boundary$boundary <- base::round(as.numeric(boundary$boundary), 3)
+
+    if (!all(boundary$id1 %in% pu$id) || !all(boundary$id2 %in% pu$id)) {
+      warning("boundary contains PU ids not present in pu; they will be removed.", call. = FALSE, immediate. = TRUE)
+      keep <- boundary$id1 %in% pu$id & boundary$id2 %in% pu$id
+      boundary <- boundary[keep, , drop = FALSE]
+    }
+
+    if (nrow(boundary) == 0) boundary <- NULL
+  }
+
+  # =========================
+  # rounding
+  # =========================
+  # pu$cost <- base::round(pu$cost, 3)
+  # dist_features$amount <- base::round(dist_features$amount, 3)
+
+  # =========================
+  # useful warnings
+  # =========================
+  dif_pu <- setdiff(unique(pu$id), unique(dist_features$pu))
+  if (length(dif_pu) != 0L) {
+    warning(
+      paste0("The following pu's do not contain features: ", paste(dif_pu, collapse = " ")),
+      call. = FALSE, immediate. = TRUE
+    )
+  }
+
+  dif_features <- setdiff(unique(features$id), unique(dist_features$feature))
+  if (length(dif_features) != 0L) {
+    warning(
+      paste0("The following features are not represented in dist_features: ", paste(dif_features, collapse = " ")),
+      call. = FALSE, immediate. = TRUE
+    )
+  }
+
+  # =========================
+  # LEGACY BLOCK (optional)
+  # =========================
+  threats <- NULL
+  dist_threats <- NULL
+  sensitivity <- NULL
+  threat_index <- NULL
+
+  if ((format == "legacy") || (format == "auto" && has_legacy)) {
+
+    threats <- dots$threats
+    dist_threats <- dots$dist_threats
+    sensitivity <- dots$sensitivity %||% NULL
+
+    if (!inherits(threats, "data.frame") || !inherits(dist_threats, "data.frame")) {
+      stop("Legacy inputs require `threats` and `dist_threats` as data.frame (passed via ...).", call. = FALSE)
+    }
+
+    # ---- threats
+    assertthat::assert_that(
+      assertthat::has_name(threats, "id"),
+      nrow(threats) > 0,
+      assertthat::noNA(threats$id)
+    )
+    threats$id <- .as_int_id(threats$id, "threats$id")
+    if (anyDuplicated(threats$id) != 0) stop("threats$id must be unique.", call. = FALSE)
+
+    if (!("name" %in% names(threats))) threats$name <- paste0("threat.", seq_len(nrow(threats)))
+    threats$name <- as.character(threats$name)
+    if (anyDuplicated(threats$name) != 0) stop("threats$name must be unique.", call. = FALSE)
+
+    if (!("blm_actions" %in% names(threats))) threats$blm_actions <- 0
+    assertthat::assert_that(is.numeric(threats$blm_actions), all(threats$blm_actions >= 0))
+
+    threats <- threats[order(threats$id), , drop = FALSE]
+    threats$internal_id <- seq_len(nrow(threats))
+    threat_index <- stats::setNames(threats$internal_id, as.character(threats$id))
+
+    # ---- dist_threats
+    assertthat::assert_that(
+      assertthat::has_name(dist_threats, "pu"),
+      assertthat::has_name(dist_threats, "threat"),
+      assertthat::has_name(dist_threats, "amount"),
+      assertthat::has_name(dist_threats, "action_cost"),
+      nrow(dist_threats) > 0,
+      assertthat::noNA(dist_threats$pu),
+      assertthat::noNA(dist_threats$threat),
+      assertthat::noNA(dist_threats$amount),
+      assertthat::noNA(dist_threats$action_cost),
+      is.numeric(dist_threats$amount),
+      is.numeric(dist_threats$action_cost),
+      all(dist_threats$amount >= 0)
+    )
+
+    dist_threats$pu     <- .as_int_id(dist_threats$pu, "dist_threats$pu")
+    dist_threats$threat <- .as_int_id(dist_threats$threat, "dist_threats$threat")
+
+    if (!all(dist_threats$pu %in% pu$id)) {
+      bad <- unique(dist_threats$pu[!dist_threats$pu %in% pu$id])
+      stop("dist_threats contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
+    }
+    if (!all(dist_threats$threat %in% threats$id)) {
+      bad <- unique(dist_threats$threat[!dist_threats$threat %in% threats$id])
+      stop("dist_threats contains unknown threat ids: ", paste(bad, collapse = ", "), call. = FALSE)
+    }
+
+    # status handling (optional)
+    if ("status" %in% names(dist_threats)) {
+      dist_threats$status <- as.integer(dist_threats$status)
+      ok <- dist_threats$status %in% c(0L, 2L, 3L)
+      if (!all(ok, na.rm = TRUE)) stop("dist_threats$status must be in {0,2,3}.", call. = FALSE)
+
+      locked_out_pus <- pu$id[pu$locked_out]
+      if (length(locked_out_pus)) {
+        idx <- dist_threats$pu %in% locked_out_pus & dist_threats$status == 2L
+        if (any(idx, na.rm = TRUE)) {
+          warning("Some actions were locked-in inside locked-out PU(s); setting them to locked-out.", call. = FALSE, immediate. = TRUE)
+          dist_threats$status[idx] <- 3L
+        }
+        idx2 <- dist_threats$pu %in% locked_out_pus
+        dist_threats$status[idx2] <- 3L
+      }
+    } else {
+      dist_threats$status <- 0L
+    }
+
+    dist_threats <- dist_threats[dist_threats$amount != 0, , drop = FALSE]
+    key_t <- paste(dist_threats$pu, dist_threats$threat, sep = "||")
+    if (anyDuplicated(key_t) != 0) stop("There are duplicate (pu, threat) pairs in dist_threats.", call. = FALSE)
+
+    dist_threats$internal_pu <- unname(pu_index[as.character(dist_threats$pu)])
+    dist_threats$internal_threat <- unname(threat_index[as.character(dist_threats$threat)])
+
+    # ---- sensitivity
+    if (is.null(sensitivity)) {
+      sensitivity <- base::expand.grid(feature = features$id, threat = threats$id)
+    } else {
+      assertthat::assert_that(
+        inherits(sensitivity, "data.frame"),
+        assertthat::has_name(sensitivity, "feature"),
+        assertthat::has_name(sensitivity, "threat"),
+        nrow(sensitivity) > 0,
+        assertthat::noNA(sensitivity$feature),
+        assertthat::noNA(sensitivity$threat)
+      )
+    }
+
+    sensitivity$feature <- .as_int_id(sensitivity$feature, "sensitivity$feature")
+    sensitivity$threat  <- .as_int_id(sensitivity$threat,  "sensitivity$threat")
+
+    sensitivity <- sensitivity[sensitivity$feature %in% features$id & sensitivity$threat %in% threats$id, , drop = FALSE]
+    if (nrow(sensitivity) == 0) stop("After filtering, sensitivity has 0 valid rows.", call. = FALSE)
+
+    if (!("delta1" %in% names(sensitivity))) sensitivity$delta1 <- 0
+    if (!("delta2" %in% names(sensitivity))) sensitivity$delta2 <- NA
+    if (!("delta3" %in% names(sensitivity))) sensitivity$delta3 <- 0
+    if (!("delta4" %in% names(sensitivity))) sensitivity$delta4 <- 1
+
+    sensitivity$delta1[is.na(sensitivity$delta1)] <- 0
+    sensitivity$delta3[is.na(sensitivity$delta3)] <- 0
+    sensitivity$delta4[is.na(sensitivity$delta4)] <- 1
+
+    max_int <- stats::aggregate(dist_threats$amount, by = list(threat = dist_threats$threat), FUN = max)
+    names(max_int)[2] <- "max_amount"
+    idx_map <- match(sensitivity$threat, max_int$threat)
+    fill_vals <- max_int$max_amount[idx_map]
+    sensitivity$delta2[is.na(sensitivity$delta2)] <- fill_vals[is.na(sensitivity$delta2)]
+
+    if (!all(sensitivity$delta2 > sensitivity$delta1)) stop("Each delta2 must be > delta1.", call. = FALSE)
+    if (!all(sensitivity$delta4 > sensitivity$delta3)) stop("Each delta4 must be > delta3.", call. = FALSE)
+
+    sensitivity$internal_feature <- unname(feature_index[as.character(sensitivity$feature)])
+    sensitivity$internal_threat  <- unname(threat_index[as.character(sensitivity$threat)])
+
+    # threats$blm_actions <- base::round(threats$blm_actions, 3)
+    # dist_threats$amount <- base::round(dist_threats$amount, 3)
+    # dist_threats$action_cost <- base::round(dist_threats$action_cost, 3)
+    # sensitivity$delta1 <- base::round(sensitivity$delta1, 3)
+    # sensitivity$delta2 <- base::round(sensitivity$delta2, 3)
+    # sensitivity$delta3 <- base::round(sensitivity$delta3, 3)
+    # sensitivity$delta4 <- base::round(sensitivity$delta4, 3)
+
+    if (isTRUE(dots$warn_legacy %||% TRUE)) {
+      if (requireNamespace("lifecycle", quietly = TRUE)) {
+        lifecycle::deprecate_warn(
+          when = "1.0.1",
+          what = "inputData()",
+          with = "add_actions()",
+          details = paste(
+            "Legacy inputs detected (threats/dist_threats/sensitivity).",
+            "New workflow example:",
+            "inputData(...) %>% add_actions(...) %>% add_effects(...) %>% solve()"
+          )
+        )
+      } else {
+        warning(
+          "Legacy inputs detected (threats/dist_threats/sensitivity). Consider migrating to the new format.",
+          call. = FALSE, immediate. = TRUE
+        )
+      }
+    }
+  }
+
+  # =========================
+  # build Data object (FIXED: assign to x and return it)
+  # =========================
+  x <- pproto(
+    NULL, Data,
+    data = list(
+      pu = pu,
+      features = features,
+      dist_features = dist_features,
+
+      # ---- NEW: spatial storage
+      pu_coords = pu_coords,
+      spatial_relations = list(),
+
+      # legacy (optional)
+      threats = threats,
+      dist_threats = dist_threats,
+      sensitivity = sensitivity,
+
+      index = list(
+        pu = pu_index,
+        feature = feature_index,
+        threat = threat_index,
+        feature_name_to_id = stats::setNames(features$id, features$name)
+      ),
+
+      meta = list(
+        input_format = if ((format == "legacy") || (format == "auto" && has_legacy)) "legacy" else "new",
+        dist_features_meaning = "baseline_amount",
+        dist_benefit_meaning  = "delta_by_default"
+      ),
+
+      # new workflow placeholders
+      actions = NULL,
+      dist_actions = NULL,
+      dist_benefit = NULL,
+      locked_actions = NULL,
+      targets = NULL,
+      objective = NULL,
+      decisions = NULL,
+      solver = NULL
+    )
+  )
+
+
+  # =========================
+  # boundary -> spatial relation ("boundary")
+  # =========================
+  if (!is.null(boundary) && inherits(boundary, "data.frame") && nrow(boundary) > 0) {
+
+    rel <- data.frame(
+      internal_pu1 = unname(pu_index[as.character(boundary$id1)]),
+      internal_pu2 = unname(pu_index[as.character(boundary$id2)]),
+      weight       = as.numeric(boundary$boundary),
+      source       = "boundary_table",
+      stringsAsFactors = FALSE
+    )
+
+    # por si acaso (aunque ya filtraste ids), chequeo defensivo:
+    if (anyNA(rel$internal_pu1) || anyNA(rel$internal_pu2)) {
+      stop("boundary contains PU ids not present in pu (after filtering).", call. = FALSE)
+    }
+
+    rel <- .pa_validate_relation(rel, n_pu = nrow(pu), allow_self = FALSE, dup_agg = "sum")
+    rel$relation_name <- "boundary"
+
+    if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
+      x$data$spatial_relations <- list()
+    }
+    x$data$spatial_relations[["boundary"]] <- rel
+  }
+
+  x
+}
+
+
+
+# -------------------------------------------------------------------------
+# Internal helpers objective relations
+# -------------------------------------------------------------------------
+.pa_register_objective <- function(x, alias, objective_id, model_type, objective_args, sense) {
+  stopifnot(inherits(x, "Data"))
+  if (is.null(alias)) return(x)
+
+  alias <- as.character(alias)[1]
+  if (!nzchar(alias)) stop("alias must be a non-empty string.", call. = FALSE)
+
+  sense <- as.character(sense)[1]
+  if (!sense %in% c("min", "max")) stop("sense must be 'min' or 'max'.", call. = FALSE)
+
+  if (is.null(x$data$mo_objectives) || !is.list(x$data$mo_objectives)) {
+    x$data$mo_objectives <- list()
+  }
+
+  if (!is.null(x$data$mo_objectives[[alias]])) {
+    stop("Objective alias '", alias, "' already exists. Use a different alias.", call. = FALSE)
+  }
+
+  x$data$mo_objectives[[alias]] <- list(
+    alias = alias,
+    objective_id = as.character(objective_id)[1],
+    model_type = as.character(model_type)[1],
+    objective_args = objective_args,
+    sense = sense
+  )
+
+  x
+}
+
+# internal registry for MO objectives inside Data
+.pa_init_mo_objectives <- function(x) {
+  if (is.null(x$data$mo_objectives) || !is.list(x$data$mo_objectives)) {
+    x$data$mo_objectives <- list()
+  }
+  x
+}
+
+
+.pa_get_objective_specs <- function(x) {
+  if (is.null(x$data$mo_objectives)) return(list())
+  x$data$mo_objectives
+}
+
+
+
+.pa_set_objective_linear <- function(x, obj, modelsense = c("min", "max")) {
+  stopifnot(inherits(x, "Data"))
+  modelsense <- match.arg(modelsense)
+
+  # guarda runtime update para que .pa_apply_runtime_updates_to_model() lo aplique
+  x$data$runtime_updates <- x$data$runtime_updates %||% list()
+  x$data$runtime_updates$obj <- as.numeric(obj)
+  x$data$runtime_updates$modelsense <- modelsense
+
+  # marca "dirty" para que se regenere model_list desde ptr si aplica (o solo runtime update)
+  x$data$meta$model_dirty <- TRUE
+  x
+}
+
+.pa_mark_mo_needs <- function(x, needs) {
+  stopifnot(inherits(x, "Data"))
+  x$data$mo <- x$data$mo %||% list()
+  x$data$mo$needs <- modifyList(x$data$mo$needs %||% list(), needs)
+  x$data$meta$model_dirty <- TRUE
+  x
 }
 

@@ -1,6 +1,5 @@
-## usethis namespace: start
+#' @importFrom Rcpp evalCpp
 #' @useDynLib prioriactions, .registration = TRUE
-## usethis namespace: end
 NULL
 
 #' @title Create and solve multi-actions planning problems
