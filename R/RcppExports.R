@@ -49,6 +49,14 @@ rcpp_add_linking_z_le_w <- function(x, dist_features_data, block_name = "linking
     .Call(`_prioriactions_rcpp_add_linking_z_le_w`, x, dist_features_data, block_name, tag)
 }
 
+rcpp_add_objective_min_cost <- function(x, pu_data, dist_actions_data, weight = 1.0, include_pu_cost = TRUE, include_action_cost = TRUE, block_name = "objective_add_min_cost", tag = "") {
+    .Call(`_prioriactions_rcpp_add_objective_min_cost`, x, pu_data, dist_actions_data, weight, include_pu_cost, include_action_cost, block_name, tag)
+}
+
+rcpp_add_objective_min_fragmentation <- function(x, relation_data, weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_fragmentation", tag = "") {
+    .Call(`_prioriactions_rcpp_add_objective_min_fragmentation`, x, relation_data, weight, weight_multiplier, block_name, tag)
+}
+
 rcpp_add_pu_locks <- function(x, pu_data, block_name = "pu_locks", tag = "") {
     .Call(`_prioriactions_rcpp_add_pu_locks`, x, pu_data, block_name, tag)
 }
@@ -83,6 +91,22 @@ rcpp_objective_max_coverage <- function(x, pu_data, features_data, dist_features
 
 rcpp_objective_min_set <- function(x, pu_data, threats_data, dist_threats_data, boundary_data, blm, curve, block_name = "objective_min_set", tag = "") {
     .Call(`_prioriactions_rcpp_objective_min_set`, x, pu_data, threats_data, dist_threats_data, boundary_data, blm, curve, block_name, tag)
+}
+
+rcpp_reset_objective <- function(x, modelsense = "min") {
+    invisible(.Call(`_prioriactions_rcpp_reset_objective`, x, modelsense))
+}
+
+rcpp_add_to_objective <- function(x, ind, val) {
+    invisible(.Call(`_prioriactions_rcpp_add_to_objective`, x, ind, val))
+}
+
+rcpp_add_to_objective_scalar <- function(x, ind1, val) {
+    invisible(.Call(`_prioriactions_rcpp_add_to_objective_scalar`, x, ind1, val))
+}
+
+rcpp_prepare_fragmentation_pu <- function(x, relation_data, block_name = "fragmentation_pu", tag = "") {
+    .Call(`_prioriactions_rcpp_prepare_fragmentation_pu`, x, relation_data, block_name, tag)
 }
 
 rcpp_set_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit", block_name = "objective_max_benefit", tag = "") {

@@ -2462,6 +2462,28 @@ available_to_solve <- function(package = ""){
     }
   }
 
+  # 3A) objetivo: override directo (vector obj completo)
+  # Esto es lo que necesita prioriactionsMO (weighted, etc.)
+  if (!is.null(upd$obj)) {
+    obj_new <- as.numeric(upd$obj)
+
+    if (length(obj_new) != length(model$obj)) {
+      stop(
+        "runtime_updates$obj length mismatch: ",
+        length(obj_new), " != ", length(model$obj),
+        call. = FALSE
+      )
+    }
+
+    model$obj <- obj_new
+
+    if (!is.null(upd$modelsense)) {
+      ms <- as.character(upd$modelsense)[1]
+      if (!ms %in% c("min", "max")) stop("runtime_updates$modelsense must be 'min' or 'max'.", call. = FALSE)
+      model$modelsense <- ms
+    }
+  }
+
   # 3) objetivo: swap por plantilla (vector obj completo)
   if (!is.null(upd$objective_template) && !is.null(reg$obj_templates)) {
     tpl <- reg$obj_templates[[upd$objective_template]]
@@ -2974,15 +2996,15 @@ available_to_solve <- function(package = ""){
   sense <- as.character(sense)[1]
   if (!sense %in% c("min", "max")) stop("sense must be 'min' or 'max'.", call. = FALSE)
 
-  if (is.null(x$data$mo_objectives) || !is.list(x$data$mo_objectives)) {
-    x$data$mo_objectives <- list()
+  if (is.null(x$data$objectives) || !is.list(x$data$objectives)) {
+    x$data$objectives <- list()
   }
 
-  if (!is.null(x$data$mo_objectives[[alias]])) {
+  if (!is.null(x$data$objectives[[alias]])) {
     stop("Objective alias '", alias, "' already exists. Use a different alias.", call. = FALSE)
   }
 
-  x$data$mo_objectives[[alias]] <- list(
+  x$data$objectives[[alias]] <- list(
     alias = alias,
     objective_id = as.character(objective_id)[1],
     model_type = as.character(model_type)[1],
@@ -2994,17 +3016,17 @@ available_to_solve <- function(package = ""){
 }
 
 # internal registry for MO objectives inside Data
-.pa_init_mo_objectives <- function(x) {
-  if (is.null(x$data$mo_objectives) || !is.list(x$data$mo_objectives)) {
-    x$data$mo_objectives <- list()
+.pa_init_objectives <- function(x) {
+  if (is.null(x$data$objectives) || !is.list(x$data$objectives)) {
+    x$data$objectives <- list()
   }
   x
 }
 
 
 .pa_get_objective_specs <- function(x) {
-  if (is.null(x$data$mo_objectives)) return(list())
-  x$data$mo_objectives
+  if (is.null(x$data$objectives)) return(list())
+  x$data$objectives
 }
 
 

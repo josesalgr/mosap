@@ -4,13 +4,16 @@
 \alias{add_objective_max_benefit}
 \title{add objective: maximize benefits}
 \usage{
-add_objective_max_benefit(x, benefit_col = "benefit")
+add_objective_max_benefit(x, benefit_col = "benefit", alias = NULL)
 }
 \arguments{
 \item{x}{A \code{\link{Data}} object created with \code{\link[=inputData]{inputData()}} / \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
 \item{benefit_col}{character. Name of the column in the benefit table (model-ready
 \code{dist_benefit_model}) containing numeric benefit values. Default is \code{"benefit"}.}
+
+\item{alias}{character or NULL. Optional unique identifier to register this objective
+as an atomic objective for multi-objective workflows.}
 }
 \value{
 Updated \code{\link{Data}} object.
@@ -21,10 +24,13 @@ materialized later when the optimization model is built (typically from \code{so
 
 This objective maximizes the total benefit delivered by selected actions, using the
 benefit values stored in \code{dist_benefit}.
+
+If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
+as an atomic objective for multi-objective workflows.
 }
 \details{
 This function does \strong{not} build or solve the optimization model.
-It only updates \code{x$data$model_args}:
+It updates \code{x$data$model_args}:
 \describe{
 \item{\code{model_type}}{\code{"maximizeBenefits"}}
 \item{\code{objective_id}}{\code{"max_benefit"}}
@@ -35,7 +41,8 @@ Notes:
 \itemize{
 \item The model builder will require \code{dist_benefit} to exist (typically created by
 \code{\link[=add_benefits]{add_benefits()}}) and will error if benefits are missing.
-\item If you call another objective setter afterwards, it will overwrite the previous objective.
+\item If you call another objective setter afterwards, it will overwrite the previous
+active (single-objective) objective in \code{x$data$model_args}.
 }
 }
 \examples{
@@ -43,10 +50,7 @@ Notes:
 x <- inputDataSpatial(pu = pu_sf, cost = "cost", features = feat_sf, pu_id_col = "id") \%>\%
   add_actions(actions_df) \%>\%
   add_benefits(benefits_df) \%>\%
-  add_objective_max_benefit()
-
-# Later:
-# sol <- solve(x)
+  add_objective_max_benefit(alias = "benefit")
 }
 
 }

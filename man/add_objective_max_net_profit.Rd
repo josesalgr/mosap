@@ -8,7 +8,8 @@ add_objective_max_net_profit(
   x,
   profit_col = "profit",
   include_pu_cost = TRUE,
-  include_action_cost = TRUE
+  include_action_cost = TRUE,
+  alias = NULL
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ Default \code{"profit"}.}
 \item{include_pu_cost}{logical. If \code{TRUE}, subtract planning-unit costs.}
 
 \item{include_action_cost}{logical. If \code{TRUE}, subtract action costs.}
+
+\item{alias}{character or NULL. Optional unique identifier to register this objective
+as an atomic objective for multi-objective workflows.}
 }
 \value{
 Updated \code{\link{Data}} object.
@@ -31,9 +35,15 @@ optimization model that \strong{maximizes net profit}, defined as:
 
 Profit is taken from \code{x$data$dist_profit} (created with \code{\link[=add_profit]{add_profit()}}).
 Costs are taken from \code{x$data$pu} (planning-unit costs) and \code{x$data$dist_actions} (action costs).
+
+If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
+as an atomic objective for multi-objective workflows.
 }
 \details{
 This function does \strong{not} build or solve the model. It only updates \code{x$data$model_args}.
 The model builder (called from \code{solve()}) must implement the corresponding objective
 (typically via one C++ routine that sets all objective coefficients).
+
+If you call another objective setter afterwards, it will overwrite the previous
+active (single-objective) objective in \code{x$data$model_args}.
 }

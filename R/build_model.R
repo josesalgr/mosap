@@ -63,6 +63,8 @@
   }
 
   .pa_check_single_objective <- function(args) {
+    if (isTRUE(args$mo_mode)) return(invisible(TRUE))
+
     if (is.null(args)) return(invisible(TRUE))
 
     if (!is.null(args$objectives)) {
@@ -203,24 +205,24 @@
     )
   }
 
-  # (B) Default targets from features ONLY if needed by objective
-  mtype_now <- x$data$model_args$model_type %||% "minimizeCosts"
-
-  need_targets <- identical(mtype_now, "minimizeCosts") &&
-    (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0)
+  # (B) Default targets from features whenever legacy targets exist and targets table is empty
+  targets_empty <- is.null(x$data$targets) ||
+    !inherits(x$data$targets, "data.frame") ||
+    nrow(x$data$targets) == 0
 
   has_legacy_targets_in_features <- !is.null(x$data$features) &&
     inherits(x$data$features, "data.frame") &&
     ("target_recovery" %in% names(x$data$features) || "target_conservation" %in% names(x$data$features))
 
-  if (need_targets && has_legacy_targets_in_features) {
+  if (targets_empty && has_legacy_targets_in_features) {
     if (!exists(".pa_targets_from_features_legacy", mode = "function")) {
       .pa_abort(
-        "model_type='minimizeCosts' requires targets. Legacy targets exist in features, but .pa_targets_from_features_legacy() is not implemented."
+        "Legacy targets exist in features, but .pa_targets_from_features_legacy() is not implemented."
       )
     }
     x <- .pa_targets_from_features_legacy(x)
   }
+
 
   # Warn once if threats exist but still no actions
   has_actions_data <- !is.null(x$data$dist_actions) &&

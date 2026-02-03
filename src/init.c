@@ -40,6 +40,12 @@ extern SEXP _prioriactions_rcpp_add_exclude_conservation_when_actions(SEXP, SEXP
 extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation_interventions(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_objective_min_cost(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_objective_min_fragmentation(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_reset_objective(SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_to_objective(SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_add_to_objective_scalar(SEXP, SEXP, SEXP);
+extern SEXP _prioriactions_rcpp_prepare_fragmentation_pu(SEXP, SEXP, SEXP, SEXP);
 
 
 static const R_CallMethodDef CallEntries[] = {
@@ -73,6 +79,12 @@ static const R_CallMethodDef CallEntries[] = {
   {"_prioriactions_rcpp_set_objective_min_fragmentation", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation, 6},
   {"_prioriactions_rcpp_set_objective_min_fragmentation_interventions", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation_interventions, 6},
   {"_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action", (DL_FUNC) &_prioriactions_rcpp_set_objective_min_fragmentation_actions_by_action, 8},
+  {"_prioriactions_rcpp_add_objective_min_cost", (DL_FUNC) &_prioriactions_rcpp_add_objective_min_cost, 8},
+  {"_prioriactions_rcpp_add_objective_min_fragmentation", (DL_FUNC) &_prioriactions_rcpp_add_objective_min_fragmentation, 6},
+  {"_prioriactions_rcpp_reset_objective", (DL_FUNC) &_prioriactions_rcpp_reset_objective, 2},
+  {"_prioriactions_rcpp_add_to_objective", (DL_FUNC) &_prioriactions_rcpp_add_to_objective, 3},
+  {"_prioriactions_rcpp_add_to_objective_scalar", (DL_FUNC) &_prioriactions_rcpp_add_to_objective_scalar, 3},
+  {"_prioriactions_rcpp_prepare_fragmentation_pu", (DL_FUNC) &_prioriactions_rcpp_prepare_fragmentation_pu, 4},
   {NULL, NULL, 0}
 
 };

@@ -4,13 +4,16 @@
 \alias{add_objective_max_profit}
 \title{add objective: maximize profit}
 \usage{
-add_objective_max_profit(x, profit_col = "profit")
+add_objective_max_profit(x, profit_col = "profit", alias = NULL)
 }
 \arguments{
 \item{x}{A \code{\link{Data}} object created with \code{\link[=inputData]{inputData()}} / \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
 \item{profit_col}{character. Column name in \code{dist_profit} containing numeric profits.
 Default \code{"profit"}.}
+
+\item{alias}{character or NULL. Optional unique identifier to register this objective
+as an atomic objective for multi-objective workflows.}
 }
 \value{
 Updated \code{\link{Data}} object.
@@ -20,8 +23,14 @@ Stores an objective specification inside the \code{\link{Data}} object to later 
 optimization model that \strong{maximizes economic profit} from selected (pu, action) pairs.
 
 This objective uses \code{x$data$dist_profit} (created with \code{\link[=add_profit]{add_profit()}}).
+
+If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
+as an atomic objective for multi-objective workflows.
 }
 \details{
 This function does \strong{not} build or solve the model. It only updates \code{x$data$model_args}.
 The model builder (called from \code{solve()}) must implement the corresponding C++ objective.
+
+If you call another objective setter afterwards, it will overwrite the previous
+active (single-objective) objective in \code{x$data$model_args}.
 }

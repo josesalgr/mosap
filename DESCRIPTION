@@ -66,7 +66,7 @@ Suggests:
     terra,
     sf,
     cli
-LinkingTo: 
+LinkingTo:
   Rcpp, 
   RcppArmadillo (>= 0.10.1.0.0), 
   BH
