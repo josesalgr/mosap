@@ -473,10 +473,16 @@ methods::setMethod(
     }
 
     # ---- locks
-    pu_df$locked_in  <- FALSE
-    pu_df$locked_out <- FALSE
-    if (locked_in_col %in% names(pu_df))  pu_df$locked_in  <- as.logical(pu_df[[locked_in_col]])
-    if (locked_out_col %in% names(pu_df)) pu_df$locked_out <- as.logical(pu_df[[locked_out_col]])
+    if (locked_in_col %in% names(pu_df)){
+      pu_df$locked_in  <- as.logical(pu_df[[locked_in_col]])
+    } else{
+      pu_df$locked_in  <- FALSE
+    }
+    if (locked_out_col %in% names(pu_df)){
+      pu_df$locked_out <- as.logical(pu_df[[locked_out_col]])
+    } else{
+      pu_df$locked_out <- FALSE
+    }
 
     # optional pu_status (0/2/3) only fills missing locks
     if (!is.null(pu_status) &&

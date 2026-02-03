@@ -257,8 +257,6 @@ solve.Data <- function(x, ...) {
   # ---- APPLY SUPERSET RUNTIME UPDATES (solver-agnostic)
   model <- .pa_apply_runtime_updates_to_model(model, x)
 
-  browser()
-
   # ---- pack args into Solution metadata
   solve_args <- list(
     solver = solver,

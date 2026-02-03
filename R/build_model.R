@@ -600,6 +600,14 @@
 
   op <- rcpp_new_optimization_problem()
 
+  # registry placeholder for future MO updates (constraint/objective IDs)
+  x$data$model_registry <- list(
+    cons = list(),
+    vars = list(),
+    obj_templates = list(),
+    objective = list()
+  )
+
   idx <- rcpp_add_base_variables(
     op,
     pu_data            = x$data$pu,
@@ -630,14 +638,6 @@
 
   x$data$model_ptr   <- op
   x$data$model_index <- idx
-
-  # registry placeholder for future MO updates (constraint/objective IDs)
-  x$data$model_registry <- list(
-    cons = list(),
-    vars = list(),
-    obj_templates = list(),
-    objective = list()
-  )
 
   x
 }
