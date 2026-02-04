@@ -538,7 +538,7 @@ methods::setMethod(
       stringsAsFactors = FALSE
     )
 
-    feat_ex <- terra::extract(feat_r, pu_v, fun = sum, na.rm = TRUE)
+    feat_ex <- terra::extract(feat_r, pu_v, fun = mean, na.rm = TRUE)
     feat_ex <- feat_ex[match(pu_df$id, feat_ex[[1]]), , drop = FALSE]
     feat_mat <- as.matrix(feat_ex[, -1, drop = FALSE])
 
