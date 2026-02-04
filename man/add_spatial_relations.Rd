@@ -10,7 +10,8 @@ add_spatial_relations(
   name = "default",
   directed = FALSE,
   allow_self = FALSE,
-  duplicate_agg = c("sum", "max", "min", "mean")
+  duplicate_agg = c("sum", "max", "min", "mean"),
+  symmetric = FALSE
 )
 }
 \arguments{

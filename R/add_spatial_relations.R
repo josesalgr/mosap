@@ -146,6 +146,27 @@ NULL
   pu_sf[ord, , drop = FALSE]
 }
 
+.pa_rbind_fill <- function(a, b) {
+  stopifnot(inherits(a, "data.frame"), inherits(b, "data.frame"))
+  cols <- union(names(a), names(b))
+  for (cc in setdiff(cols, names(a))) a[[cc]] <- NA
+  for (cc in setdiff(cols, names(b))) b[[cc]] <- NA
+  a <- a[, cols, drop = FALSE]
+  b <- b[, cols, drop = FALSE]
+  rbind(a, b)
+}
+
+.pa_swap_edges <- function(rel) {
+  out <- rel
+  out$internal_pu1 <- rel$internal_pu2
+  out$internal_pu2 <- rel$internal_pu1
+  if ("pu1" %in% names(rel) && "pu2" %in% names(rel)) {
+    out$pu1 <- rel$pu2
+    out$pu2 <- rel$pu1
+  }
+  out
+}
+
 
 # ---- public API --------------------------------------------------------------
 
@@ -175,7 +196,8 @@ add_spatial_relations <- function(x,
                                   name = "default",
                                   directed = FALSE,
                                   allow_self = FALSE,
-                                  duplicate_agg = c("sum", "max", "min", "mean")) {
+                                  duplicate_agg = c("sum", "max", "min", "mean"),
+                                  symmetric = FALSE) {
 
   stopifnot(inherits(x, "Data"))
   x <- .pa_ensure_pu_index(x)
@@ -184,9 +206,9 @@ add_spatial_relations <- function(x,
   duplicate_agg <- match.arg(duplicate_agg)
 
   stopifnot(inherits(relations, "data.frame"), nrow(relations) > 0)
-
   rel <- relations
 
+  # map pu ids -> internal ids if needed
   if (all(c("pu1", "pu2", "weight") %in% names(rel)) &&
       !all(c("internal_pu1", "internal_pu2") %in% names(rel))) {
 
@@ -203,13 +225,26 @@ add_spatial_relations <- function(x,
     }
   }
 
-  rel <- rel[, intersect(names(rel), c("internal_pu1","internal_pu2","weight","pu1","pu2","distance","source")),
+  # keep only supported columns
+  rel <- rel[, intersect(names(rel), c("internal_pu1","internal_pu2","weight",
+                                       "pu1","pu2","distance","source")),
              drop = FALSE]
 
+  # -------- validate ----------
   if (!directed) {
-    rel <- .pa_validate_relation(rel, n_pu = n_pu, allow_self = allow_self, dup_agg = duplicate_agg)
+    # undirected validate + collapse duplicates
+    rel_u <- .pa_validate_relation(rel, n_pu = n_pu, allow_self = allow_self, dup_agg = duplicate_agg)
+
+    if (isTRUE(symmetric)) {
+      rel_sw <- .pa_swap_edges(rel_u)
+      rel    <- .pa_rbind_fill(rel_u, rel_sw)
+      directed <- TRUE  # IMPORTANT: do not collapse again
+    } else {
+      rel <- rel_u
+    }
+
   } else {
-    # (tu bloque directed tal cual)
+    # directed block as you already had
     rel$internal_pu1 <- as.integer(rel$internal_pu1)
     rel$internal_pu2 <- as.integer(rel$internal_pu2)
     rel$weight <- as.numeric(rel$weight)
@@ -354,39 +389,37 @@ add_spatial_boundary <- function(x,
       }
     }
   }
+  # ... calculas pu1, pu2, w en upper triangle (js > i) ...
 
-  rel <- data.frame(pu1 = pu1, pu2 = pu2, weight = w)
-
-  # 2) duplicar en la dirección opuesta
-  rel_sym <- rbind(
-    rel,
-    transform(rel, pu1 = pu2, pu2 = pu1)
+  rel <- data.frame(
+    pu1 = as.integer(pu1),
+    pu2 = as.integer(pu2),
+    weight = as.numeric(w) * weight_multiplier,
+    source = "boundary_sf_shared_length",
+    stringsAsFactors = FALSE
   )
 
-
-  # self-edges = perimeter (boundary to outside)
+  # opcional: self edges como perímetro
   if (isTRUE(include_self)) {
-    per <- suppressWarnings(sf::st_length(sf::st_boundary(geom)))
-    per <- as.numeric(per)
-    keep <- is.finite(per) & per > 0
-    if (any(keep)) {
-      rel_self <- data.frame(
-        pu1 = pu_sf$id[keep],
-        pu2 = pu_sf$id[keep],     # <- self-edge
-        weight = per[keep] * weight_multiplier,
-        source = "boundary_sf_perimeter",
-        stringsAsFactors = FALSE
-      )
-      rel <- rbind(rel, rel_self)
-    }
+    per <- as.numeric(sf::st_length(sf::st_boundary(sf::st_geometry(pu_sf))))
+    rel_self <- data.frame(
+      pu1 = pu_sf$id,
+      pu2 = pu_sf$id,
+      weight = per * weight_multiplier,
+      source = "boundary_sf_perimeter",
+      stringsAsFactors = FALSE
+    )
+    rel <- .pa_rbind_fill(rel, rel_self)
+    allow_self <- TRUE
+  } else {
+    allow_self <- FALSE
   }
-
-  if (nrow(rel) == 0) stop("No boundary relations found.", call. = FALSE)
 
   add_spatial_relations(
     x, rel, name = name,
-    directed = TRUE,
-    allow_self = TRUE,           # <- permite registrar perímetros
+    directed = FALSE,
+    symmetric = TRUE,         # <-- ESTO te crea (i,j) y (j,i)
+    allow_self = allow_self,
     duplicate_agg = "sum"
   )
 }
