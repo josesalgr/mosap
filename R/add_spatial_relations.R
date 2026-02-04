@@ -334,9 +334,10 @@ add_spatial_boundary <- function(x,
 
   bnd <- sf::st_boundary(geom)
 
+  # 1) construir SOLO una vez (i < j) para no recalcular
   for (i in seq_len(n)) {
     js <- nb[[i]]
-    #js <- js[js > i]            # <- EVITA DUPLICADOS; luego duplicate_agg no dobla pesos
+    js <- js[js > i]             # <-- triángulo superior
     if (!length(js)) next
 
     bi <- bnd[i]
@@ -354,13 +355,14 @@ add_spatial_boundary <- function(x,
     }
   }
 
-  rel <- data.frame(
-    pu1 = as.integer(pu1),
-    pu2 = as.integer(pu2),
-    weight = as.numeric(w) * weight_multiplier,
-    source = "boundary_sf_shared_length",
-    stringsAsFactors = FALSE
+  rel <- data.frame(pu1 = pu1, pu2 = pu2, weight = w)
+
+  # 2) duplicar en la dirección opuesta
+  rel_sym <- rbind(
+    rel,
+    transform(rel, pu1 = pu2, pu2 = pu1)
   )
+
 
   # self-edges = perimeter (boundary to outside)
   if (isTRUE(include_self)) {
@@ -383,7 +385,7 @@ add_spatial_boundary <- function(x,
 
   add_spatial_relations(
     x, rel, name = name,
-    directed = FALSE,
+    directed = TRUE,
     allow_self = TRUE,           # <- permite registrar perímetros
     duplicate_agg = "sum"
   )
