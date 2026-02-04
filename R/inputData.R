@@ -388,13 +388,12 @@ methods::setMethod(
     }
 
     # -----------------------------------------------------
-    # Route 1: Raster-cell fast mode (pu and features are rasters or raster paths)
+    # Route 1: Raster-cell fast mode (unchanged)
     # -----------------------------------------------------
     pu_is_r <- inherits(pu, "SpatRaster") || .pa_is_raster_path(pu)
     ft_is_r <- inherits(features, "SpatRaster") || .pa_is_raster_path(features)
 
     if (pu_is_r && ft_is_r) {
-      # boundary: accept "auto"/"none"/"rook"/"queen" in this mode
       b <- boundary
       if (is.null(b)) b <- "none"
       if (is.character(b) && !(b %in% c("auto", "none", "rook", "queen"))) {
@@ -413,7 +412,7 @@ methods::setMethod(
     }
 
     # -----------------------------------------------------
-    # Route 2: Vector-PU spatial mode (your existing logic)
+    # Route 2: Vector-PU spatial mode (MODIFIED)
     # -----------------------------------------------------
     fun_cost <- .pa_fun_from_name(cost_aggregation)
 
@@ -453,11 +452,11 @@ methods::setMethod(
       }
     }
 
-    # base pu table
+    # base pu table (DO NOT reorder yet; keep row order aligned with pu_v)
     pu_df <- terra::as.data.frame(pu_v)
+    pu_df$row_id <- seq_len(nrow(pu_df))     # row index in pu_v
     names(pu_df)[names(pu_df) == pu_id_col] <- "id"
     pu_df$id <- as.integer(round(pu_df$id))
-    pu_df <- pu_df[order(pu_df$id), , drop = FALSE]
 
     # ---- cost
     if (is.character(cost) && (cost %in% names(pu_df))) {
@@ -467,22 +466,16 @@ methods::setMethod(
       if (is.null(cost_r)) {
         stop("You must provide 'cost' either as a column name in pu (vector) or as a raster/file path.", call. = FALSE)
       }
+
+      # IMPORTANT: terra::extract returns ID = row index of pu_v (1..n), NOT pu_df$id
       cost_ex <- terra::extract(cost_r, pu_v, fun = fun_cost, na.rm = TRUE)
-      cost_ex <- cost_ex[match(pu_df$id, cost_ex[[1]]), , drop = FALSE]
-      pu_df$cost <- cost_ex[[2]]
+      idx <- match(pu_df$row_id, cost_ex[[1]])
+      pu_df$cost <- cost_ex[[2]][idx]
     }
 
-    # ---- locks
-    if (locked_in_col %in% names(pu_df)){
-      pu_df$locked_in  <- as.logical(pu_df[[locked_in_col]])
-    } else{
-      pu_df$locked_in  <- FALSE
-    }
-    if (locked_out_col %in% names(pu_df)){
-      pu_df$locked_out <- as.logical(pu_df[[locked_out_col]])
-    } else{
-      pu_df$locked_out <- FALSE
-    }
+    # ---- locks (preserve)
+    pu_df$locked_in  <- if (locked_in_col %in% names(pu_df))  as.logical(pu_df[[locked_in_col]])  else FALSE
+    pu_df$locked_out <- if (locked_out_col %in% names(pu_df)) as.logical(pu_df[[locked_out_col]]) else FALSE
 
     # optional pu_status (0/2/3) only fills missing locks
     if (!is.null(pu_status) &&
@@ -505,7 +498,7 @@ methods::setMethod(
       stop("Some planning units are both locked_in and locked_out. Please fix your inputs.", call. = FALSE)
     }
 
-    # ---- centroid coordinates
+    # ---- centroid coordinates (still aligned to pu_v row order)
     ctr <- terra::centroids(pu_v)
     xy  <- terra::crds(ctr)
     pu_coords <- data.frame(
@@ -515,9 +508,8 @@ methods::setMethod(
       stringsAsFactors = FALSE
     )
 
-    pu_df <- pu_df[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
 
-    # ---- features + dist_features
+    # ---- features + dist_features (prioritizr-like: "sum" with exactextractr for polygons)
     feat_r <- .pa_read_rast(features)
     if (is.null(feat_r)) {
       stop(
@@ -530,6 +522,7 @@ methods::setMethod(
     feat_names <- names(feat_r)
     if (is.null(feat_names) || any(feat_names == "")) {
       feat_names <- paste0("feature.", seq_len(terra::nlyr(feat_r)))
+      names(feat_r) <- feat_names
     }
 
     features_df <- data.frame(
@@ -538,19 +531,32 @@ methods::setMethod(
       stringsAsFactors = FALSE
     )
 
-    feat_ex <- terra::extract(feat_r, pu_v, fun = mean, na.rm = TRUE)
-    feat_ex <- feat_ex[match(pu_df$id, feat_ex[[1]]), , drop = FALSE]
-    feat_mat <- as.matrix(feat_ex[, -1, drop = FALSE])
+    # IMPORTANT: extract in the SAME row-order as pu_v/pu_df (before sorting by id)
+    # prioritizr does "sum" (area-fraction weighted) for polygons
+    feat_mat <- .pa_fast_extract(feat_r, pu_v, fun = "sum")  # [n_pu x n_features]
 
+    # ---- NOW sort by pu id (and reorder feat_mat + coords consistently)
+    ord <- order(pu_df$id)
+    pu_df     <- pu_df[ord, , drop = FALSE]
+    feat_mat  <- feat_mat[ord, , drop = FALSE]
+    pu_coords <- pu_coords[ord, , drop = FALSE]
+
+    pu_df_out <- pu_df[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
+
+    # NOTE: as.vector(feat_mat) is column-major => [feat1 all pu], [feat2 all pu], ...
     dist_features_df <- data.frame(
-      pu      = rep(pu_df$id, times = terra::nlyr(feat_r)),
-      feature = rep(features_df$id, each = nrow(pu_df)),
-      amount  = as.vector(t(feat_mat)),
+      pu      = rep(pu_df_out$id, times = terra::nlyr(feat_r)),
+      feature = rep(features_df$id, each = nrow(pu_df_out)),
+      amount  = as.vector(feat_mat),
       stringsAsFactors = FALSE
     )
-    dist_features_df <- dist_features_df[!is.na(dist_features_df$amount) & dist_features_df$amount > 0, , drop = FALSE]
+    dist_features_df <- dist_features_df[
+      is.finite(dist_features_df$amount) & dist_features_df$amount > 0,
+      ,
+      drop = FALSE
+    ]
 
-    # ---- boundary (optional)
+    # ---- boundary (optional) (uses pu_v geometry; ok)
     boundary_df <- NULL
     if (is.data.frame(boundary)) {
       boundary_df <- boundary
@@ -568,7 +574,17 @@ methods::setMethod(
       }
 
       nb <- sf::st_touches(pu_sf)
-      id_vec <- pu_df$id
+
+      # IMPORTANT: nb is in pu_v row order; we need ids in the SAME order.
+      # We already have pu_df$id aligned to pu_v rows BEFORE sorting in `ord`:
+      # But pu_df has been sorted now; so reconstruct id_vec in pu_v order:
+      # easiest: use original unsorted id vector from pu_coords before sorting:
+      # (we have sorted pu_coords already; so rebuild from pu_v directly)
+      # Safer: store id_vec0 before ord:
+      # Here we recompute id_vec0 from terra::as.data.frame(pu_v) again:
+      pu_df0 <- terra::as.data.frame(pu_v)
+      names(pu_df0)[names(pu_df0) == pu_id_col] <- "id"
+      id_vec0 <- as.integer(round(pu_df0$id))
 
       id1 <- integer(0)
       id2 <- integer(0)
@@ -578,8 +594,8 @@ methods::setMethod(
         j <- nb[[i]]
         keep <- j > i
         if (any(keep)) {
-          id1 <- c(id1, rep(id_vec[i], sum(keep)))
-          id2 <- c(id2, id_vec[j[keep]])
+          id1 <- c(id1, rep(id_vec0[i], sum(keep)))
+          id2 <- c(id2, id_vec0[j[keep]])
         }
       }
 
@@ -591,15 +607,16 @@ methods::setMethod(
       )
     }
 
-    # ---- build via tabular impl (no recursion / no double dispatch)
+    # ---- build via stable tabular impl
     x <- .pa_inputData_tabular_impl(
-      pu = pu_df,
+      pu = pu_df_out,
       features = features_df,
       dist_features = dist_features_df,
       boundary = boundary_df,
       ...
     )
 
+    # store coords (sorted by id)
     x$data$pu_coords <- pu_coords
 
     if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
@@ -608,6 +625,7 @@ methods::setMethod(
 
     if (!is.null(pu_r)) x$data$pu_raster_id <- pu_r
 
+    # store pu_sf (sorted to match x$data$pu$id)
     if (requireNamespace("sf", quietly = TRUE)) {
       pu_sf_store <- tryCatch(sf::st_as_sf(pu_v), error = function(e) NULL)
       if (!is.null(pu_sf_store)) {
@@ -615,15 +633,15 @@ methods::setMethod(
         if (!("id" %in% names(pu_sf_store))) pu_sf_store$id <- seq_len(nrow(pu_sf_store))
 
         pu_sf_store <- pu_sf_store[, "id", drop = FALSE]
-        ord <- match(x$data$pu$id, pu_sf_store$id)
+        ord2 <- match(x$data$pu$id, pu_sf_store$id)
 
-        if (any(is.na(ord))) {
+        if (any(is.na(ord2))) {
           warning(
             "Could not safely match PU geometry to PU ids; 'pu_sf' will not be stored in the problem object.",
             call. = FALSE, immediate. = TRUE
           )
         } else {
-          x$data$pu_sf <- pu_sf_store[ord, , drop = FALSE]
+          x$data$pu_sf <- pu_sf_store[ord2, , drop = FALSE]
         }
       }
     }

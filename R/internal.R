@@ -3053,3 +3053,74 @@ available_to_solve <- function(package = ""){
   x
 }
 
+
+.pa_fast_extract <- function(x, y, fun = c("sum", "mean", "max")) {
+  fun <- match.arg(fun)
+
+  stopifnot(inherits(x, "terra::SpatRaster") || inherits(x, "SpatRaster"))
+  stopifnot(inherits(y, "terra::SpatVector") || inherits(y, "SpatVector") || inherits(y, "sf"))
+
+  if (inherits(y, "SpatVector")) {
+    if (!requireNamespace("sf", quietly = TRUE)) stop("Need 'sf' to convert SpatVector -> sf.", call. = FALSE)
+    y <- sf::st_as_sf(y)
+  }
+
+  out <- matrix(NA_real_, nrow = nrow(y), ncol = terra::nlyr(x))
+  colnames(out) <- make.unique(names(x))
+
+  geomc <- as.character(sf::st_geometry_type(y, by_geometry = TRUE))
+
+  # points
+  point_idx <- grepl("POINT", geomc, fixed = TRUE)
+  if (any(point_idx)) {
+    ex <- terra::extract(x = x, y = sf::st_coordinates(y[point_idx, , drop = FALSE]))
+    out[point_idx, ] <- as.matrix(ex[, -1, drop = FALSE]) # drop ID column
+  }
+
+  # lines
+  line_idx <- grepl("LINE", geomc, fixed = TRUE)
+  if (any(line_idx)) {
+    fun2 <- switch(fun, mean = mean, sum = sum, max = max)
+    out[line_idx, ] <- as.matrix(
+      terra::extract(
+        x = x,
+        y = terra::vect(y[line_idx, , drop = FALSE]),
+        ID = FALSE,
+        touches = TRUE,
+        fun = fun2,
+        na.rm = TRUE
+      )
+    )
+  }
+
+  # polygons (prioritizr-like)
+  poly_idx <- grepl("POLYGON", geomc, fixed = TRUE)
+  if (any(poly_idx)) {
+    if (!requireNamespace("exactextractr", quietly = TRUE)) {
+      stop("Polygon feature extraction requires 'exactextractr'.", call. = FALSE)
+    }
+
+    # IMPORTANT: avoid mutating user's objects
+    y2 <- y[poly_idx, , drop = FALSE]
+    x2 <- x
+
+    # (this is just to silence CRS/proj warnings like prioritizr; extraction uses coordinates)
+    sf::st_crs(y2) <- sf::st_crs(NA_character_)
+    terra::crs(x2) <- NA_character_
+
+    out[poly_idx, ] <- as.matrix(
+      exactextractr::exact_extract(
+        x2,
+        y2,
+        fun = fun,
+        progress = FALSE
+      )
+    )
+  }
+
+  out[!is.finite(out)] <- 0
+  out[abs(out) < 1e-10] <- 0
+  out
+}
+
+
