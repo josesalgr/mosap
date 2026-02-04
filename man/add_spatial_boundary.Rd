@@ -2,26 +2,39 @@
 % Please edit documentation in R/add_spatial_relations.R
 \name{add_spatial_boundary}
 \alias{add_spatial_boundary}
-\title{Add spatial relations from a boundary table (Marxan-style)}
+\title{Add spatial boundary-length relations from sf polygons OR a boundary table}
 \usage{
-add_spatial_boundary(x, boundary = NULL, name = "boundary", weight_col = NULL)
+add_spatial_boundary(
+  x,
+  boundary = NULL,
+  pu_sf = NULL,
+  name = "boundary",
+  weight_col = NULL,
+  weight_multiplier = 1,
+  progress = FALSE
+)
 }
 \arguments{
-\item{x}{A \linkS4class{data} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{Data object.}
 
-\item{boundary}{Optional. If \code{NULL}, reuses an existing relation \code{x$data$spatial_relations[[name]]} if present. Otherwise, a \code{data.frame}
-with \code{id1}, \code{id2}, \code{boundary} (or \code{pu1}, \code{pu2}, \code{weight}).}
+\item{boundary}{Optional data.frame with columns (id1,id2,boundary) or (pu1,pu2,weight).}
 
-\item{name}{Name/key under which the relation will be stored.}
+\item{pu_sf}{Optional sf with PU polygons and an \code{id} column. If NULL, uses x$data$pu_sf.}
 
-\item{weight_col}{Column in \code{boundary} to use as weight. Defaults to \code{"boundary"} when present.}
-}
-\value{
-Updated \linkS4class{data} object.
+\item{name}{Name to store relation under (default "boundary").}
+
+\item{weight_col}{For boundary tables, which column to use as weight. Defaults to "boundary" or "weight".}
+
+\item{weight_multiplier}{Multiplier applied to computed/loaded weights.}
+
+\item{progress}{Show basic progress for large N (logical).}
 }
 \description{
-Register a boundary-length relation between planning units using a table with columns
-\code{id1}, \code{id2}, and \code{boundary} (or \code{pu1}, \code{pu2}, \code{weight}).
+Registers a boundary-length relation between planning units.
+\itemize{
+\item If \code{boundary} is provided: uses it (expects id1/id2/boundary or pu1/pu2/weight).
+\item If \code{boundary} is NULL: derives boundary lengths from \code{pu_sf} (or x$data$pu_sf).
+}
 
-This does not require \code{sf}.
+This function defines \emph{boundary} (shared-edge length), not queen touches.
 }

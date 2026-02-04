@@ -191,6 +191,41 @@ methods::setGeneric(
   boundary_df
 }
 
+.pa_register_boundary_relation <- function(x, boundary_df, name = "boundary",
+                                           weight_col = "boundary") {
+  if (is.null(boundary_df) || !inherits(boundary_df, "data.frame") || nrow(boundary_df) == 0) {
+    return(x)
+  }
+
+  # Normaliza nombres esperados id1/id2/boundary
+  if (!all(c("id1", "id2") %in% names(boundary_df))) {
+    stop("boundary data.frame must have columns 'id1' and 'id2'.", call. = FALSE)
+  }
+  if (!is.null(weight_col) && !(weight_col %in% names(boundary_df))) {
+    stop("boundary data.frame must have weight column '", weight_col, "'.", call. = FALSE)
+  }
+
+  if (exists("add_spatial_boundary", mode = "function")) {
+    x <- add_spatial_boundary(
+      x,
+      boundary   = boundary_df,
+      name       = name,
+      weight_col = weight_col
+    )
+  } else {
+    # fallback: deja la tabla cruda (tu build_model exigirá internal_* si el objetivo la usa)
+    x$data$spatial_relations <- x$data$spatial_relations %||% list()
+    x$data$spatial_relations[[name]] <- boundary_df
+    warning(
+      "add_spatial_boundary() is not available; stored raw boundary table in x$data$spatial_relations[['",
+      name, "']]. Objectives requiring this relation may fail later.",
+      call. = FALSE, immediate. = TRUE
+    )
+  }
+
+  x
+}
+
 # =========================================================
 # Internal: fast raster-cell implementation (1 PU per valid cell)
 # =========================================================
@@ -345,9 +380,18 @@ methods::setMethod(
       pu = pu,
       features = features,
       dist_features = dist_features,
-      boundary = boundary,
+      boundary = NULL,
       ...
     )
+
+    # 2) si el usuario dio boundary (legacy), regístralo como spatial relation
+    if (is.data.frame(boundary)) {
+      x <- .pa_register_boundary_relation(x, boundary_df = boundary, name = "boundary", weight_col = "boundary")
+    } else if (!is.null(boundary)) {
+      stop("In tabular mode, boundary must be NULL or a data.frame (id1,id2,boundary).", call. = FALSE)
+    }
+
+    x
   }
 )
 
@@ -365,7 +409,7 @@ methods::setMethod(
     pu,
     features,
     dist_features,
-    boundary = "auto",
+    boundary = NULL,
     cost = NULL,
     pu_id_col = "id",
     locked_in_col = "locked_in",
@@ -556,55 +600,76 @@ methods::setMethod(
       drop = FALSE
     ]
 
-    # ---- boundary (optional) (uses pu_v geometry; ok)
+    # --- boundary relation to register (do NOT feed tabular impl)
     boundary_df <- NULL
+    register_boundary_relation <- FALSE
+    boundary_relation_name <- "boundary"
+
+    # ---- boundary (relation only; does NOT affect the model unless an objective uses it)
     if (is.data.frame(boundary)) {
+
       boundary_df <- boundary
-    } else if (is.character(boundary) && identical(boundary, "auto")) {
-      if (!requireNamespace("sf", quietly = TRUE)) {
-        stop(
-          "Automatic boundary derivation requires the 'sf' package. Please install it or provide boundary as a data.frame.",
-          call. = FALSE
+      register_boundary_relation <- TRUE
+
+    } else if (is.character(boundary)) {
+
+      if (identical(boundary, "auto")) {
+
+        warning(
+          "boundary='auto' will derive a *queen* adjacency relation using sf::st_touches(). ",
+          "This does NOT activate any boundary penalty by itself; it only registers a spatial relation. ",
+          "For explicit control, provide a boundary table (id1,id2,boundary) or use add_spatial_rook()/add_spatial_queen().",
+          call. = FALSE, immediate. = TRUE
         )
-      }
+        boundary <- "rock"
 
-      pu_sf <- tryCatch(sf::st_as_sf(pu_v), error = function(e) NULL)
-      if (is.null(pu_sf)) {
-        stop("Could not convert planning units to sf for boundary derivation. Provide boundary as a data.frame.", call. = FALSE)
-      }
-
-      nb <- sf::st_touches(pu_sf)
-
-      # IMPORTANT: nb is in pu_v row order; we need ids in the SAME order.
-      # We already have pu_df$id aligned to pu_v rows BEFORE sorting in `ord`:
-      # But pu_df has been sorted now; so reconstruct id_vec in pu_v order:
-      # easiest: use original unsorted id vector from pu_coords before sorting:
-      # (we have sorted pu_coords already; so rebuild from pu_v directly)
-      # Safer: store id_vec0 before ord:
-      # Here we recompute id_vec0 from terra::as.data.frame(pu_v) again:
-      pu_df0 <- terra::as.data.frame(pu_v)
-      names(pu_df0)[names(pu_df0) == pu_id_col] <- "id"
-      id_vec0 <- as.integer(round(pu_df0$id))
-
-      id1 <- integer(0)
-      id2 <- integer(0)
-
-      for (i in seq_along(nb)) {
-        if (length(nb[[i]]) == 0) next
-        j <- nb[[i]]
-        keep <- j > i
-        if (any(keep)) {
-          id1 <- c(id1, rep(id_vec0[i], sum(keep)))
-          id2 <- c(id2, id_vec0[j[keep]])
+        if (!requireNamespace("sf", quietly = TRUE)) {
+          stop(
+            "Automatic boundary derivation requires the 'sf' package. Please install it or provide boundary as a data.frame.",
+            call. = FALSE
+          )
         }
+
+        pu_sf <- tryCatch(sf::st_as_sf(pu_v), error = function(e) NULL)
+        if (is.null(pu_sf)) {
+          stop("Could not convert planning units to sf for boundary derivation. Provide boundary as a data.frame.", call. = FALSE)
+        }
+
+        nb <- sf::st_touches(pu_sf)
+
+        # ids in pu_v row order (pre-sorting)
+        pu_df0 <- terra::as.data.frame(pu_v)
+        names(pu_df0)[names(pu_df0) == pu_id_col] <- "id"
+        id_vec0 <- as.integer(round(pu_df0$id))
+
+        id1 <- integer(0)
+        id2 <- integer(0)
+
+        for (i in seq_along(nb)) {
+          j <- nb[[i]]
+          if (!length(j)) next
+          keep <- j > i
+          if (any(keep)) {
+            id1 <- c(id1, rep(id_vec0[i], sum(keep)))
+            id2 <- c(id2, id_vec0[j[keep]])
+          }
+        }
+
+        boundary_df <- data.frame(
+          id1 = id1,
+          id2 = id2,
+          boundary = 1,
+          stringsAsFactors = FALSE
+        )
+
+        register_boundary_relation <- TRUE
       }
 
-      boundary_df <- data.frame(
-        id1 = id1,
-        id2 = id2,
-        boundary = 1,
-        stringsAsFactors = FALSE
-      )
+      if (identical(boundary, "none")) {
+        # explicitly do nothing
+        boundary_df <- NULL
+        register_boundary_relation <- FALSE
+      }
     }
 
     # ---- build via stable tabular impl
@@ -612,9 +677,36 @@ methods::setMethod(
       pu = pu_df_out,
       features = features_df,
       dist_features = dist_features_df,
-      boundary = boundary_df,
+      boundary = NULL,
       ...
     )
+
+    # --- register spatial relation (if requested/provided)
+    if (isTRUE(register_boundary_relation) && !is.null(boundary_df) && nrow(boundary_df) > 0) {
+
+      # ensure infrastructure exists
+      if (exists("add_spatial_boundary", mode = "function")) {
+
+        # add_spatial_boundary expects id1/id2/boundary OR pu1/pu2/weight
+        x <- add_spatial_boundary(
+          x,
+          boundary = boundary_df,
+          name = boundary_relation_name,
+          weight_col = if ("boundary" %in% names(boundary_df)) "boundary" else NULL
+        )
+
+      } else {
+        # fallback: store raw table; build_model will error if objective needs internal_* fields
+        x$data$spatial_relations <- x$data$spatial_relations %||% list()
+        x$data$spatial_relations[[boundary_relation_name]] <- boundary_df
+        warning(
+          "add_spatial_boundary() not available at inputData() time; stored boundary table raw in x$data$spatial_relations[['",
+          boundary_relation_name, "']].",
+          call. = FALSE, immediate. = TRUE
+        )
+      }
+    }
+
 
     # store coords (sorted by id)
     x$data$pu_coords <- pu_coords
@@ -662,7 +754,7 @@ methods::setMethod(
     pu,
     features,
     dist_features,
-    boundary = "auto",
+    boundary = NULL,
     cost = NULL,
     pu_id_col = "id",
     locked_in_col = "locked_in",

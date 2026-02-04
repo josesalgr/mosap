@@ -108,6 +108,45 @@ NULL
 }
 
 
+.pa_get_pu_sf_aligned <- function(x, pu_sf = NULL, arg_name = "pu_sf") {
+  stopifnot(inherits(x, "Data"))
+  x <- .pa_ensure_pu_index(x)
+
+  if (is.null(pu_sf)) pu_sf <- x$data$pu_sf
+
+  if (is.null(pu_sf)) {
+    stop(
+      arg_name, " is NULL and x$data$pu_sf is missing.\n",
+      "Provide ", arg_name, " (sf polygons with an 'id' column) or make sure inputData() stored x$data$pu_sf.",
+      call. = FALSE
+    )
+  }
+
+  if (!requireNamespace("sf", quietly = TRUE)) {
+    stop("This function requires the 'sf' package.", call. = FALSE)
+  }
+
+  if (!inherits(pu_sf, "sf")) stop(arg_name, " must be an sf object.", call. = FALSE)
+  if (!("id" %in% names(pu_sf))) stop(arg_name, " must contain an 'id' column.", call. = FALSE)
+
+  pu_sf$id <- as.integer(pu_sf$id)
+
+  # align to x$data$pu$id (critical)
+  ord <- match(x$data$pu$id, pu_sf$id)
+  if (anyNA(ord)) {
+    missing_ids <- x$data$pu$id[is.na(ord)]
+    stop(
+      arg_name, "$id does not match x$data$pu$id (some ids missing). Missing: ",
+      paste(utils::head(missing_ids, 20), collapse = ", "),
+      if (length(missing_ids) > 20) " ..." else "",
+      call. = FALSE
+    )
+  }
+
+  pu_sf[ord, , drop = FALSE]
+}
+
+
 # ---- public API --------------------------------------------------------------
 
 #' Add spatial relations (core)
@@ -186,71 +225,160 @@ add_spatial_relations <- function(x,
 }
 
 
-#' Add spatial relations from a boundary table (Marxan-style)
+#' Add spatial boundary-length relations from sf polygons OR a boundary table
 #'
 #' @description
-#' Register a boundary-length relation between planning units using a table with columns
-#' `id1`, `id2`, and `boundary` (or `pu1`, `pu2`, `weight`).
+#' Registers a boundary-length relation between planning units.
+#' - If `boundary` is provided: uses it (expects id1/id2/boundary or pu1/pu2/weight).
+#' - If `boundary` is NULL: derives boundary lengths from `pu_sf` (or x$data$pu_sf).
 #'
-#' This does not require `sf`.
+#' This function defines *boundary* (shared-edge length), not queen touches.
 #'
-#' @param x A [data-class] object created with [inputData()] or [inputDataSpatial()].
-#' @param boundary Optional. If `NULL`, reuses an existing relation `x$data$spatial_relations[[name]]` if present. Otherwise, a `data.frame`
-#' with `id1`, `id2`, `boundary` (or `pu1`, `pu2`, `weight`).
-#' @param name Name/key under which the relation will be stored.
-#' @param weight_col Column in `boundary` to use as weight. Defaults to `"boundary"` when present.
+#' @param x Data object.
+#' @param boundary Optional data.frame with columns (id1,id2,boundary) or (pu1,pu2,weight).
+#' @param pu_sf Optional sf with PU polygons and an `id` column. If NULL, uses x$data$pu_sf.
+#' @param name Name to store relation under (default "boundary").
+#' @param weight_col For boundary tables, which column to use as weight. Defaults to "boundary" or "weight".
+#' @param weight_multiplier Multiplier applied to computed/loaded weights.
+#' @param progress Show basic progress for large N (logical).
 #'
-#' @return Updated [data-class] object.
 #' @export
 add_spatial_boundary <- function(x,
                                  boundary = NULL,
+                                 pu_sf = NULL,
                                  name = "boundary",
-                                 weight_col = NULL) {
+                                 weight_col = NULL,
+                                 weight_multiplier = 1,
+                                 progress = FALSE) {
 
   stopifnot(inherits(x, "Data"))
   x <- .pa_ensure_pu_index(x)
 
-  # If boundary not provided, try to reuse an already-registered relation
-  if (is.null(boundary)) {
-    if (!is.null(x$data$spatial_relations) &&
-        is.list(x$data$spatial_relations) &&
-        !is.null(x$data$spatial_relations[[name]])) {
-      return(x)
+  weight_multiplier <- as.numeric(weight_multiplier)[1]
+  if (!is.finite(weight_multiplier) || weight_multiplier <= 0) {
+    stop("weight_multiplier must be a positive finite number.", call. = FALSE)
+  }
+
+  # ------------------------------------------------------------
+  # Case A) User provides a boundary table => just register it
+  # ------------------------------------------------------------
+  if (!is.null(boundary)) {
+
+    stopifnot(inherits(boundary, "data.frame"), nrow(boundary) > 0)
+    b <- boundary
+
+    # Normalize id columns
+    if (all(c("id1", "id2") %in% names(b)) && !all(c("pu1", "pu2") %in% names(b))) {
+      b$pu1 <- b$id1
+      b$pu2 <- b$id2
     }
-    stop(
-      "boundary is NULL and no spatial relation named '", name, "' is registered. ",
-      "Provide a boundary table or use add_spatial_rook()/queen() to build one.",
-      call. = FALSE
+
+    if (is.null(weight_col)) {
+      if ("boundary" %in% names(b)) weight_col <- "boundary"
+      else if ("weight" %in% names(b)) weight_col <- "weight"
+      else stop("Could not find a weight column. Provide weight_col.", call. = FALSE)
+    }
+    if (!(weight_col %in% names(b))) stop("weight_col not found in boundary table.", call. = FALSE)
+
+    rel <- data.frame(
+      pu1 = as.integer(b$pu1),
+      pu2 = as.integer(b$pu2),
+      weight = as.numeric(b[[weight_col]]) * weight_multiplier,
+      source = "boundary_table",
+      stringsAsFactors = FALSE
+    )
+
+    return(
+      add_spatial_relations(
+        x, rel, name = name,
+        directed = FALSE, allow_self = FALSE,
+        duplicate_agg = "sum"
+      )
     )
   }
 
-  stopifnot(inherits(boundary, "data.frame"), nrow(boundary) > 0)
-  b <- boundary
-
-  # Normalize column names
-  if (all(c("id1", "id2") %in% names(b)) && !all(c("pu1", "pu2") %in% names(b))) {
-    b$pu1 <- b$id1
-    b$pu2 <- b$id2
+  # ------------------------------------------------------------
+  # Case B) boundary is NULL => MUST derive from sf polygons
+  # ------------------------------------------------------------
+  if (!requireNamespace("sf", quietly = TRUE)) {
+    stop("add_spatial_boundary(boundary=NULL) requires the 'sf' package.", call. = FALSE)
   }
 
-  if (is.null(weight_col)) {
-    if ("boundary" %in% names(b)) weight_col <- "boundary"
-    else if ("weight" %in% names(b)) weight_col <- "weight"
-    else stop("Could not find a weight column. Provide weight_col.", call. = FALSE)
+  if (is.null(pu_sf)) pu_sf <- x$data$pu_sf
+  if (is.null(pu_sf)) {
+    stop(
+      "boundary is NULL and pu_sf is missing.\n",
+      "Provide pu_sf (sf polygons with an 'id' column) or make sure inputData() stored x$data$pu_sf.",
+      call. = FALSE
+    )
   }
-  if (!(weight_col %in% names(b))) stop("weight_col not found in boundary table.", call. = FALSE)
+  if (!inherits(pu_sf, "sf")) stop("pu_sf must be an sf object.", call. = FALSE)
+  if (!("id" %in% names(pu_sf))) stop("pu_sf must contain an 'id' column.", call. = FALSE)
+
+  pu_sf$id <- as.integer(pu_sf$id)
+
+  # Ensure order matches x$data$pu$id (important!)
+  ord <- match(x$data$pu$id, pu_sf$id)
+  if (anyNA(ord)) {
+    stop("pu_sf$id does not match x$data$pu$id (some ids missing).", call. = FALSE)
+  }
+  pu_sf <- pu_sf[ord, , drop = FALSE]
+
+  geom <- sf::st_geometry(pu_sf)
+
+  # Rook neighbors: shared edge (DE-9IM)
+  nb <- sf::st_relate(pu_sf, pu_sf, pattern = "F***1****", sparse = TRUE)
+
+  pu1 <- integer(0)
+  pu2 <- integer(0)
+  w   <- numeric(0)
+
+  n <- length(nb)
+  if (isTRUE(progress)) {
+    message("Computing shared boundary lengths for ", n, " planning units (rook adjacency)...")
+  }
+
+  # compute shared boundary length: length( intersection( boundary(i), boundary(j) ) )
+  bnd <- sf::st_boundary(geom)
+
+  for (i in seq_len(n)) {
+    js <- nb[[i]]
+    js <- js[js > i] # keep upper triangle
+    if (!length(js)) next
+
+    bi <- bnd[i]
+    for (j in js) {
+      # intersection of boundaries (returns LINESTRING/MULTILINESTRING typically)
+      inter <- sf::st_intersection(bi, bnd[j])
+      if (length(inter) == 0) next
+
+      len <- suppressWarnings(sf::st_length(inter))
+      len <- sum(as.numeric(len), na.rm = TRUE)
+
+      if (is.finite(len) && len > 0) {
+        pu1 <- c(pu1, pu_sf$id[i])
+        pu2 <- c(pu2, pu_sf$id[j])
+        w   <- c(w,  len)
+      }
+    }
+  }
+
+  if (!length(pu1)) stop("No shared-boundary (rook) adjacencies found.", call. = FALSE)
 
   rel <- data.frame(
-    pu1 = as.integer(b$pu1),
-    pu2 = as.integer(b$pu2),
-    weight = as.numeric(b[[weight_col]]),
-    source = "boundary_table",
+    pu1 = as.integer(pu1),
+    pu2 = as.integer(pu2),
+    weight = as.numeric(w) * weight_multiplier,
+    source = "boundary_sf_shared_length",
     stringsAsFactors = FALSE
   )
 
-  add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE, duplicate_agg = "sum")
+  add_spatial_relations(
+    x, rel, name = name,
+    directed = FALSE, allow_self = FALSE,
+    duplicate_agg = "sum"
+  )
 }
-
 
 #' Add rook adjacency from sf polygons
 #'
@@ -275,37 +403,35 @@ add_spatial_rook <- function(x,
   x <- .pa_ensure_pu_index(x)
   if (!.pa_has_sf()) stop("add_spatial_rook requires the 'sf' package.", call. = FALSE)
 
-  if (is.null(pu_sf)) {
-    pu_sf <- x$data$pu_sf
-    if (is.null(pu_sf)) stop("pu_sf is NULL and x$data$pu_sf is missing.", call. = FALSE)
-  }
-  if (!inherits(pu_sf, "sf")) stop("pu_sf must be an sf object.", call. = FALSE)
-  if (!("id" %in% names(pu_sf))) stop("pu_sf must contain an 'id' column.", call. = FALSE)
+  pu_sf <- .pa_get_pu_sf_aligned(x, pu_sf = pu_sf, arg_name = "pu_sf")
+  weight <- as.numeric(weight)[1]
+  if (!is.finite(weight) || weight < 0) stop("weight must be finite and >= 0.", call. = FALSE)
 
-  pu_sf$id <- as.integer(pu_sf$id)
-  idx <- x$data$index$pu
+  # Rook = shared edge (DE-9IM)
+  nb <- sf::st_relate(pu_sf, pu_sf, pattern = "F***1****", sparse = TRUE)
 
-  # Rook = intersection dimension 1 (shared line). Use st_relate + DE-9IM.
-  # This is heavier than st_touches but correct for rook vs queen.
-  mat <- sf::st_relate(pu_sf, pu_sf, pattern = "F***1****", sparse = TRUE)
-
-  edges <- vector("list", length(mat))
-  for (i in seq_along(mat)) {
-    js <- mat[[i]]
-    js <- js[js != i]
-    if (length(js) == 0) next
+  edges <- vector("list", length(nb))
+  for (i in seq_along(nb)) {
+    js <- nb[[i]]
+    js <- js[js > i]  # upper triangle to avoid duplicates
+    if (!length(js)) next
     edges[[i]] <- data.frame(
       pu1 = pu_sf$id[i],
       pu2 = pu_sf$id[js],
-      weight = as.numeric(weight),
+      weight = weight,
       source = "rook_sf",
       stringsAsFactors = FALSE
     )
   }
+
   rel <- do.call(rbind, edges)
   if (is.null(rel) || nrow(rel) == 0) stop("No rook adjacencies found.", call. = FALSE)
 
-  add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE, duplicate_agg = "max")
+  add_spatial_relations(
+    x, rel, name = name,
+    directed = FALSE, allow_self = FALSE,
+    duplicate_agg = "max"
+  )
 }
 
 #' Add queen adjacency from sf polygons
@@ -331,36 +457,36 @@ add_spatial_queen <- function(x,
   x <- .pa_ensure_pu_index(x)
   if (!.pa_has_sf()) stop("add_spatial_queen requires the 'sf' package.", call. = FALSE)
 
-  if (is.null(pu_sf)) {
-    pu_sf <- x$data$pu_sf
-    if (is.null(pu_sf)) stop("pu_sf is NULL and x$data$pu_sf is missing.", call. = FALSE)
-  }
-  if (!inherits(pu_sf, "sf")) stop("pu_sf must be an sf object.", call. = FALSE)
-  if (!("id" %in% names(pu_sf))) stop("pu_sf must contain an 'id' column.", call. = FALSE)
+  pu_sf <- .pa_get_pu_sf_aligned(x, pu_sf = pu_sf, arg_name = "pu_sf")
+  weight <- as.numeric(weight)[1]
+  if (!is.finite(weight) || weight < 0) stop("weight must be finite and >= 0.", call. = FALSE)
 
-  pu_sf$id <- as.integer(pu_sf$id)
+  nb <- sf::st_touches(pu_sf, pu_sf, sparse = TRUE)
 
-  # Queen adjacency: st_touches
-  mat <- sf::st_touches(pu_sf, pu_sf, sparse = TRUE)
-
-  edges <- vector("list", length(mat))
-  for (i in seq_along(mat)) {
-    js <- mat[[i]]
-    js <- js[js != i]
-    if (length(js) == 0) next
+  edges <- vector("list", length(nb))
+  for (i in seq_along(nb)) {
+    js <- nb[[i]]
+    js <- js[js > i]  # upper triangle
+    if (!length(js)) next
     edges[[i]] <- data.frame(
       pu1 = pu_sf$id[i],
       pu2 = pu_sf$id[js],
-      weight = as.numeric(weight),
+      weight = weight,
       source = "queen_sf",
       stringsAsFactors = FALSE
     )
   }
+
   rel <- do.call(rbind, edges)
   if (is.null(rel) || nrow(rel) == 0) stop("No queen adjacencies found.", call. = FALSE)
 
-  add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE, duplicate_agg = "max")
+  add_spatial_relations(
+    x, rel, name = name,
+    directed = FALSE, allow_self = FALSE,
+    duplicate_agg = "max"
+  )
 }
+
 
 #' Add kNN spatial relations from coordinates
 #'
