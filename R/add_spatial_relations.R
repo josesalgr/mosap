@@ -336,7 +336,7 @@ add_spatial_boundary <- function(x,
 
   for (i in seq_len(n)) {
     js <- nb[[i]]
-    js <- js[js > i]            # <- EVITA DUPLICADOS; luego duplicate_agg no dobla pesos
+    #js <- js[js > i]            # <- EVITA DUPLICADOS; luego duplicate_agg no dobla pesos
     if (!length(js)) next
 
     bi <- bnd[i]

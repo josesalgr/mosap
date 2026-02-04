@@ -11,7 +11,8 @@ add_spatial_boundary(
   name = "boundary",
   weight_col = NULL,
   weight_multiplier = 1,
-  progress = FALSE
+  progress = FALSE,
+  include_self = TRUE
 )
 }
 \arguments{
