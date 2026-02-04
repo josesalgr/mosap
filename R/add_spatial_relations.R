@@ -249,7 +249,8 @@ add_spatial_boundary <- function(x,
                                  name = "boundary",
                                  weight_col = NULL,
                                  weight_multiplier = 1,
-                                 progress = FALSE) {
+                                 progress = FALSE,
+                                 include_self = TRUE) {
 
   stopifnot(inherits(x, "Data"))
   x <- .pa_ensure_pu_index(x)
@@ -259,15 +260,14 @@ add_spatial_boundary <- function(x,
     stop("weight_multiplier must be a positive finite number.", call. = FALSE)
   }
 
-  # ------------------------------------------------------------
-  # Case A) User provides a boundary table => just register it
-  # ------------------------------------------------------------
+  # --------------------------
+  # Case A) boundary table
+  # --------------------------
   if (!is.null(boundary)) {
 
     stopifnot(inherits(boundary, "data.frame"), nrow(boundary) > 0)
     b <- boundary
 
-    # Normalize id columns
     if (all(c("id1", "id2") %in% names(b)) && !all(c("pu1", "pu2") %in% names(b))) {
       b$pu1 <- b$id1
       b$pu2 <- b$id2
@@ -291,15 +291,16 @@ add_spatial_boundary <- function(x,
     return(
       add_spatial_relations(
         x, rel, name = name,
-        directed = FALSE, allow_self = FALSE,
+        directed = FALSE,
+        allow_self = TRUE,          # <- CLAVE: permite id==id si viene en la tabla
         duplicate_agg = "sum"
       )
     )
   }
 
-  # ------------------------------------------------------------
-  # Case B) boundary is NULL => MUST derive from sf polygons
-  # ------------------------------------------------------------
+  # --------------------------
+  # Case B) derive from sf
+  # --------------------------
   if (!requireNamespace("sf", quietly = TRUE)) {
     stop("add_spatial_boundary(boundary=NULL) requires the 'sf' package.", call. = FALSE)
   }
@@ -317,53 +318,41 @@ add_spatial_boundary <- function(x,
 
   pu_sf$id <- as.integer(pu_sf$id)
 
-  # Ensure order matches x$data$pu$id (important!)
   ord <- match(x$data$pu$id, pu_sf$id)
-  if (anyNA(ord)) {
-    stop("pu_sf$id does not match x$data$pu$id (some ids missing).", call. = FALSE)
-  }
+  if (anyNA(ord)) stop("pu_sf$id does not match x$data$pu$id (some ids missing).", call. = FALSE)
   pu_sf <- pu_sf[ord, , drop = FALSE]
 
   geom <- sf::st_geometry(pu_sf)
 
-  # Rook neighbors: shared edge (DE-9IM)
+  # rook neighbours (shared edge)
   nb <- sf::st_relate(pu_sf, pu_sf, pattern = "F***1****", sparse = TRUE)
 
-  pu1 <- integer(0)
-  pu2 <- integer(0)
-  w   <- numeric(0)
-
+  pu1 <- integer(0); pu2 <- integer(0); w <- numeric(0)
   n <- length(nb)
-  if (isTRUE(progress)) {
-    message("Computing shared boundary lengths for ", n, " planning units (rook adjacency)...")
-  }
 
-  # compute shared boundary length: length( intersection( boundary(i), boundary(j) ) )
+  if (isTRUE(progress)) message("Computing shared boundary lengths for ", n, " planning units...")
+
   bnd <- sf::st_boundary(geom)
 
   for (i in seq_len(n)) {
     js <- nb[[i]]
-    js <- js[js > i] # keep upper triangle
+    js <- js[js > i]            # <- EVITA DUPLICADOS; luego duplicate_agg no dobla pesos
     if (!length(js)) next
 
     bi <- bnd[i]
     for (j in js) {
-      # intersection of boundaries (returns LINESTRING/MULTILINESTRING typically)
       inter <- sf::st_intersection(bi, bnd[j])
       if (length(inter) == 0) next
-
       len <- suppressWarnings(sf::st_length(inter))
       len <- sum(as.numeric(len), na.rm = TRUE)
 
       if (is.finite(len) && len > 0) {
         pu1 <- c(pu1, pu_sf$id[i])
         pu2 <- c(pu2, pu_sf$id[j])
-        w   <- c(w,  len)
+        w   <- c(w, len)
       }
     }
   }
-
-  if (!length(pu1)) stop("No shared-boundary (rook) adjacencies found.", call. = FALSE)
 
   rel <- data.frame(
     pu1 = as.integer(pu1),
@@ -373,12 +362,33 @@ add_spatial_boundary <- function(x,
     stringsAsFactors = FALSE
   )
 
+  # self-edges = perimeter (boundary to outside)
+  if (isTRUE(include_self)) {
+    per <- suppressWarnings(sf::st_length(sf::st_boundary(geom)))
+    per <- as.numeric(per)
+    keep <- is.finite(per) & per > 0
+    if (any(keep)) {
+      rel_self <- data.frame(
+        pu1 = pu_sf$id[keep],
+        pu2 = pu_sf$id[keep],     # <- self-edge
+        weight = per[keep] * weight_multiplier,
+        source = "boundary_sf_perimeter",
+        stringsAsFactors = FALSE
+      )
+      rel <- rbind(rel, rel_self)
+    }
+  }
+
+  if (nrow(rel) == 0) stop("No boundary relations found.", call. = FALSE)
+
   add_spatial_relations(
     x, rel, name = name,
-    directed = FALSE, allow_self = FALSE,
+    directed = FALSE,
+    allow_self = TRUE,           # <- permite registrar perímetros
     duplicate_agg = "sum"
   )
 }
+
 
 #' Add rook adjacency from sf polygons
 #'
@@ -413,7 +423,7 @@ add_spatial_rook <- function(x,
   edges <- vector("list", length(nb))
   for (i in seq_along(nb)) {
     js <- nb[[i]]
-    js <- js[js > i]  # upper triangle to avoid duplicates
+    #js <- js[js > i]  # upper triangle to avoid duplicates
     if (!length(js)) next
     edges[[i]] <- data.frame(
       pu1 = pu_sf$id[i],
