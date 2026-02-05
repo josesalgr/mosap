@@ -29,6 +29,10 @@ rcpp_add_action_locks <- function(x, dist_actions_data) {
     .Call(`_prioriactions_rcpp_add_action_locks`, x, dist_actions_data)
 }
 
+rcpp_add_action_max_per_pu <- function(x, dist_actions_data, max_per_pu = 1L, internal_pu_ids = integerVector(), internal_action_ids = integerVector()) {
+    .Call(`_prioriactions_rcpp_add_action_max_per_pu`, x, dist_actions_data, max_per_pu, internal_pu_ids, internal_action_ids)
+}
+
 rcpp_add_base_variables <- function(x, pu_data, dist_actions_data, dist_features_data, add_z = TRUE) {
     .Call(`_prioriactions_rcpp_add_base_variables`, x, pu_data, dist_actions_data, dist_features_data, add_z)
 }

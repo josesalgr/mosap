@@ -645,6 +645,36 @@ available_to_solve <- function(package = ""){
   out
 }
 
+.get_dist_effects_model <- function(x, mode = c("benefit", "loss", "delta")) {
+  mode <- match.arg(mode)
+  de <- x$data$dist_effects_model %||% x$data$dist_effects
+  if (is.null(de) || nrow(de) == 0) return(NULL)
+
+  # asegurar columnas base
+  if (!("benefit" %in% names(de))) de$benefit <- 0
+  if (!("loss" %in% names(de)))    de$loss <- 0
+
+  de$benefit <- as.numeric(de$benefit)
+  de$loss    <- as.numeric(de$loss)
+
+  if (mode == "benefit") {
+    out <- de
+    out$effect <- out$benefit
+    return(out)
+  }
+  if (mode == "loss") {
+    out <- de
+    out$effect <- out$loss
+    return(out)
+  }
+
+  # delta firmado
+  out <- de
+  out$effect <- out$benefit - out$loss
+  out
+}
+
+
 .pa_apply_targets_if_present <- function(x,
                                          allow_multiple_rows_per_feature = FALSE) {
 
@@ -673,7 +703,7 @@ available_to_solve <- function(package = ""){
     stop("Unknown target types in x$data$targets: ", paste(bad_type, collapse = ", "), call. = FALSE)
   }
 
-  # ---- STRICT RULE again (defensive)
+  # ---- STRICT RULE (mixed_total exclusivo)
   feats_mix    <- sort(unique(t$feature[t$type == "mixed_total"]))
   feats_nonmix <- sort(unique(t$feature[t$type %in% c("conservation","recovery")]))
   conflict <- intersect(feats_mix, feats_nonmix)
@@ -715,16 +745,16 @@ available_to_solve <- function(package = ""){
   # split by type
   tc <- t[t$type == "conservation", c("feature", "target_value"), drop = FALSE]
   tr <- t[t$type == "recovery",      c("feature", "target_value"), drop = FALSE]
-  tm <- t[t$type == "mixed_total",   c("feature", "target_value"), drop = FALSE]
+
+  # para mixed_total necesitamos potencialmente más columnas
+  tm_all <- t[t$type == "mixed_total", , drop = FALSE]
 
   # Read exponent config (legacy soft objective)
   args <- x$data$model_args %||% list()
   benefit_exponent <- as.numeric(args$benefit_exponent %||% 1)
   curve_segments   <- as.integer(args$curve_segments %||% 3L)
 
-  # ------------------------------------------------------------
-  # NEW: helper flags
-  # ------------------------------------------------------------
+  # helper flags
   has_actions <- !is.null(x$data$dist_actions_model) && inherits(x$data$dist_actions_model, "data.frame") &&
     nrow(x$data$dist_actions_model) > 0
 
@@ -736,13 +766,10 @@ available_to_solve <- function(package = ""){
   # ------------------------------------------------------------
   if (nrow(tc) > 0) {
 
-    # NEW: exclude conservation z_is when there exist improving actions for same (pu,feature)
-    # Only if the function exists and we actually have actions+effects.
     if (exists("rcpp_add_exclude_conservation_when_actions", mode = "function") && has_actions && has_effects) {
 
       dbm_for_excl <- .get_dist_benefit_model_from_effects(x, benefit_col = "benefit")
 
-      # dbm can be empty if benefit col isn't available; in that case, we skip the exclusion.
       if (!is.null(dbm_for_excl) && nrow(dbm_for_excl) > 0) {
         rcpp_add_exclude_conservation_when_actions(
           op,
@@ -809,36 +836,65 @@ available_to_solve <- function(package = ""){
   }
 
   # ------------------------------------------------------------
-  # mixed_total
+  # mixed_total  (ahora acepta absolute y relative_baseline)
   # ------------------------------------------------------------
-  if (nrow(tm) > 0) {
+  if (nrow(tm_all) > 0) {
     if (!exists("rcpp_add_target_mixed_total", mode = "function")) {
       stop("Missing rcpp_add_target_mixed_total() in the package.", call. = FALSE)
     }
 
-    dbm <- .get_dist_benefit_model_from_effects(x, benefit_col = "benefit")
-    if (is.null(dbm) || nrow(dbm) == 0) {
-      stop("Mixed targets present but no benefit column available in dist_effects.", call. = FALSE)
+    # Si viene como relativo al baseline, traducir a target_value absoluto aquí
+    if ("target_unit" %in% names(tm_all) && "target_raw" %in% names(tm_all)) {
+      tu <- as.character(tm_all$target_unit)
+      idx_rel <- !is.na(tu) & tu == "relative_baseline"
+
+      if (any(idx_rel)) {
+        rel <- as.numeric(tm_all$target_raw[idx_rel])
+        if (any(rel < 0 | rel > 1, na.rm = TRUE)) {
+          stop("Relative mixed_total targets must be between 0 and 1.", call. = FALSE)
+        }
+
+        basis <- .pa_feature_totals(x) # named by feature id (baseline totals)
+        basis_v <- basis[as.character(tm_all$feature[idx_rel])]
+        basis_v[is.na(basis_v)] <- 0
+
+        tm_all$target_value[idx_rel] <- rel * as.numeric(basis_v)
+      }
     }
 
+    tm <- tm_all[, c("feature", "target_value"), drop = FALSE]
+
+    # aquí eliges delta en vez de benefit
+    dbm <- .get_dist_effects_model(x, mode = "delta")
+    if (is.null(dbm) || nrow(dbm) == 0) {
+      stop("Mixed targets present but no effects available.", call. = FALSE)
+    }
+
+    # IMPORTANTE: tu C++ actual espera columna "benefit".
+    # Opción A (rápida): renombrar effect -> benefit para reutilizar C++ sin tocarlo
+    dbm$benefit <- dbm$effect
+
     rcpp_add_target_mixed_total(
-      op,
+      x = op,
+      features_data      = .mk_targets_df(tm$feature, tm$target_value, "target_mixed_total"),
       dist_features_data = x$data$dist_features,
       dist_benefit_data  = dbm,
       dist_actions_data  = x$data$dist_actions_model,
-      targets_df         = .mk_targets_df(tm$feature, tm$target_value)
+      target_col_sexp    = "target_mixed_total"
     )
   }
+
 
   x$data$model_args$targets_applied <- TRUE
   x$data$model_args$targets_counts <- list(
     conservation = nrow(tc),
     recovery     = nrow(tr),
-    mixed_total  = nrow(tm)
+    mixed_total  = nrow(tm_all)
   )
 
   invisible(x)
 }
+
 
 
 .pa_refresh_model_snapshot <- function(x, drop_triplets = TRUE) {
@@ -891,6 +947,67 @@ available_to_solve <- function(package = ""){
   x$data$model_args$nnz           <- Matrix::nnzero(model_list$A)
 
   x
+}
+
+
+.pa_apply_action_max_per_pu_if_present <- function(x) {
+  stopifnot(inherits(x, "Data"))
+
+  spec <- x$data$constraints$action_max_per_pu %||% NULL
+  if (is.null(spec)) return(invisible(x))
+
+  if (is.null(x$data$model_ptr)) {
+    stop("No active model pointer found in x$data$model_ptr.", call. = FALSE)
+  }
+
+  if (!exists("rcpp_add_action_max_per_pu", mode = "function")) {
+    stop("Missing rcpp_add_action_max_per_pu() in the package.", call. = FALSE)
+  }
+
+  da <- x$data$dist_actions_model
+  if (is.null(da) || !inherits(da, "data.frame") || nrow(da) == 0) {
+    stop("action_max_per_pu requires non-empty x$data$dist_actions_model.", call. = FALSE)
+  }
+
+  # defensive: required columns
+  need <- c("internal_pu", "internal_action", "internal_row")
+  miss <- setdiff(need, names(da))
+  if (length(miss) > 0) {
+    stop("dist_actions_model must contain columns: ", paste(miss, collapse = ", "), call. = FALSE)
+  }
+
+  maxv <- as.integer(spec$max %||% 1L)
+  if (!is.finite(maxv) || is.na(maxv) || maxv < 0L) stop("Invalid max in action_max_per_pu.", call. = FALSE)
+
+  # Convert external ids -> internal ids
+  pu_ext <- spec$pu %||% x$data$pu$id
+  pu_ext <- as.integer(pu_ext)
+  pu_map <- x$data$pu[, c("id","internal_id")]
+  pu_int <- pu_map$internal_id[match(pu_ext, pu_map$id)]
+  pu_int <- pu_int[!is.na(pu_int)]
+  if (length(pu_int) == 0) stop("action_max_per_pu: no valid PUs after mapping to internal ids.", call. = FALSE)
+
+  act_ext <- spec$actions %||% x$data$actions$id
+  act_ext <- as.character(act_ext)
+  act_map <- x$data$actions[, c("id","internal_id")]
+  act_int <- act_map$internal_id[match(act_ext, act_map$id)]
+  act_int <- act_int[!is.na(act_int)]
+  if (length(act_int) == 0) stop("action_max_per_pu: no valid actions after mapping to internal ids.", call. = FALSE)
+
+  # call C++
+  res <- rcpp_add_action_max_per_pu(
+    x = x$data$model_ptr,
+    dist_actions_data = da,
+    max_per_pu = maxv,
+    internal_pu_ids = as.integer(pu_int),
+    internal_action_ids = as.integer(act_int)
+  )
+
+  # optional registry
+  x$data$model_registry <- x$data$model_registry %||% list(cons = list(), vars = list(), obj_templates = list(), objective = list())
+  x$data$model_registry$cons$action_max_per_pu <- res
+
+  invisible(x)
 }
 
 

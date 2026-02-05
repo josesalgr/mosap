@@ -438,22 +438,59 @@
   x$data$dist_benefit_model <- db
 
   # dist_profit model-ready (MUST carry internal_pu/internal_action)
+  # dist_profit model-ready (MUST carry internal_pu/internal_action)
   dp <- x$data$dist_profit
   if (.has_rows(dp) && .has_rows(da)) {
+
     n_before <- nrow(dp)
 
+    # tipos base
     if ("pu" %in% names(dp)) dp$pu <- as.integer(dp$pu)
     if ("action" %in% names(dp)) dp$action <- as.character(dp$action)
 
-    da_key <- da[, intersect(names(da), c("pu","action","internal_pu","internal_action","internal_row")), drop = FALSE]
-
-    dp <- dplyr::inner_join(dp, da_key, by = c("pu","action"))
+    # filtra a (pu, action) factibles
+    dp <- dplyr::inner_join(
+      dp,
+      da[, c("pu", "action"), drop = FALSE],
+      by = c("pu", "action")
+    )
 
     n_after <- nrow(dp)
     dropped <- n_before - n_after
     if (dropped > 0) x <- .pa_log_add(x, "filtered_profit_rows", dropped)
+
+    # --- NEW: asegurar columnas internas (igual que en dist_effects)
+    pu_map  <- x$data$pu[, c("id", "internal_id")]
+    act_map <- x$data$actions[, c("id", "internal_id")]
+
+    pu_map$id  <- as.integer(pu_map$id)
+    act_map$id <- as.character(act_map$id)
+
+    if (!("internal_pu" %in% names(dp))) {
+      dp$internal_pu <- pu_map$internal_id[match(dp$pu, pu_map$id)]
+    } else {
+      dp$internal_pu <- as.integer(dp$internal_pu)
+    }
+
+    if (!("internal_action" %in% names(dp))) {
+      dp$internal_action <- act_map$internal_id[match(dp$action, act_map$id)]
+    } else {
+      dp$internal_action <- as.integer(dp$internal_action)
+    }
+
+    if (anyNA(dp$internal_pu)) {
+      .pa_abort("dist_profit has pu ids not found in x$data$pu$id (cannot derive internal_pu).")
+    }
+    if (anyNA(dp$internal_action)) {
+      .pa_abort("dist_profit has action ids not found in x$data$actions$id (cannot derive internal_action).")
+    }
+
+    # opcional: orden determinista
+    dp <- dp[order(dp$internal_pu, dp$internal_action), , drop = FALSE]
   }
+
   x$data$dist_profit_model <- dp
+
 
   x
 }
@@ -872,7 +909,7 @@
 
 .pa_build_model_apply_constraints <- function(x) {
 
-  # Apply targets if present
+  # targets...
   if (!is.null(x$data$targets) &&
       inherits(x$data$targets, "data.frame") &&
       nrow(x$data$targets) > 0) {
@@ -882,12 +919,16 @@
     }
 
     x <- .pa_apply_targets_if_present(x, allow_multiple_rows_per_feature = TRUE)
+  }
 
-    # future: if C++ returns constraint IDs, store them in x$data$model_registry$constraints$targets
+  # NEW: per-PU action max constraint
+  if (exists(".pa_apply_action_max_per_pu_if_present", mode = "function")) {
+    x <- .pa_apply_action_max_per_pu_if_present(x)
   }
 
   x
 }
+
 
 .pa_build_model_finalize <- function(x) {
 

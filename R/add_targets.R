@@ -202,3 +202,38 @@ add_mixed_targets_total_absolute <- function(x, targets, overwrite = FALSE, labe
   .pa_store_targets(x, out, overwrite = overwrite)
 }
 
+
+#' @title Add mixed total targets (relative to baseline)
+#' @description Adds relative mixed-total targets as proportions of baseline totals per feature.
+#' @export
+add_mixed_targets_total_relative <- function(x, targets, overwrite = FALSE, label = NULL) {
+  stopifnot(inherits(x, "Data"))
+  dt <- .pa_parse_targets(x, targets)
+
+  rel <- as.numeric(dt$target_raw)
+  if (any(rel < 0 | rel > 1, na.rm = TRUE)) {
+    stop("Relative mixed_total targets must be between 0 and 1.", call. = FALSE)
+  }
+
+  basis <- .pa_feature_totals(x) # named by feature id
+  basis_v <- basis[as.character(dt$feature)]
+  basis_v[is.na(basis_v)] <- 0
+
+  abs_target <- rel * as.numeric(basis_v)
+
+  out <- data.frame(
+    feature      = as.numeric(dt$feature),
+    type         = "mixed_total",
+    sense        = "ge",
+    target_unit  = "relative_baseline",
+    target_raw   = rel,
+    basis_total  = as.numeric(basis_v),
+    target_value = as.numeric(abs_target),
+    label        = if (is.null(label)) NA_character_ else as.character(label),
+    created_at   = as.character(Sys.time()),
+    stringsAsFactors = FALSE
+  )
+
+  .pa_store_targets(x, out, overwrite = overwrite)
+}
+

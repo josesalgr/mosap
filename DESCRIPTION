@@ -82,6 +82,7 @@ VignetteBuilder: knitr
 Collate: 
     'RcppExports.R'
     'internal.R'
+    'add_action_max_per_pu.R'
     'add_actions.R'
     'add_area_constraints.R'
     'add_effects.R'
@@ -95,6 +96,7 @@ Collate:
     'inputData.R'
     'inputDataSpatial.R'
     'package.R'
+    'plot.R'
     'presolve.R'
     'print.R'
     'problem.R'

@@ -572,7 +572,6 @@ add_spatial_boundary <- function(x,
     )
   }
 
-
   exposed <- pmax(total - incident, 0)
 
   # ✅ CLAVE: diagonal efectiva equivalente a prioritizr

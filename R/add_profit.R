@@ -116,9 +116,11 @@ add_profit <- function(
         bad <- unique(p$action[!p$action %in% action_ids])
         stop("profit contains unknown action ids: ", paste(bad, collapse = ", "), call. = FALSE)
       }
-      if (nrow(dplyr::distinct(p[, c("action")])) != nrow(p)) {
+      # en vez de distinct(...)
+      if (anyDuplicated(p$action)) {
         stop("profit (action,profit) must have unique action rows.", call. = FALSE)
       }
+
 
       base <- dplyr::left_join(base, p, by = "action", suffix = c("", ".new"))
       if ("profit.new" %in% names(base)) {

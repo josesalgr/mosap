@@ -159,7 +159,7 @@ Rcpp::List rcpp_add_target_mixed_total(
       if (db_ifeat[r] != ifeat) continue;
 
       const double b = db_ben[r];
-      if (!(b > tol)) continue;
+      if (std::abs(b) <= tol) continue;
 
       const long long k = key2(db_ipu[r], db_iact[r]);
       auto it = pa_to_xrow.find(k);
