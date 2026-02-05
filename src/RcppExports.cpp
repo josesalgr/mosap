@@ -186,22 +186,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rcpp_add_objective_min_fragmentation
-Rcpp::List rcpp_add_objective_min_fragmentation(SEXP x, Rcpp::DataFrame relation_data, double weight, double weight_multiplier, std::string block_name, std::string tag);
-RcppExport SEXP _prioriactions_rcpp_add_objective_min_fragmentation(SEXP xSEXP, SEXP relation_dataSEXP, SEXP weightSEXP, SEXP weight_multiplierSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type relation_data(relation_dataSEXP);
-    Rcpp::traits::input_parameter< double >::type weight(weightSEXP);
-    Rcpp::traits::input_parameter< double >::type weight_multiplier(weight_multiplierSEXP);
-    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
-    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_objective_min_fragmentation(x, relation_data, weight, weight_multiplier, block_name, tag));
-    return rcpp_result_gen;
-END_RCPP
-}
 // rcpp_add_pu_locks
 Rcpp::List rcpp_add_pu_locks(SEXP x, Rcpp::DataFrame pu_data, std::string block_name, std::string tag);
 RcppExport SEXP _prioriactions_rcpp_add_pu_locks(SEXP xSEXP, SEXP pu_dataSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
@@ -389,20 +373,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type val(valSEXP);
     rcpp_add_to_objective_scalar(x, ind1, val);
     return R_NilValue;
-END_RCPP
-}
-// rcpp_prepare_fragmentation_pu
-Rcpp::List rcpp_prepare_fragmentation_pu(SEXP x, Rcpp::DataFrame relation_data, std::string block_name, std::string tag);
-RcppExport SEXP _prioriactions_rcpp_prepare_fragmentation_pu(SEXP xSEXP, SEXP relation_dataSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type relation_data(relation_dataSEXP);
-    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
-    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_prepare_fragmentation_pu(x, relation_data, block_name, tag));
-    return rcpp_result_gen;
 END_RCPP
 }
 // rcpp_set_objective_max_benefit

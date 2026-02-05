@@ -319,10 +319,16 @@ add_spatial_boundary <- function(x,
                                  weight_col = NULL,
                                  weight_multiplier = 1,
                                  progress = FALSE,
-                                 include_self = TRUE) {
+                                 include_self = TRUE,
+                                 edge_factor = 1) {
 
   stopifnot(inherits(x, "Data"))
   x <- .pa_ensure_pu_index(x)
+
+  edge_factor <- as.numeric(edge_factor)[1]
+  if (!is.finite(edge_factor) || edge_factor < 0) {
+    stop("edge_factor must be a finite number >= 0.", call. = FALSE)
+  }
 
   weight_multiplier <- as.numeric(weight_multiplier)[1]
   if (!is.finite(weight_multiplier) || weight_multiplier <= 0) {
@@ -356,6 +362,13 @@ add_spatial_boundary <- function(x,
       source = "boundary_table",
       stringsAsFactors = FALSE
     )
+
+    # prioritizr-style: edge_factor scales ONLY exposed/external boundary (self edges)
+    if (isTRUE(include_self) && any(rel$pu1 == rel$pu2)) {
+      idx_self <- rel$pu1 == rel$pu2
+      rel$weight[idx_self] <- rel$weight[idx_self] * edge_factor
+    }
+
 
     return(
       add_spatial_relations(
@@ -439,19 +452,42 @@ add_spatial_boundary <- function(x,
 
   allow_self <- FALSE
   if (isTRUE(include_self)) {
-    # perimeter as self-edge weight
-    per <- as.numeric(sf::st_length(sf::st_boundary(sf::st_geometry(pu_sf))))
+
+    # total perimeter for each PU (aligned with pu_sf)
+    per <- as.numeric(sf::st_length(sf::st_boundary(sf::st_geometry(pu_sf)))) * weight_multiplier
+
+    # shared boundary is already in rel$weight (already multiplied)
+    # compute incident shared length per PU (sum of shared edges touching i)
+    shared_sum <- numeric(nrow(pu_sf))
+    names(shared_sum) <- as.character(pu_sf$id)
+
+    if (nrow(rel) > 0) {
+      # accumulate to both endpoints
+      shared_sum[as.character(rel$pu1)] <- shared_sum[as.character(rel$pu1)] + rel$weight
+      shared_sum[as.character(rel$pu2)] <- shared_sum[as.character(rel$pu2)] + rel$weight
+    }
+
+    # external boundary = perimeter - incident shared
+    ext <- per - shared_sum[as.character(pu_sf$id)]
+    ext[!is.finite(ext)] <- 0
+    ext <- pmax(ext, 0)
+
+    # prioritizr-style: edge_factor scales ONLY exposed/external boundary
+    ext <- ext * edge_factor
+
+
     rel_self <- data.frame(
       pu1 = pu_sf$id,
       pu2 = pu_sf$id,
-      weight = per * weight_multiplier,
-      source = "boundary_sf_perimeter",
+      weight = ext,
+      source = "boundary_sf_external",
       stringsAsFactors = FALSE
     )
-    # rbind consistent even if rel is empty
+
     if (nrow(rel) == 0) rel <- rel_self else rel <- base::rbind(rel, rel_self)
     allow_self <- TRUE
   }
+
 
   add_spatial_relations(
     x, rel, name = name,

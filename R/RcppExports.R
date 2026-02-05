@@ -53,10 +53,6 @@ rcpp_add_objective_min_cost <- function(x, pu_data, dist_actions_data, weight = 
     .Call(`_prioriactions_rcpp_add_objective_min_cost`, x, pu_data, dist_actions_data, weight, include_pu_cost, include_action_cost, block_name, tag)
 }
 
-rcpp_add_objective_min_fragmentation <- function(x, relation_data, weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_fragmentation", tag = "") {
-    .Call(`_prioriactions_rcpp_add_objective_min_fragmentation`, x, relation_data, weight, weight_multiplier, block_name, tag)
-}
-
 rcpp_add_pu_locks <- function(x, pu_data, block_name = "pu_locks", tag = "") {
     .Call(`_prioriactions_rcpp_add_pu_locks`, x, pu_data, block_name, tag)
 }
@@ -103,10 +99,6 @@ rcpp_add_to_objective <- function(x, ind, val) {
 
 rcpp_add_to_objective_scalar <- function(x, ind1, val) {
     invisible(.Call(`_prioriactions_rcpp_add_to_objective_scalar`, x, ind1, val))
-}
-
-rcpp_prepare_fragmentation_pu <- function(x, relation_data, block_name = "fragmentation_pu", tag = "") {
-    .Call(`_prioriactions_rcpp_prepare_fragmentation_pu`, x, relation_data, block_name, tag)
 }
 
 rcpp_set_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit", block_name = "objective_max_benefit", tag = "") {
