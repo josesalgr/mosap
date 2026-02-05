@@ -208,7 +208,7 @@ add_spatial_relations <- function(x,
   stopifnot(inherits(relations, "data.frame"), nrow(relations) > 0)
   rel <- relations
 
-  # --- map pu ids -> internal ids if needed
+  # map pu ids -> internal ids if needed
   if (all(c("pu1", "pu2", "weight") %in% names(rel)) &&
       !all(c("internal_pu1", "internal_pu2") %in% names(rel))) {
 
@@ -225,19 +225,15 @@ add_spatial_relations <- function(x,
     }
   }
 
-  # --- keep only supported columns (consistent order!)
   keep_cols <- c("internal_pu1","internal_pu2","weight","pu1","pu2","distance","source")
   rel <- rel[, intersect(keep_cols, names(rel)), drop = FALSE]
 
-  # helper: swap directions but DO NOT duplicate self edges
   .pa_swap_edges_noself <- function(df) {
     df2 <- df
     has_pu <- all(c("pu1","pu2") %in% names(df2))
-    # swap internal
     tmp <- df2$internal_pu1
     df2$internal_pu1 <- df2$internal_pu2
     df2$internal_pu2 <- tmp
-    # swap pu if present
     if (has_pu) {
       tmp <- df2$pu1
       df2$pu1 <- df2$pu2
@@ -246,7 +242,6 @@ add_spatial_relations <- function(x,
     df2
   }
 
-  # helper: rbind with same column set/order
   .pa_rbind_samecols <- function(a, b) {
     cols <- union(names(a), names(b))
     a2 <- a; b2 <- b
@@ -257,27 +252,52 @@ add_spatial_relations <- function(x,
     base::rbind(a2, b2)
   }
 
-  # -------- validate ----------
   if (!directed) {
-    # undirected validate + collapse duplicates (and usually forces internal_pu1<=internal_pu2)
-    rel_u <- .pa_validate_relation(rel, n_pu = n_pu, allow_self = allow_self, dup_agg = duplicate_agg)
+
+    self_edges <- NULL
+    if (isTRUE(allow_self)) {
+      self <- rel$internal_pu1 == rel$internal_pu2
+      if (any(self, na.rm = TRUE)) {
+        self_edges <- rel[self, , drop = FALSE]
+        rel <- rel[!self, , drop = FALSE]
+      }
+    }
+
+    rel_u <- .pa_validate_relation(rel, n_pu = n_pu, allow_self = FALSE, dup_agg = duplicate_agg)
+
+    if (!is.null(self_edges)) {
+      key <- as.character(self_edges$internal_pu1)
+      agg_fun <- switch(duplicate_agg, sum=sum, max=max, min=min, mean=mean)
+      wself <- tapply(self_edges$weight, key, agg_fun)
+
+      self_fix <- data.frame(
+        internal_pu1 = as.integer(names(wself)),
+        internal_pu2 = as.integer(names(wself)),
+        weight = as.numeric(wself),
+        stringsAsFactors = FALSE
+      )
+
+      # si hay columnas extra, recupera la primera ocurrencia
+      extra_cols <- intersect(names(self_edges), c("pu1","pu2","distance","source"))
+      if (length(extra_cols) > 0) {
+        rep_idx <- match(names(wself), as.character(self_edges$internal_pu1))
+        extras <- self_edges[rep_idx, extra_cols, drop = FALSE]
+        self_fix <- cbind(self_fix, extras)
+      }
+
+      rel_u <- .pa_rbind_samecols(rel_u, self_fix)
+    }
 
     if (isTRUE(symmetric)) {
-      # duplicate ONLY off-diagonal edges
       off <- rel_u$internal_pu1 != rel_u$internal_pu2
       rel_sw <- .pa_swap_edges_noself(rel_u[off, , drop = FALSE])
-
       rel <- .pa_rbind_samecols(rel_u, rel_sw)
-
-      # we intentionally do NOT collapse duplicates again here,
-      # because we want both directions kept as-is.
       directed <- TRUE
     } else {
       rel <- rel_u
     }
 
   } else {
-    # directed validate (no collapsing)
     rel$internal_pu1 <- as.integer(rel$internal_pu1)
     rel$internal_pu2 <- as.integer(rel$internal_pu2)
     rel$weight <- as.numeric(rel$weight)
@@ -291,6 +311,18 @@ add_spatial_relations <- function(x,
   rel$relation_name <- name
   x <- .pa_store_relation(x, rel, name)
   x
+}
+
+.sum_incident_by_pu <- function(i, j, w, n_pu) {
+  i <- as.integer(i); j <- as.integer(j); w <- as.numeric(w)
+
+  s1 <- rowsum(w, i, reorder = FALSE)
+  s2 <- rowsum(w, j, reorder = FALSE)
+
+  out <- numeric(n_pu)
+  out[as.integer(rownames(s1))] <- out[as.integer(rownames(s1))] + s1[, 1]
+  out[as.integer(rownames(s2))] <- out[as.integer(rownames(s2))] + s2[, 1]
+  out
 }
 
 
@@ -335,9 +367,9 @@ add_spatial_boundary <- function(x,
     stop("weight_multiplier must be a positive finite number.", call. = FALSE)
   }
 
-  # --------------------------
-  # Case A) boundary table
-  # --------------------------
+  # ------------------------------------------------------------
+  # Case A) boundary table provided
+  # ------------------------------------------------------------
   if (!is.null(boundary)) {
 
     stopifnot(inherits(boundary, "data.frame"), nrow(boundary) > 0)
@@ -355,7 +387,7 @@ add_spatial_boundary <- function(x,
     }
     if (!(weight_col %in% names(b))) stop("weight_col not found in boundary table.", call. = FALSE)
 
-    rel <- data.frame(
+    rel0 <- data.frame(
       pu1 = as.integer(b$pu1),
       pu2 = as.integer(b$pu2),
       weight = as.numeric(b[[weight_col]]) * weight_multiplier,
@@ -363,71 +395,134 @@ add_spatial_boundary <- function(x,
       stringsAsFactors = FALSE
     )
 
-    # prioritizr-style: edge_factor scales ONLY exposed/external boundary (self edges)
-    if (isTRUE(include_self) && any(rel$pu1 == rel$pu2)) {
-      idx_self <- rel$pu1 == rel$pu2
-      rel$weight[idx_self] <- rel$weight[idx_self] * edge_factor
+    x <- .pa_ensure_pu_index(x)
+    idx <- x$data$index$pu
+    rel0$internal_pu1 <- unname(idx[as.character(rel0$pu1)])
+    rel0$internal_pu2 <- unname(idx[as.character(rel0$pu2)])
+    if (anyNA(rel0$internal_pu1) || anyNA(rel0$internal_pu2)) {
+      stop("Some pu1/pu2 ids were not found in x$data$pu$id.", call. = FALSE)
     }
 
+    n_pu <- nrow(x$data$pu)
 
-    return(
-      add_spatial_relations(
-        x, rel, name = name,
-        directed = FALSE,
-        # allow_self TRUE para soportar tablas tipo prioritizr que traen i==i
-        allow_self = TRUE,
-        duplicate_agg = "sum",
-        symmetric = FALSE   # tablas ya pueden venir con ambas direcciones; no asumimos nada aquí
+    diag_rows <- rel0$internal_pu1 == rel0$internal_pu2
+    total <- numeric(n_pu); names(total) <- as.character(seq_len(n_pu))
+    if (any(diag_rows)) {
+      tt <- tapply(rel0$weight[diag_rows], rel0$internal_pu1[diag_rows], sum)
+      total[names(tt)] <- tt
+    } else if (isTRUE(include_self)) {
+      stop("boundary table has no diagonal (total perimeter) but include_self=TRUE.", call. = FALSE)
+    }
+
+    off <- rel0[!diag_rows, , drop = FALSE]
+    if (nrow(off) > 0) {
+      a <- pmin(off$internal_pu1, off$internal_pu2)
+      b2 <- pmax(off$internal_pu1, off$internal_pu2)
+      off$internal_pu1 <- a
+      off$internal_pu2 <- b2
+
+      key <- paste(off$internal_pu1, off$internal_pu2, sep = "_")
+      wmax <- tapply(off$weight, key, max)
+
+      parts <- strsplit(names(wmax), "_", fixed = TRUE)
+      i1 <- as.integer(vapply(parts, `[`, "", 1))
+      j1 <- as.integer(vapply(parts, `[`, "", 2))
+
+      off_u <- data.frame(
+        internal_pu1 = i1,
+        internal_pu2 = j1,
+        weight = as.numeric(wmax),
+        source = "boundary_table_shared",
+        stringsAsFactors = FALSE
       )
+    } else {
+      off_u <- off
+    }
+
+    if (!isTRUE(include_self)) {
+      if (nrow(off_u) == 0) stop("Boundary table has no off-diagonal edges and include_self=FALSE.", call. = FALSE)
+      rel <- off_u
+      rel$pu1 <- x$data$pu$id[rel$internal_pu1]
+      rel$pu2 <- x$data$pu$id[rel$internal_pu2]
+      return(add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE,
+                                   duplicate_agg = "max", symmetric = FALSE))
+    }
+
+    # incident por PU (OJO: suma, no sobrescribir)
+    incident <- numeric(n_pu)
+    if (nrow(off_u) > 0) {
+      incident <- .sum_incident_by_pu(
+        i = off_u$internal_pu1,
+        j = off_u$internal_pu2,
+        w = off_u$weight,
+        n_pu = n_pu
+      )
+    }
+
+    exposed <- pmax(total - incident, 0)
+
+    # ✅ CLAVE: diagonal efectiva equivalente a prioritizr
+    diag_eff <-  edge_factor * exposed
+
+    rel_self <- data.frame(
+      internal_pu1 = seq_len(n_pu),
+      internal_pu2 = seq_len(n_pu),
+      weight = as.numeric(diag_eff),
+      source = "boundary_table_diag_effective",
+      stringsAsFactors = FALSE
     )
+
+    rel <- if (nrow(off_u) == 0) rel_self else rbind(off_u, rel_self)
+    rel$pu1 <- x$data$pu$id[rel$internal_pu1]
+    rel$pu2 <- x$data$pu$id[rel$internal_pu2]
+
+    return(add_spatial_relations(
+      x, rel, name = name,
+      directed = FALSE,
+      allow_self = TRUE,
+      duplicate_agg = "max",
+      symmetric = FALSE
+    ))
   }
 
-  # --------------------------
-  # Case B) derive from sf
-  # --------------------------
+  # ------------------------------------------------------------
+  # Case B) derive from sf polygons
+  # ------------------------------------------------------------
   if (!requireNamespace("sf", quietly = TRUE)) {
     stop("add_spatial_boundary(boundary=NULL) requires the 'sf' package.", call. = FALSE)
   }
 
   if (is.null(pu_sf)) pu_sf <- x$data$pu_sf
-  if (is.null(pu_sf)) {
-    stop(
-      "boundary is NULL and pu_sf is missing.\n",
-      "Provide pu_sf (sf polygons with an 'id' column) or make sure inputData() stored x$data$pu_sf.",
-      call. = FALSE
-    )
-  }
+  if (is.null(pu_sf)) stop("boundary is NULL and pu_sf is missing.", call. = FALSE)
   if (!inherits(pu_sf, "sf")) stop("pu_sf must be an sf object.", call. = FALSE)
   if (!("id" %in% names(pu_sf))) stop("pu_sf must contain an 'id' column.", call. = FALSE)
 
   pu_sf$id <- as.integer(pu_sf$id)
-
   ord <- match(x$data$pu$id, pu_sf$id)
-  if (anyNA(ord)) stop("pu_sf$id does not match x$data$pu$id (some ids missing).", call. = FALSE)
+  if (anyNA(ord)) stop("pu_sf$id does not match x$data$pu$id.", call. = FALSE)
   pu_sf <- pu_sf[ord, , drop = FALSE]
 
+  geom <- sf::st_make_valid(sf::st_geometry(pu_sf))
+  pu_sf <- sf::st_set_geometry(pu_sf, geom)
   geom <- sf::st_geometry(pu_sf)
 
-  # rook neighbours (shared edge): DE-9IM
-  nb <- sf::st_relate(pu_sf, pu_sf, pattern = "F***1****", sparse = TRUE)
+  nb <- sf::st_intersects(pu_sf, pu_sf, sparse = TRUE)
 
   pu1 <- integer(0); pu2 <- integer(0); w <- numeric(0)
   n <- length(nb)
+
   if (isTRUE(progress)) message("Computing shared boundary lengths for ", n, " planning units...")
 
-  bnd <- sf::st_boundary(geom)
-
-  # compute each pair once (i<j)
   for (i in seq_len(n)) {
     js <- nb[[i]]
     js <- js[js > i]
     if (!length(js)) next
 
-    bi <- bnd[i]
     for (j in js) {
-      inter <- sf::st_intersection(bi, bnd[j])
+      inter <- sf::st_intersection(geom[i], geom[j])
       if (length(inter) == 0) next
-      len <- suppressWarnings(sf::st_length(inter))
+      inter_line <- suppressWarnings(sf::st_cast(inter, "MULTILINESTRING"))
+      len <- suppressWarnings(sf::st_length(inter_line))
       len <- sum(as.numeric(len), na.rm = TRUE)
 
       if (is.finite(len) && len > 0) {
@@ -438,11 +533,13 @@ add_spatial_boundary <- function(x,
     }
   }
 
+  w <- round(w, 6)
+
   if (!length(pu1) && !isTRUE(include_self)) {
-    stop("No shared-boundary (rook) adjacencies found.", call. = FALSE)
+    stop("No shared-boundary adjacencies found.", call. = FALSE)
   }
 
-  rel <- data.frame(
+  rel_off <- data.frame(
     pu1 = as.integer(pu1),
     pu2 = as.integer(pu2),
     weight = as.numeric(w) * weight_multiplier,
@@ -450,51 +547,53 @@ add_spatial_boundary <- function(x,
     stringsAsFactors = FALSE
   )
 
-  allow_self <- FALSE
-  if (isTRUE(include_self)) {
-
-    # total perimeter for each PU (aligned with pu_sf)
-    per <- as.numeric(sf::st_length(sf::st_boundary(sf::st_geometry(pu_sf)))) * weight_multiplier
-
-    # shared boundary is already in rel$weight (already multiplied)
-    # compute incident shared length per PU (sum of shared edges touching i)
-    shared_sum <- numeric(nrow(pu_sf))
-    names(shared_sum) <- as.character(pu_sf$id)
-
-    if (nrow(rel) > 0) {
-      # accumulate to both endpoints
-      shared_sum[as.character(rel$pu1)] <- shared_sum[as.character(rel$pu1)] + rel$weight
-      shared_sum[as.character(rel$pu2)] <- shared_sum[as.character(rel$pu2)] + rel$weight
-    }
-
-    # external boundary = perimeter - incident shared
-    ext <- per - shared_sum[as.character(pu_sf$id)]
-    ext[!is.finite(ext)] <- 0
-    ext <- pmax(ext, 0)
-
-    # prioritizr-style: edge_factor scales ONLY exposed/external boundary
-    ext <- ext * edge_factor
-
-
-    rel_self <- data.frame(
-      pu1 = pu_sf$id,
-      pu2 = pu_sf$id,
-      weight = ext,
-      source = "boundary_sf_external",
-      stringsAsFactors = FALSE
-    )
-
-    if (nrow(rel) == 0) rel <- rel_self else rel <- base::rbind(rel, rel_self)
-    allow_self <- TRUE
+  if (!isTRUE(include_self)) {
+    return(add_spatial_relations(x, rel_off, name = name,
+                                 directed = FALSE, allow_self = FALSE,
+                                 duplicate_agg = "max", symmetric = FALSE))
   }
 
+  total <- as.numeric(sf::st_length(sf::st_boundary(sf::st_geometry(pu_sf))))
+  total <- round(total, 6) * weight_multiplier
+
+  incident <- numeric(nrow(pu_sf))
+  if (nrow(rel_off) > 0) {
+    idx_map <- seq_len(nrow(pu_sf))
+    names(idx_map) <- as.character(pu_sf$id)
+
+    i_int <- idx_map[as.character(rel_off$pu1)]
+    j_int <- idx_map[as.character(rel_off$pu2)]
+
+    incident <- .sum_incident_by_pu(
+      i = i_int,
+      j = j_int,
+      w = rel_off$weight,
+      n_pu = nrow(pu_sf)
+    )
+  }
+
+
+  exposed <- pmax(total - incident, 0)
+
+  # ✅ CLAVE: diagonal efectiva equivalente a prioritizr
+  diag_eff <-  edge_factor * exposed
+
+  rel_self <- data.frame(
+    pu1 = pu_sf$id,
+    pu2 = pu_sf$id,
+    weight = as.numeric(diag_eff),
+    source = "boundary_sf_diag_effective",
+    stringsAsFactors = FALSE
+  )
+
+  rel <- if (nrow(rel_off) == 0) rel_self else rbind(rel_off, rel_self)
 
   add_spatial_relations(
     x, rel, name = name,
     directed = FALSE,
-    symmetric = TRUE,          # crea (i,j) y (j,i) SOLO para off-diagonal (fix en add_spatial_relations)
-    allow_self = allow_self,
-    duplicate_agg = "sum"
+    symmetric = FALSE,
+    allow_self = TRUE,
+    duplicate_agg = "max"
   )
 }
 

@@ -2272,7 +2272,6 @@ available_to_solve <- function(package = ""){
 # -------------------------------------------------------------------------
 # Internal helpers spatial relations
 # -------------------------------------------------------------------------
-
 .pa_validate_relation <- function(rel, n_pu, allow_self = FALSE,
                                   dup_agg = c("sum", "max", "min", "mean")) {
 
@@ -2295,14 +2294,19 @@ available_to_solve <- function(package = ""){
   if (!allow_self && any(rel$internal_pu1 == rel$internal_pu2)) stop("Self-edges are not allowed.", call. = FALSE)
   if (any(!is.finite(rel$weight)) || any(rel$weight < 0)) stop("weight must be finite and >= 0.", call. = FALSE)
 
-  # undirected: canonical ordering
+  # undirected canonical ordering
   a <- pmin(rel$internal_pu1, rel$internal_pu2)
   b <- pmax(rel$internal_pu1, rel$internal_pu2)
   rel$internal_pu1 <- a
   rel$internal_pu2 <- b
 
+  # columns to keep
+  core <- c("internal_pu1", "internal_pu2", "weight")
+  extra_cols <- intersect(names(rel), c("pu1","pu2","distance","source"))
+  keep <- c(core, extra_cols)
+
   # aggregate duplicates
-  key <- paste(a, b)
+  key <- paste(rel$internal_pu1, rel$internal_pu2)
   if (anyDuplicated(key) != 0) {
     FUN <- switch(
       dup_agg,
@@ -2311,15 +2315,31 @@ available_to_solve <- function(package = ""){
       min  = min,
       mean = mean
     )
-    rel <- stats::aggregate(weight ~ internal_pu1 + internal_pu2, data = rel, FUN = FUN)
+
+    # aggregate ONLY weight (core), then optionally restore extras deterministically
+    agg <- stats::aggregate(
+      weight ~ internal_pu1 + internal_pu2,
+      data = rel[, core, drop = FALSE],
+      FUN = FUN
+    )
+
+    # if extras exist, attach a deterministic representative per edge (first row)
+    if (length(extra_cols) > 0) {
+      # representative rows: first occurrence per key
+      rep_idx <- match(paste(agg$internal_pu1, agg$internal_pu2),
+                       paste(rel$internal_pu1, rel$internal_pu2))
+      extras <- rel[rep_idx, extra_cols, drop = FALSE]
+      agg <- cbind(agg, extras)
+    }
+
+    rel <- agg
   } else {
-    rel <- rel[, c("internal_pu1", "internal_pu2", "weight",
-                   intersect(names(rel), c("pu1","pu2","distance","source"))),
-               drop = FALSE]
+    rel <- rel[, keep, drop = FALSE]
   }
 
   rel
 }
+
 
 
 .pa_action_weights_vector <- function(actions_df,
