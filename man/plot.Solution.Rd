@@ -4,23 +4,21 @@
 \alias{plot.Solution}
 \title{Plot a Solution (if spatial geometry is available)}
 \usage{
-\method{plot}{Solution}(x, what = c("pu", "actions"), only_selected = FALSE, action = NULL, ...)
-}
-\arguments{
-\item{x}{A \linkS4class{solution} object.}
-
-\item{what}{What to plot: "pu" (selected PUs) or "actions" (selected actions by PU).}
-
-\item{only_selected}{For what="pu", show only selected PUs?}
-
-\item{action}{If what="actions", optionally select a single action id to highlight.}
-
-\item{...}{Passed to graphics.}
-}
-\value{
-Invisibly returns the ggplot object.
+\method{plot}{Solution}(
+  x,
+  what = c("pu", "actions"),
+  only_selected = FALSE,
+  action = NULL,
+  ...,
+  include_conservation = TRUE,
+  conservation_label = "conservation",
+  base_alpha = 0.1,
+  selected_alpha = 0.9,
+  base_fill = "grey60",
+  base_color = NA,
+  selected_color = NA
+)
 }
 \description{
-Plots the solution using planning-unit geometry when available (sf).
-If no geometry is present, an error is thrown with guidance.
+Plot a Solution (if spatial geometry is available)
 }
