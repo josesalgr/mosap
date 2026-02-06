@@ -852,12 +852,20 @@
       subset_actions = oargs$actions_to_use %||% oargs$actions %||% NULL
     )
 
+    subset_actions <- oargs$actions_to_use %||% oargs$actions %||% NULL
+
+    aw_vec <- .pa_action_weights_vector(
+      actions_df = x$data$actions,
+      action_weights = oargs$action_weights %||% NULL,
+      subset_actions = subset_actions
+    )
+
     res <- rcpp_set_objective_min_fragmentation_actions_by_action(
       op,
       dist_actions_data = x$data$dist_actions_model,
       relation_data = rel_model,
-      actions_to_use = oargs$actions_to_use %||% NULL,
-      action_weights = aw_vec,
+      actions_to_use = NULL,          # <- clave: evitar mismatch
+      action_weights = aw_vec,        # <- largo n_actions, ya incluye ceros fuera del subset
       weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
     )
 

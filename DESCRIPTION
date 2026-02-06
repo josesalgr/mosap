@@ -1,36 +1,25 @@
-Package: prioriactions
+Package: mosap
 Type: Package
 Version: 1.0.1
-Title: Multi-Action Conservation Planning             
-Description: This uses a mixed integer mathematical programming (MIP)
-        approach for building and solving multi-action planning problems, 
-        where the goal is to find an optimal combination of management actions that
-        abate threats, in an efficient way while accounting for spatial aspects. 
-        Thus, optimizing the connectivity and conservation effectiveness of 
-        the prioritized units and of the deployed actions. The package is capable of 
-        handling different commercial (gurobi, CPLEX) and non-commercial (symphony, CBC) MIP solvers. 
-        Gurobi optimization solver can be installed using comprehensive instructions in 
-        the 'gurobi' installation vignette of the prioritizr package (available in 
-        <https://prioritizr.net/articles/gurobi_installation_guide.html>). Instead, 'CPLEX'
-        optimization solver can be obtain from IBM CPLEX web page (available here 
-        <https://www.ibm.com/es-es/products/ilog-cplex-optimization-studio>). Additionally, 
-        the 'rcbc' R package (available at
-    <https://github.com/dirkschumacher/rcbc>) can be used to obtain solutions
-    using the CBC optimization software (<https://github.com/coin-or/Cbc>). Methods used in the 
-        package refers to Salgado-Rojas et al. (2020) <doi:10.1016/j.ecolmodel.2019.108901>,
-        Beyer et al. (2016) <doi:10.1016/j.ecolmodel.2016.02.005>, Cattarino et al. (2015)
-        <doi:10.1371/journal.pone.0128027> and Watts et al. (2009) <doi:10.1016/j.envsoft.2009.06.005>. 
-        See the prioriactions website for more information, documentations and examples.
+Title: Integrated Multi-Objective Spatial Action Planning            
+Description: Description: Provides an exact multi-objective optimisation framework for integrated
+    spatial action planning using mixed-integer programming (MIP). The package
+    supports the design of management portfolios (e.g., conservation, restoration,
+    and other interventions) across planning units to abate threats and satisfy
+    user-defined constraints, while accounting for spatial structure (e.g.,
+    connectivity and fragmentation). Multiple multi-objective methods are
+    available, including weighted-sum aggregation, lexicographic (hierarchical)
+    optimisation, epsilon-constraint, and AUGMECON-based approaches. Problems can
+    be solved with commercial (e.g., Gurobi, CPLEX) and open-source (e.g., CBC,
+    SYMPHONY) MIP solvers. Methods build on Salgado-Rojas et al. (2020)
+    <doi:10.1016/j.ecolmodel.2019.108901>, Beyer et al. (2016)
+    <doi:10.1016/j.ecolmodel.2016.02.005>, Cattarino et al. (2015)
+    <doi:10.1371/journal.pone.0128027>, and Watts et al. (2009)
+    <doi:10.1016/j.envsoft.2009.06.005>.
 Authors@R: c(person(c('Jose'), 'Salgado-Rojas',
              email='jose.salgroj@gmail.com', role = c('aut','cre')),
-             person(c('Irlanda'), 'Ceballos-Fuentealba',
-             email='iceballosfuentealba@gmail.com', role = c('aut')),
-             person(c('Virgilio'), 'Hermoso',
-             email='virgilio.hermoso@gmail.com', role = c('aut')),
-             person(c('Eduardo'), 'Alvarez-Miranda',
-             email='eduardo.alvmir@gmail.com', role = c('aut')),
-             person(c('Jordi'), 'Garcia-Gonzalo',
-             email='j.garcia@ctfc.es', role = c('aut')))
+             person(c('Nuria'), 'Aquilue',
+             email='nuria.aquilue@ctfc.cat', role = c('aut')))
 Depends:
   R (>= 3.5.0)
 Imports: 
@@ -80,8 +69,10 @@ URL: https://prioriactions.github.io/prioriactions/,
 BugReports: https://github.com/prioriactions/prioriactions/issues
 VignetteBuilder: knitr
 Collate: 
-    'RcppExports.R'
     'internal.R'
+    'MOResult.R'
+    'MOproblem-class.R'
+    'RcppExports.R'
     'add_action_max_per_pu.R'
     'add_actions.R'
     'add_area_constraints.R'
@@ -95,11 +86,13 @@ Collate:
     'get_solution.R'
     'inputData.R'
     'inputDataSpatial.R'
+    'internalMO.R'
     'package.R'
     'plot.R'
     'presolve.R'
     'print.R'
     'problem.R'
+    'set_method_weighted.R'
     'set_solver.R'
     'show.R'
     'simData.R'

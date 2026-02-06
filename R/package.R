@@ -1,5 +1,5 @@
 #' @importFrom Rcpp evalCpp
-#' @useDynLib prioriactions, .registration = TRUE
+#' @useDynLib mosap, .registration = TRUE
 NULL
 
 #' @title Create and solve multi-actions planning problems
@@ -10,7 +10,7 @@ NULL
 #'
 #' @param ... arguments inherited from `inputData()`, `problem()` and `solve()` functions.
 
-#' @name prioriactions
+#' @name mosap
 #'
 #' @return An object of class [solution-class].
 #'
@@ -40,9 +40,9 @@ NULL
 #'
 #' print(s)
 #' }
-#' @rdname prioriactions
+#' @rdname mosap
 #' @export
-prioriactions <- function(...) {
+mosap <- function(...) {
 
   params = list(...)
 

@@ -1,5 +1,4 @@
 #include "Package.h"
-#include "functions.h"
 #include "OptimizationProblem.h"
 
 #include <algorithm> // std::fill

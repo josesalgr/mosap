@@ -1,3 +1,5 @@
+#' @include internal.R internalMO.R
+#'
 #' @title Solve optimization model
 #'
 #' @description
@@ -563,3 +565,32 @@ solve.Data <- function(x, ...) {
 
   s
 }
+
+
+
+
+#' @method solve MOProblem
+#' @export
+solve.MOProblem <- function(x, ...) {
+
+  if (!inherits(x, "MOProblem")) {
+    stop("solve.MOProblem expects a MOProblem.", call. = FALSE)
+  }
+
+  .pamo_validate_objectives(x)
+
+  if (is.null(x$method) || identical(x$method$name, "none")) {
+    stop("No MO method configured. Use set_method_weighted(), set_method_epsilon(), etc.", call. = FALSE)
+  }
+
+  if (identical(x$method$name, "weighted")) {
+    res <- .pamo_solve_weighted(x, ...)
+    # OJO: esto NO “persiste” fuera si el usuario no reasigna.
+    x$results <- res
+    return(res)
+  }
+
+  stop("Unknown/unsupported method: '", x$method$name, "'.", call. = FALSE)
+}
+
+
