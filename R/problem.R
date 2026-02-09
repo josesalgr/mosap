@@ -15,7 +15,7 @@
 #' @param segments integer. Stored in model_args (compat/printing).
 #'
 #' @return Updated `Data` object with preset stored in `x$data$model_args`.
-#' @export
+#' @keywords internal
 problem <- function(x,
                     model_type = c("minimizeCosts", "maximizeBenefits"),
                     budget = 0,

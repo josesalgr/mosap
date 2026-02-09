@@ -116,3 +116,4 @@ plot(sol, what = "actions", fill_values = cols, conservation_label = "conservati
 \seealso{
 \code{\link{get_pu}}, \code{\link{get_actions}}
 }
+\keyword{internal}

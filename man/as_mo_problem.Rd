@@ -15,3 +15,4 @@ An object of class \code{MOProblem}.
 \description{
 Create a multi-objective problem wrapper
 }
+\keyword{internal}

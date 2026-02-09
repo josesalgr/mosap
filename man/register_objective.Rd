@@ -34,3 +34,4 @@ A function that takes an \code{MOProblem} (for DSL \code{x + ...}) and returns t
 This does not solve anything. It only records how to evaluate/build the objective.
 Multi-objective methods (weighted, epsilon, etc.) will use this registry later.
 }
+\keyword{internal}

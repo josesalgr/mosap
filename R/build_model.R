@@ -9,6 +9,7 @@
 #' @param x Data object (class "Data") created with inputData()/inputDataSpatial().
 #'
 #' @return Updated `Data` object with model pointer and model snapshot.
+#' @keywords internal
 .pa_build_model <- function(x) {
 
   stopifnot(inherits(x, "Data"))

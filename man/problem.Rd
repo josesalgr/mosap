@@ -34,3 +34,4 @@ Legacy-compatible helper that stores a model preset inside the \code{Data} objec
 In the new pipeline, the MILP is built inside \code{solve()}. This function does NOT
 create a C++ model pointer; it only configures \code{x$data$model_args} for \code{.pa_build_model()}.
 }
+\keyword{internal}

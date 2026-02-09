@@ -74,3 +74,4 @@ To use this function you need:
 \item \code{sf} only if you ask to automatically derive the \code{boundary} table.
 }
 }
+\keyword{internal}

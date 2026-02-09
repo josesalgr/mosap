@@ -16,3 +16,4 @@ Updated \code{Data} object with model pointer and model snapshot.
 Materializes (builds) the optimization model using the current state of the \code{Data} object:
 prepared data tables, stored objective settings, and stored constraints (e.g., targets).
 }
+\keyword{internal}

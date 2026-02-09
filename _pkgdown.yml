@@ -3,19 +3,19 @@ title: mosap
 url: https://josesalgr.github.io/mosap/
 
 template:
+  bootstrap: 5
   params:
     docsearch:
       api_key: f00985ff93067595b4da97a65fe69f1a
       index_name: mosap
     ganalytics: G-6YB8F3838H
-    # bootswatch: litera
 
 destination: docs
 
 authors:
   Jose Salgado-Rojas:
     href: https://scholar.google.com/citations?user=Z3F-9DgAAAAJ&hl=en
-  Núria Aquilué:
+  Nuria Aquilue:
     href: https://scholar.google.com/citations?user=OLJaCsYAAAAJ&hl=en
 
 navbar:
@@ -80,7 +80,7 @@ reference:
     desc: Configure and solve multi-objective problems (e.g., weighted sum).
     contents:
       - set_method_weighted
-      - solve.MOProblem
+      - solve
 
   - title: Results and solution helpers
     desc: Extract tables and diagnostics from a Solution object.

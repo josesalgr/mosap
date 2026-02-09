@@ -1,111 +1,82 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/404.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/CONTRIBUTING.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/articles/MitchellRiver.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/articles/benchmark.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/articles/objectives.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/articles/prioriactions.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/articles/sensitivities.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/authors.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/index.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/news/index.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/data-class.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/evalBlm.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/evalBudget.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/evalTarget.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/getActions.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/getConnectivity.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/getConnectivityPenalty.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/getCost.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/getModelInfo.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/getPerformance.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/getPotentialBenefit.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/getSolutionBenefit.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/inputData.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/optimizationProblem-class.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/pipe.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/portfolio-class.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/print.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/prioriactions.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/problem.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/show.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/simData.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/sim_data.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/solution-class.html</loc>
-  </url>
-  <url>
-    <loc>https://prioriactions.github.io/prioriactions/reference/solve.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://josesalgr.github.io/mosap/404.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/articles/benchmark.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/articles/index.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/articles/MitchellRiver.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/articles/objectives.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/articles/prioriactions.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/articles/sensitivities.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/authors.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/CONTRIBUTING.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/index.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/news/index.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_actions.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_action_max_per_pu.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_area_max_constraint.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_area_min_constraint.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_benefits.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_conservation_targets_absolute.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_conservation_targets_relative.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_effects.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_losses.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_mixed_targets_total_absolute.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_mixed_targets_total_relative.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_objective_max_benefit.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_objective_max_net_profit.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_objective_max_profit.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_objective_min_action_fragmentation.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_objective_min_cost.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_objective_min_fragmentation.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_objective_min_intervention_fragmentation.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_profit.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_recovery_targets_absolute.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_recovery_targets_relative.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_spatial_boundary.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_spatial_distance.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_spatial_knn.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_spatial_queen.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_spatial_relations.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_spatial_rook.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/as_mo_problem.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/data-class.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/dot-pa_build_model.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/evalBlm.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/evalBudget.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/evalTarget.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/getActions.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/getConnectivity.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/getConnectivityPenalty.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/getCost.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/getModelInfo.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/getPerformance.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/getPotentialBenefit.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/getSolutionBenefit.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/get_actions.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/get_features.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/get_pu.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/get_solution_vector.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/get_targets.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/index.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/inputData.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/inputDataSpatial.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/mo-problem-class.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/mo-result-class.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/mosap.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/optimizationProblem-class.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/pipe.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/plot.Solution.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/portfolio-class.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/print.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/prioriactions.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/problem.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/register_objective.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/set_method_weighted.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/set_solver.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/show.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/simData.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/sim_data.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/solution-class.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/solve.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/targets.html</loc></url>
 </urlset>
+

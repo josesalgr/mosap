@@ -27,6 +27,7 @@ NULL
 #'
 #' @name mo-result-class
 #' @aliases MOResult
+#' @keywords internal
 NULL
 
 #' @export

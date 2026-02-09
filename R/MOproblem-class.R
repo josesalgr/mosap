@@ -104,7 +104,7 @@ MOProblem <- pproto(
 #'
 #' @param x A `Data` object created by `prioriactions::inputData()` (or a compatible object).
 #' @return An object of class `MOProblem`.
-#' @export
+#' @keywords internal
 as_mo_problem <- function(x) {
 
   if (!inherits(x, "Data")) {
@@ -160,7 +160,7 @@ Ops.MOProblem <- function(e1, e2) {
 #' @param ... Reserved for future extensions.
 #'
 #' @return A function that takes an `MOProblem` (for DSL `x + ...`) and returns the updated object.
-#' @export
+#' @keywords internal
 register_objective <- function(alias, sense = c("min", "max"), build_fun, eval_fun = NULL, ...) {
   sense <- match.arg(sense)
 

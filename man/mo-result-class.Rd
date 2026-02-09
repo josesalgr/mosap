@@ -24,3 +24,4 @@ An \code{MOResult} stores:
 }
 }
 
+\keyword{internal}

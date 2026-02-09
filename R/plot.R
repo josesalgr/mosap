@@ -78,6 +78,7 @@
 #'
 #' @export
 #' @method plot Solution
+#' @keywords internal
 
 plot.Solution <- function(
     x,

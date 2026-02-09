@@ -58,7 +58,7 @@ NULL
 #'
 #' @return An object created by [inputData()].
 #'
-#' @export
+#' @keywords internal
 inputDataSpatial <- function(
     pu,
     features,
