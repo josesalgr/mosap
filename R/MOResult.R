@@ -8,7 +8,7 @@ NULL
 if (!methods::isClass("MOResult")) methods::setOldClass("MOResult")
 NULL
 
-# =========================================================
+# ==========================================================
 #' MOResult class
 #'
 #' Container for results produced by multi-objective methods in prioriactionsMO.
