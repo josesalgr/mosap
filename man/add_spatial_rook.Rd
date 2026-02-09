@@ -9,17 +9,23 @@ add_spatial_rook(x, pu_sf = NULL, name = "default", weight = 1)
 \arguments{
 \item{x}{A \linkS4class{data} object created with \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
-\item{pu_sf}{Optional sf object with planning units geometry and an \code{id} column. If \code{NULL},
-tries \code{x$data$pu_sf}.}
+\item{pu_sf}{Optional \code{sf} object with PU polygons and an \code{id} column. If \code{NULL},
+uses \code{x$data$pu_sf}.}
 
-\item{name}{Name/key under which the relation will be stored.}
+\item{name}{Character name/key under which to store the relation.}
 
-\item{weight}{Weight assigned to each adjacency edge (default 1).}
+\item{weight}{Numeric edge weight assigned to each rook adjacency (default 1).}
 }
 \value{
 Updated \linkS4class{data} object.
 }
 \description{
-Build a rook adjacency relation (shared edge) from planning unit polygons.
-Requires \code{sf}.
+Build and register a rook adjacency relation (shared edge) from planning-unit polygons.
+Rook adjacency detects pairs of polygons that share a non-zero-length boundary segment.
+}
+\examples{
+\dontrun{
+x <- x |> add_spatial_rook(name = "rook", weight = 1)
+}
+
 }

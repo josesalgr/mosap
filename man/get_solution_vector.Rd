@@ -13,12 +13,23 @@ get_solution_vector(x)
 A numeric vector with one value per model variable.
 }
 \description{
-Returns the raw decision-variable vector produced by the solver (in the model variable order).
+Return the raw decision-variable vector produced by the solver, in the internal model
+variable order used by the optimizer backend.
+}
+\details{
+This function expects the raw solution vector at \code{x$data$sol} and errors if it is missing.
+The vector is returned as numeric and corresponds to the model's variable ordering (e.g.,
+planning-unit selection variables, action variables, and any auxiliary variables such as
+fragmentation variables when present).
 }
 \examples{
 \dontrun{
-sol <- solve(hola)
+sol <- solve(problem)
 v <- get_solution_vector(sol)
 length(v)
 }
+
+}
+\seealso{
+\code{\link[=get_pu]{get_pu()}}, \code{\link[=get_actions]{get_actions()}}, \code{\link[=get_features]{get_features()}}, \code{\link[=get_targets]{get_targets()}}
 }

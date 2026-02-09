@@ -6,6 +6,20 @@
 \usage{
 add_mixed_targets_total_relative(x, targets, overwrite = FALSE, label = NULL)
 }
+\arguments{
+\item{x}{A \linkS4class{data} object.}
+
+\item{targets}{Target specification (proportions in \eqn{[0,1]}).}
+
+\item{overwrite}{Logical. If \code{TRUE}, replace existing mixed-total targets for the same features
+(subject to mutual exclusivity rules enforced by \code{.pa_store_targets()}).}
+
+\item{label}{Optional character label stored with the targets.}
+}
+\value{
+Updated \linkS4class{data} object.
+}
 \description{
-Adds relative mixed-total targets as proportions of baseline totals per feature.
+Adds relative mixed-total targets as proportions in \eqn{[0,1]} of baseline totals per feature.
+Baseline totals are computed via \code{.pa_feature_totals()} and stored in \code{basis_total}.
 }

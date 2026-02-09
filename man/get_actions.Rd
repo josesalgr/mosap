@@ -9,21 +9,31 @@ get_actions(x, only_selected = FALSE)
 \arguments{
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}
 
-\item{only_selected}{Logical. If \code{TRUE}, return only selected actions
-(\code{selected == 1}). Default \code{FALSE}.}
+\item{only_selected}{Logical. If \code{TRUE}, return only rows where \code{selected == 1}.
+Default \code{FALSE}.}
 }
 \value{
-A \code{data.frame} with action allocation information and a \code{selected} column.
+A \code{data.frame} with action-allocation information stored in the solution and
+a \code{selected} column.
 }
 \description{
-Extracts the action-allocation table from a \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.
-The returned table includes a \code{selected} column indicating whether each feasible
-\code{(pu, action)} pair is selected in the solution.
+Extract the action-allocation results table from a \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.
+The returned table includes a \code{selected} indicator (typically \code{0/1}) showing whether
+each feasible \code{(pu, action)} pair is selected in the solution.
+}
+\details{
+This function expects the solution object to store an action-allocation table at
+\code{x$data$tables$actions}. It errors if the table is missing. If \code{only_selected = TRUE},
+it also errors when the \code{selected} column is not present.
 }
 \examples{
 \dontrun{
-sol <- solve(hola)
+sol <- solve(problem)
 act_tbl <- get_actions(sol)
 act_sel <- get_actions(sol, only_selected = TRUE)
 }
+
+}
+\seealso{
+\code{\link[=get_pu]{get_pu()}}, \code{\link[=get_features]{get_features()}}, \code{\link[=get_targets]{get_targets()}}, \code{\link[=get_solution_vector]{get_solution_vector()}}
 }

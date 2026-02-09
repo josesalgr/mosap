@@ -6,64 +6,145 @@
 #' Builds a \code{Data} object (class \code{"Data"}) from either tabular inputs or spatial inputs.
 #' This is the entry point for the \pkg{prioriactions} workflow.
 #'
-#' The function supports three input styles.
+#' The function supports three input styles:
 #'
-#' If \code{pu}, \code{features}, and \code{dist_features} are \code{data.frame}s, a purely tabular
-#' workflow is used (no spatial packages required).
+#' 1) **Tabular mode**: If \code{pu}, \code{features}, and \code{dist_features} are \code{data.frame}s,
+#'    a purely tabular workflow is used (no spatial packages required).
 #'
-#' If \code{dist_features} is missing (or \code{NULL}) and \code{pu}/\code{features} are spatial,
-#' a spatial workflow is used. In the vector-PU workflow, planning units are polygons and feature
-#' amounts are aggregated by polygon.
+#' 2) **Vector-PU spatial mode**: If \code{dist_features} is missing (or \code{NULL}) and \code{pu} is
+#'    a spatial vector (e.g. \code{terra::SpatVector}, \code{sf}, a vector file path), while
+#'    \code{features} is a raster stack/brick (one layer per feature), then feature amounts are
+#'    aggregated by polygon (default \code{sum}) and stored as \code{dist_features}.
 #'
-#' If \code{dist_features} is missing (or \code{NULL}) and \code{pu} and \code{features} are rasters,
-#' a fast raster workflow is used where each valid raster cell becomes a planning unit. In this mode,
-#' cells are considered valid if \code{cost} is finite and \code{cost > 0}, and \code{pu} is used
-#' as a mask/template (cells with \code{NA} in \code{pu} are excluded). This avoids raster-to-polygon
-#' conversion and is substantially faster for large grids.
+#' 3) **Raster-cell fast mode**: If \code{dist_features} is missing (or \code{NULL}) and \code{pu} and
+#'    \code{features} are rasters (e.g. \code{terra::SpatRaster} or raster file paths), then each
+#'    valid raster cell becomes a planning unit. In this mode:
+#'    - cells are considered valid if \code{cost} is finite and \code{cost > 0}
+#'    - \code{pu} is used as a mask/template (cells with \code{NA} in \code{pu} are excluded)
+#'    This avoids raster-to-polygon conversion and is substantially faster for large grids.
 #'
-#' @param pu Planning units input. Either a \code{data.frame} with an \code{id} column,
-#'   a spatial vector (e.g. \code{terra::SpatVector} or a vector file path), or a raster
-#'   (e.g. \code{terra::SpatRaster} or a raster file path).
-#' @param features Features input. Either a \code{data.frame} with \code{id} (and optionally \code{name}),
-#'   or a raster stack/brick with one layer per feature (as \code{terra::SpatRaster} or file path).
+#' \strong{Important:} This version of \code{inputData()} does \emph{not} take a \code{boundary} argument.
+#' Spatial relations (boundary/rook/queen/kNN/distance) must be registered explicitly after
+#' \code{inputData()} using \code{add_spatial_boundary()}, \code{add_spatial_rook()},
+#' \code{add_spatial_queen()}, \code{add_spatial_knn()}, \code{add_spatial_distance()}, or
+#' \code{add_spatial_relations()}.
+#'
+#' @param pu Planning units input. Either:
+#' \itemize{
+#' \item a \code{data.frame} with an \code{id} column (tabular mode),
+#' \item a spatial vector (\code{terra::SpatVector}, \code{sf}, or a vector file path) (vector-PU mode), or
+#' \item a raster (\code{terra::SpatRaster} or raster file path) used as a mask/template (raster-cell mode).
+#' }
+#'
+#' @param features Features input. Either:
+#' \itemize{
+#' \item a \code{data.frame} with \code{id} (and optionally \code{name}) (tabular mode), or
+#' \item a raster stack/brick with one layer per feature (\code{terra::SpatRaster} or file path)
+#'   (vector-PU mode or raster-cell mode).
+#' }
+#'
 #' @param dist_features Distribution of features. A \code{data.frame} with columns \code{pu}, \code{feature},
 #'   and \code{amount}. If missing or \code{NULL}, spatial workflows derive it automatically.
-#' @param boundary Optional boundary information. In tabular mode, a \code{data.frame} with columns
-#'   \code{id1}, \code{id2}, \code{boundary}. In spatial vector mode, use \code{"auto"} to derive adjacency
-#'   from PU polygons (requires \pkg{sf}). In raster-cell mode, \code{"auto"} derives rook adjacency
-#'   on the grid; you can also set \code{"none"}, \code{"rook"}, or \code{"queen"}.
+#'
 #' @param cost In spatial modes, required. Either a column name in the PU vector attribute table
 #'   (vector-PU mode) or a raster/file path (vector-PU or raster-cell mode). In raster-cell mode,
 #'   cells with \code{cost <= 0} or \code{NA} are excluded (no PU is created).
+#'
 #' @param pu_id_col For vector-PU mode, the name of the id column in the PU layer.
+#'
 #' @param locked_in_col For vector-PU mode, the name of a logical column indicating locked-in PUs.
+#'
 #' @param locked_out_col For vector-PU mode, the name of a logical column indicating locked-out PUs.
+#'
 #' @param pu_status Optional (vector-PU or raster-cell) status input. Either a column name or a raster/file path.
 #'   Values \code{2} mark locked-in and \code{3} mark locked-out (Marxan-style).
+#'
 #' @param cost_aggregation In vector-PU mode, how to aggregate cell costs to polygons when \code{cost} is a raster.
 #'   Either \code{"mean"} or \code{"sum"}.
-#' @param ... Additional arguments forwarded to internal builders (including legacy mode args in your tabular impl).
+#'
+#' @param ... Additional arguments forwarded to internal builders (including legacy args in your tabular impl).
 #'
 #' @return A \code{Data} object used by downstream functions (\code{problem()}, \code{add_*()}, \code{solve()}, etc.).
 #'
+#' @details
+#' **Spatial relations are not created automatically.**
+#' If you want to use fragmentation / boundary-type objectives later (e.g. \code{add_objective_min_fragmentation()}),
+#' you must register a relation after \code{inputData()}, for example:
+#' \itemize{
+#' \item \code{add_spatial_boundary(x, pu_sf = ...)} for boundary-length (perimeter) relations, or
+#' \item \code{add_spatial_rook(x, pu_sf = ...)} for rook adjacency, or
+#' \item \code{add_spatial_knn(x, coords = ..., k = 8)} for kNN relations.
+#' }
+#'
+#' In raster-cell mode you typically build relations from coordinates with \code{add_spatial_knn()}
+#' or \code{add_spatial_distance()}, or you can add a simple grid rook/queen relation externally and
+#' register it with \code{add_spatial_relations()}.
+#'
 #' @examples
 #' \dontrun{
-#' # Tabular
+#' # ------------------------------------------------------
+#' # 1) Tabular mode
+#' # ------------------------------------------------------
 #' pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
 #' features <- data.frame(id = 1:2, name = c("sp1", "sp2"))
-#' dist_features <- data.frame(pu = c(1,1,2,3), feature = c(1,2,2,1), amount = c(1,5,2,1))
-#' x <- inputData(pu, features, dist_features)
+#' dist_features <- data.frame(
+#'   pu = c(1, 1, 2, 3),
+#'   feature = c(1, 2, 2, 1),
+#'   amount = c(1, 5, 2, 1)
+#' )
 #'
-#' # Raster-cell fast mode
+#' x <- inputData(pu = pu, features = features, dist_features = dist_features)
+#'
+#' # add a spatial relation later if you need it (optional in pure tabular workflows)
+#' rel <- data.frame(pu1 = 1, pu2 = 2, weight = 1)
+#' x <- add_spatial_relations(x, rel, name = "rook_like")
+#'
+#'
+#' # ------------------------------------------------------
+#' # 2) Raster-cell fast mode (1 PU per valid cell)
+#' # ------------------------------------------------------
 #' library(terra)
-#' pu_mask <- rast("pu_mask.tif")     # NA outside study area
-#' cost_r  <- rast("cost.tif")        # cost per cell
-#' feat_r  <- rast(c("sp1.tif","sp2.tif"))  # layers = features
-#' x <- inputData(pu = pu_mask, features = feat_r, cost = cost_r, boundary = "auto")
+#' pu_mask <- rast("pu_mask.tif")          # NA outside study area
+#' cost_r  <- rast("cost.tif")             # cost per cell
+#' feat_r  <- rast(c("sp1.tif", "sp2.tif"))# layers = features
 #'
-#' # Vector-PU spatial mode
-#' pu_v <- vect("pus.gpkg")
-#' x <- inputData(pu = pu_v, features = feat_r, cost = cost_r, boundary = "auto")
+#' x <- inputData(pu = pu_mask, features = feat_r, cost = cost_r)
+#'
+#' # (optional) add spatial relations after inputData
+#' # e.g. kNN based on stored pu_coords
+#' x <- add_spatial_knn(x, k = 8, name = "knn8", weight_fn = "inverse")
+#'
+#' # then you can use it for fragmentation objectives
+#' x <- x %>%
+#'   add_conservation_targets_relative(0.17) %>%
+#'   add_objective_min_cost(alias = "cost") %>%
+#'   add_objective_min_fragmentation(relation_name = "knn8", weight_multiplier = 0.01, alias = "frag")
+#'
+#'
+#' # ------------------------------------------------------
+#' # 3) Vector-PU spatial mode (polygons + raster features)
+#' # ------------------------------------------------------
+#' pu_v   <- vect("pus.gpkg")              # polygon PUs
+#' feat_r <- rast(c("sp1.tif", "sp2.tif")) # features as raster layers
+#' cost_r <- rast("cost.tif")              # raster cost (aggregated to polygons)
+#'
+#' x <- inputData(
+#'   pu = pu_v,
+#'   features = feat_r,
+#'   cost = cost_r,
+#'   pu_id_col = "id",
+#'   cost_aggregation = "mean"
+#' )
+#'
+#' # add boundary-length relation explicitly (requires sf)
+#' # (recommended if you will use min_fragmentation with boundary/perimeter cut)
+#' x <- add_spatial_boundary(x, pu_sf = x$data$pu_sf, name = "boundary", weight_multiplier = 1)
+#'
+#' # proceed with objectives/targets
+#' x <- x %>%
+#'   add_conservation_targets_relative(0.30) %>%
+#'   add_objective_min_cost(alias = "cost") %>%
+#'   add_objective_min_fragmentation(relation_name = "boundary", weight_multiplier = 0.005, alias = "frag")
 #' }
 #'
 #' @export
@@ -75,7 +156,6 @@ methods::setGeneric(
     pu,
     features,
     dist_features,
-    boundary = NULL,
     cost = NULL,
     pu_id_col = "id",
     locked_in_col = "locked_in",
@@ -129,103 +209,6 @@ methods::setGeneric(
   function(v) sum(v, na.rm = TRUE)
 }
 
-# Grid adjacency builder for raster-cell mode
-.pa_boundary_from_grid <- function(template_r, idx_cells, mode = c("rook", "queen")) {
-  mode <- match.arg(mode)
-
-  ncell <- terra::ncell(template_r)
-  ncol  <- terra::ncol(template_r)
-  nrow  <- terra::nrow(template_r)
-
-  cell_to_pu <- integer(ncell)
-  cell_to_pu[idx_cells] <- seq_along(idx_cells)
-
-  rc <- terra::rowColFromCell(template_r, idx_cells)
-  r <- rc[, 1]; c <- rc[, 2]
-  base_cell <- idx_cells
-
-  offsets <- c(-1L, 1L, -ncol, ncol)
-  if (mode == "queen") offsets <- c(offsets, -ncol-1L, -ncol+1L, ncol-1L, ncol+1L)
-
-  id1_all <- integer(0)
-  id2_all <- integer(0)
-
-  for (off in offsets) {
-    nb_cell <- base_cell + off
-
-    inb <- nb_cell >= 1L & nb_cell <= ncell
-
-    if (off %in% c(-1L, -ncol-1L, ncol-1L)) inb <- inb & (c > 1L)
-    if (off %in% c(1L, -ncol+1L, ncol+1L))   inb <- inb & (c < ncol)
-    if (off %in% c(-ncol, -ncol-1L, -ncol+1L)) inb <- inb & (r > 1L)
-    if (off %in% c(ncol, ncol-1L, ncol+1L))     inb <- inb & (r < nrow)
-
-    nb_cell <- nb_cell[inb]
-    id1 <- cell_to_pu[base_cell[inb]]
-    id2 <- cell_to_pu[nb_cell]
-
-    keep <- id2 != 0L
-    id1 <- id1[keep]; id2 <- id2[keep]
-
-    swap <- id1 > id2
-    if (any(swap)) {
-      tmp <- id1[swap]
-      id1[swap] <- id2[swap]
-      id2[swap] <- tmp
-    }
-
-    keep2 <- id1 < id2
-    if (any(keep2)) {
-      id1_all <- c(id1_all, id1[keep2])
-      id2_all <- c(id2_all, id2[keep2])
-    }
-  }
-
-  if (!length(id1_all)) return(NULL)
-
-  boundary_df <- data.frame(id1 = id1_all, id2 = id2_all, boundary = 1, stringsAsFactors = FALSE)
-
-  key <- paste(boundary_df$id1, boundary_df$id2, sep = "||")
-  if (anyDuplicated(key)) boundary_df <- stats::aggregate(boundary ~ id1 + id2, boundary_df, sum)
-
-  boundary_df
-}
-
-.pa_register_boundary_relation <- function(x, boundary_df, name = "boundary",
-                                           weight_col = "boundary") {
-  if (is.null(boundary_df) || !inherits(boundary_df, "data.frame") || nrow(boundary_df) == 0) {
-    return(x)
-  }
-
-  # Normaliza nombres esperados id1/id2/boundary
-  if (!all(c("id1", "id2") %in% names(boundary_df))) {
-    stop("boundary data.frame must have columns 'id1' and 'id2'.", call. = FALSE)
-  }
-  if (!is.null(weight_col) && !(weight_col %in% names(boundary_df))) {
-    stop("boundary data.frame must have weight column '", weight_col, "'.", call. = FALSE)
-  }
-
-  if (exists("add_spatial_boundary", mode = "function")) {
-    x <- add_spatial_boundary(
-      x,
-      boundary   = boundary_df,
-      name       = name,
-      weight_col = weight_col
-    )
-  } else {
-    # fallback: deja la tabla cruda (tu build_model exigirá internal_* si el objetivo la usa)
-    x$data$spatial_relations <- x$data$spatial_relations %||% list()
-    x$data$spatial_relations[[name]] <- boundary_df
-    warning(
-      "add_spatial_boundary() is not available; stored raw boundary table in x$data$spatial_relations[['",
-      name, "']]. Objectives requiring this relation may fail later.",
-      call. = FALSE, immediate. = TRUE
-    )
-  }
-
-  x
-}
-
 # =========================================================
 # Internal: fast raster-cell implementation (1 PU per valid cell)
 # =========================================================
@@ -233,15 +216,12 @@ methods::setGeneric(
     pu,
     features,
     cost,
-    boundary = c("none", "auto", "rook", "queen"),
     pu_status = NULL,
     ...
 ) {
   if (!requireNamespace("terra", quietly = TRUE)) {
     stop("Raster-cell mode requires the 'terra' package.", call. = FALSE)
   }
-
-  boundary <- match.arg(boundary)
 
   pu_r   <- .pa_read_rast(pu)
   feat_r <- .pa_read_rast(features)
@@ -327,21 +307,12 @@ methods::setGeneric(
     )
   }
 
-  # boundary
-  boundary_df <- NULL
-  if (is.character(boundary)) {
-    if (boundary == "auto") boundary <- "rook"
-    if (boundary %in% c("rook", "queen")) {
-      boundary_df <- .pa_boundary_from_grid(cost_r, idx_cells, mode = boundary)
-    }
-  }
-
   # build via stable tabular impl (your existing function)
   x <- .pa_inputData_tabular_impl(
     pu = pu_df,
     features = features_df,
     dist_features = dist_features_df,
-    boundary = boundary_df,
+    boundary = NULL,
     ...
   )
 
@@ -367,7 +338,6 @@ methods::setMethod(
     pu,
     features,
     dist_features,
-    boundary = NULL,
     cost = NULL,
     pu_id_col = "id",
     locked_in_col = "locked_in",
@@ -376,29 +346,21 @@ methods::setMethod(
     cost_aggregation = c("mean", "sum"),
     ...
   ) {
-    .pa_inputData_tabular_impl(
+    x <- .pa_inputData_tabular_impl(
       pu = pu,
       features = features,
       dist_features = dist_features,
       boundary = NULL,
       ...
     )
-
-    # 2) si el usuario dio boundary (legacy), regístralo como spatial relation
-    if (is.data.frame(boundary)) {
-      x <- .pa_register_boundary_relation(x, boundary_df = boundary, name = "boundary", weight_col = "boundary")
-    } else if (!is.null(boundary)) {
-      stop("In tabular mode, boundary must be NULL or a data.frame (id1,id2,boundary).", call. = FALSE)
-    }
-
     x
   }
 )
 
 # =========================================================
 # Method: SPATIAL inputs (dist_features missing)
-# This method routes to raster-cell mode when pu+features are rasters,
-# otherwise uses your existing vector-PU spatial workflow.
+# Routes to raster-cell mode when pu+features are rasters,
+# otherwise uses vector-PU spatial workflow.
 # =========================================================
 #' @export
 #' @rdname inputData
@@ -409,7 +371,6 @@ methods::setMethod(
     pu,
     features,
     dist_features,
-    boundary = NULL,
     cost = NULL,
     pu_id_col = "id",
     locked_in_col = "locked_in",
@@ -432,23 +393,17 @@ methods::setMethod(
     }
 
     # -----------------------------------------------------
-    # Route 1: Raster-cell fast mode (unchanged)
+    # Route 1: Raster-cell fast mode
     # -----------------------------------------------------
     pu_is_r <- inherits(pu, "SpatRaster") || .pa_is_raster_path(pu)
     ft_is_r <- inherits(features, "SpatRaster") || .pa_is_raster_path(features)
 
     if (pu_is_r && ft_is_r) {
-      b <- boundary
-      if (is.null(b)) b <- "none"
-      if (is.character(b) && !(b %in% c("auto", "none", "rook", "queen"))) {
-        stop("Raster-cell mode: boundary must be one of 'auto', 'none', 'rook', 'queen' (or NULL).", call. = FALSE)
-      }
       return(
         .pa_inputData_raster_cells_impl(
           pu = pu,
           features = features,
           cost = cost,
-          boundary = if (is.null(b)) "none" else b,
           pu_status = pu_status,
           ...
         )
@@ -456,13 +411,9 @@ methods::setMethod(
     }
 
     # -----------------------------------------------------
-    # Route 2: Vector-PU spatial mode (MODIFIED)
+    # Route 2: Vector-PU spatial mode
     # -----------------------------------------------------
     fun_cost <- .pa_fun_from_name(cost_aggregation)
-
-    if (!(is.null(boundary) || is.character(boundary) || is.data.frame(boundary))) {
-      stop("boundary must be NULL, 'auto', or a data.frame.", call. = FALSE)
-    }
 
     # ---- read pu as raster->polygons OR as vector
     pu_r <- NULL
@@ -552,7 +503,6 @@ methods::setMethod(
       stringsAsFactors = FALSE
     )
 
-
     # ---- features + dist_features (prioritizr-like: "sum" with exactextractr for polygons)
     feat_r <- .pa_read_rast(features)
     if (is.null(feat_r)) {
@@ -576,7 +526,6 @@ methods::setMethod(
     )
 
     # IMPORTANT: extract in the SAME row-order as pu_v/pu_df (before sorting by id)
-    # prioritizr does "sum" (area-fraction weighted) for polygons
     feat_mat <- .pa_fast_extract(feat_r, pu_v, fun = "sum")  # [n_pu x n_features]
 
     # ---- NOW sort by pu id (and reorder feat_mat + coords consistently)
@@ -587,7 +536,6 @@ methods::setMethod(
 
     pu_df_out <- pu_df[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
 
-    # NOTE: as.vector(feat_mat) is column-major => [feat1 all pu], [feat2 all pu], ...
     dist_features_df <- data.frame(
       pu      = rep(pu_df_out$id, times = terra::nlyr(feat_r)),
       feature = rep(features_df$id, each = nrow(pu_df_out)),
@@ -600,78 +548,6 @@ methods::setMethod(
       drop = FALSE
     ]
 
-    # --- boundary relation to register (do NOT feed tabular impl)
-    boundary_df <- NULL
-    register_boundary_relation <- FALSE
-    boundary_relation_name <- "boundary"
-
-    # ---- boundary (relation only; does NOT affect the model unless an objective uses it)
-    if (is.data.frame(boundary)) {
-
-      boundary_df <- boundary
-      register_boundary_relation <- TRUE
-
-    } else if (is.character(boundary)) {
-
-      if (identical(boundary, "auto")) {
-
-        warning(
-          "boundary='auto' will derive a *queen* adjacency relation using sf::st_touches(). ",
-          "This does NOT activate any boundary penalty by itself; it only registers a spatial relation. ",
-          "For explicit control, provide a boundary table (id1,id2,boundary) or use add_spatial_rook()/add_spatial_queen().",
-          call. = FALSE, immediate. = TRUE
-        )
-        boundary <- "rock"
-
-        if (!requireNamespace("sf", quietly = TRUE)) {
-          stop(
-            "Automatic boundary derivation requires the 'sf' package. Please install it or provide boundary as a data.frame.",
-            call. = FALSE
-          )
-        }
-
-        pu_sf <- tryCatch(sf::st_as_sf(pu_v), error = function(e) NULL)
-        if (is.null(pu_sf)) {
-          stop("Could not convert planning units to sf for boundary derivation. Provide boundary as a data.frame.", call. = FALSE)
-        }
-
-        nb <- sf::st_touches(pu_sf)
-
-        # ids in pu_v row order (pre-sorting)
-        pu_df0 <- terra::as.data.frame(pu_v)
-        names(pu_df0)[names(pu_df0) == pu_id_col] <- "id"
-        id_vec0 <- as.integer(round(pu_df0$id))
-
-        id1 <- integer(0)
-        id2 <- integer(0)
-
-        for (i in seq_along(nb)) {
-          j <- nb[[i]]
-          if (!length(j)) next
-          keep <- j > i
-          if (any(keep)) {
-            id1 <- c(id1, rep(id_vec0[i], sum(keep)))
-            id2 <- c(id2, id_vec0[j[keep]])
-          }
-        }
-
-        boundary_df <- data.frame(
-          id1 = id1,
-          id2 = id2,
-          boundary = 1,
-          stringsAsFactors = FALSE
-        )
-
-        register_boundary_relation <- TRUE
-      }
-
-      if (identical(boundary, "none")) {
-        # explicitly do nothing
-        boundary_df <- NULL
-        register_boundary_relation <- FALSE
-      }
-    }
-
     # ---- build via stable tabular impl
     x <- .pa_inputData_tabular_impl(
       pu = pu_df_out,
@@ -681,40 +557,15 @@ methods::setMethod(
       ...
     )
 
-    # --- register spatial relation (if requested/provided)
-    if (isTRUE(register_boundary_relation) && !is.null(boundary_df) && nrow(boundary_df) > 0) {
-
-      # ensure infrastructure exists
-      if (exists("add_spatial_boundary", mode = "function")) {
-
-        # add_spatial_boundary expects id1/id2/boundary OR pu1/pu2/weight
-        x <- add_spatial_boundary(
-          x,
-          boundary = boundary_df,
-          name = boundary_relation_name,
-          weight_col = if ("boundary" %in% names(boundary_df)) "boundary" else NULL
-        )
-
-      } else {
-        # fallback: store raw table; build_model will error if objective needs internal_* fields
-        x$data$spatial_relations <- x$data$spatial_relations %||% list()
-        x$data$spatial_relations[[boundary_relation_name]] <- boundary_df
-        warning(
-          "add_spatial_boundary() not available at inputData() time; stored boundary table raw in x$data$spatial_relations[['",
-          boundary_relation_name, "']].",
-          call. = FALSE, immediate. = TRUE
-        )
-      }
-    }
-
-
     # store coords (sorted by id)
     x$data$pu_coords <- pu_coords
 
+    # ensure spatial_relations slot exists (empty list)
     if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
       x$data$spatial_relations <- list()
     }
 
+    # store rasters if we came from raster->polygons
     if (!is.null(pu_r)) x$data$pu_raster_id <- pu_r
 
     # store pu_sf (sorted to match x$data$pu$id)
@@ -754,7 +605,6 @@ methods::setMethod(
     pu,
     features,
     dist_features,
-    boundary = NULL,
     cost = NULL,
     pu_id_col = "id",
     locked_in_col = "locked_in",
@@ -766,7 +616,6 @@ methods::setMethod(
     methods::selectMethod("inputData", signature = c("ANY", "ANY", "missing"))(
       pu = pu,
       features = features,
-      boundary = boundary,
       cost = cost,
       pu_id_col = pu_id_col,
       locked_in_col = locked_in_col,

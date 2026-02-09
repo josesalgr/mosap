@@ -7,17 +7,18 @@
 add_conservation_targets_absolute(x, targets, overwrite = FALSE, label = NULL)
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \linkS4class{data} object.}
 
-\item{targets}{See \strong{Targets format} in Details.}
+\item{targets}{Target specification. See \strong{Targets format} in \code{\link{targets}} details.}
 
-\item{overwrite}{If TRUE, replace existing conservation targets for the same features.}
+\item{overwrite}{Logical. If \code{TRUE}, replace existing conservation targets for the same features.}
 
-\item{label}{Optional label stored with the targets.}
+\item{label}{Optional character label stored with the targets (useful for reporting).}
 }
 \value{
-Updated \code{Data} object.
+Updated \linkS4class{data} object.
 }
 \description{
-Adds absolute conservation targets for each feature.
+Adds absolute conservation targets per feature. The provided values are treated as absolute
+thresholds in the same units as the feature amounts stored in \code{x$data$dist_features$amount}.
 }

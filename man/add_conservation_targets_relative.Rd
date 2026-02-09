@@ -7,18 +7,19 @@
 add_conservation_targets_relative(x, targets, overwrite = FALSE, label = NULL)
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \linkS4class{data} object.}
 
-\item{targets}{Target specification (proportions).}
+\item{targets}{Target specification (proportions in \eqn{[0,1]}).}
 
-\item{overwrite}{Logical. If TRUE, replace existing conservation targets for the same features.}
+\item{overwrite}{Logical. If \code{TRUE}, replace existing conservation targets for the same features.}
 
-\item{label}{Optional label.}
+\item{label}{Optional character label stored with the targets.}
 }
 \value{
-Updated \code{Data} object.
+Updated \linkS4class{data} object.
 }
 \description{
-Adds relative conservation targets specified as proportions in \link{0,1} of the
-total baseline representation of each feature in the study area.
+Adds relative conservation targets as proportions in \eqn{[0,1]} of the baseline total
+representation of each feature in the study area. Baseline totals are computed from the
+input data (via \code{.pa_feature_totals()}).
 }

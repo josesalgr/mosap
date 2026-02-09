@@ -1,66 +1,73 @@
 #' @include internal.R
 #'
-#' Register an atomic objective (for multi-objective workflows)
+#' @title Register an atomic objective (internal)
 #'
 #' @description
-#' Internal helper used by objective setters. If `alias` is provided (non-NULL),
-#' the objective is stored in `x$data$objectives[[alias]]` as an *atomic objective*
-#' that can later be combined by multi-objective methods (e.g., weighted sum).
+#' Internal helper used by objective setter functions to optionally register an objective
+#' as an \emph{atomic objective} for multi-objective workflows.
 #'
-#' This is fully backward compatible with the single-objective workflow:
-#' if `alias` is NULL, nothing is registered and only `x$data$model_args` is updated.
+#' If \code{alias} is non-\code{NULL}, the objective definition is stored in
+#' \code{x$data$objectives[[alias]]}. This allows external multi-objective orchestration
+#' (e.g., weighted sum, \eqn{\epsilon}-constraint, AUGMECON, interactive methods) to refer to
+#' objectives by a stable user-facing identifier.
 #'
-#' @param x A [`Data`] object.
-#' @param alias character or NULL. Unique identifier for the atomic objective.
-#' @param objective_id character. Stable objective identifier (e.g., "min_cost").
-#' @param model_type character. Model type used by the builder (e.g., "minimizeCosts").
-#' @param objective_args list. Objective-specific arguments.
-#' @param sense character. Either `"min"` or `"max"`.
+#' The function is fully backward compatible with single-objective workflows: when
+#' \code{alias} is \code{NULL}, no entry is added to \code{x$data$objectives} and only the
+#' active single-objective specification stored in \code{x$data$model_args} (set by the calling
+#' objective setter) is used.
 #'
-#' @return Updated [`Data`] object.
+#' @param x A \code{Data} object.
+#' @param alias Character scalar or \code{NULL}. Unique identifier to register the objective.
+#' @param objective_id Character. Stable objective identifier (e.g., \code{"min_cost"}).
+#' @param model_type Character. Model type label used by the model builder (e.g., \code{"minimizeCosts"}).
+#' @param objective_args List. Objective-specific arguments to be stored with the objective.
+#' @param sense Character. Either \code{"min"} or \code{"max"}.
+#'
+#' @return The updated \code{Data} object.
+#'
 #' @keywords internal
-
-#' add objective: minimize costs
+#'
+#' @title Add objective: minimize costs
 #'
 #' @description
-#' Stores the objective specification inside the [`Data`] object so it can be
-#' materialized later when the optimization model is built (typically from `solve()`).
+#' Specify an objective that minimizes total costs associated with the solution.
+#' Costs may include planning-unit costs and/or action costs depending on the flags provided.
 #'
-#' This objective minimizes the total cost associated with planning units and/or actions,
-#' depending on the flags provided.
+#' This function is \strong{data-only}: it stores the objective specification inside the
+#' \code{Data} object so it can be materialized later when the optimization model is built
+#' (typically when calling \code{solve()}).
 #'
-#' If `alias` is provided, the objective is also registered in `x$data$objectives`
-#' as an *atomic objective* for multi-objective workflows, while preserving the
-#' single-objective behavior (the last objective set overwrites the active one).
-#'
-#' @param x A [`Data`] object created with [inputData()] / [inputDataSpatial()].
-#' @param include_pu_cost logical. If `TRUE`, include planning-unit costs in the objective.
-#' @param include_action_cost logical. If `TRUE`, include action costs in the objective.
-#' @param alias character or NULL. Optional unique identifier to register this objective
-#'   as an atomic objective for multi-objective workflows.
+#' If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
+#' as an atomic objective for multi-objective workflows, while preserving the legacy
+#' single-objective behavior (the most recently set objective remains the active one in
+#' \code{x$data$model_args}).
 #'
 #' @details
-#' This function does **not** build or solve the optimization model.
-#' It updates `x$data$model_args`:
+#' The function updates \code{x$data$model_args} with:
 #' \describe{
-#'   \item{`model_type`}{`"minimizeCosts"`}
-#'   \item{`objective_id`}{`"min_cost"`}
-#'   \item{`objective_args`}{a list with `include_pu_cost` and `include_action_cost`}
+#'   \item{\code{model_type}}{\code{"minimizeCosts"}}
+#'   \item{\code{objective_id}}{\code{"min_cost"}}
+#'   \item{\code{objective_args}}{a list with \code{include_pu_cost} and \code{include_action_cost}}
 #' }
 #'
-#' If you call another objective setter afterwards, it will overwrite the previous
-#' active (single-objective) objective in `x$data$model_args`.
+#' The model builder must interpret these fields to set the objective coefficients.
 #'
-#' @return Updated [`Data`] object.
+#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param include_pu_cost Logical. If \code{TRUE}, include planning-unit costs in the objective.
+#' @param include_action_cost Logical. If \code{TRUE}, include action costs in the objective.
+#' @param alias Character scalar or \code{NULL}. Optional identifier to register this objective
+#'   as an atomic objective for multi-objective workflows.
+#'
+#' @return The updated \code{Data} object.
 #'
 #' @examples
 #' \dontrun{
-#' x <- inputDataSpatial(pu = pu_sf, cost = "cost", features = feat_sf, pu_id_col = "id") %>%
-#'   add_actions(actions_df) %>%
+#' x <- inputDataSpatial(pu = pu_sf, cost = "cost", features = feat_sf, pu_id_col = "id") |>
+#'   add_actions(actions_df) |>
 #'   add_objective_min_cost()
 #'
-#' # atomic registration (for MO workflows)
-#' x <- x %>% add_objective_min_cost(alias = "cost")
+#' # Register as atomic objective for multi-objective workflows
+#' x <- x |> add_objective_min_cost(alias = "cost")
 #' }
 #'
 #' @export
@@ -96,48 +103,45 @@ add_objective_min_cost <- function(
   x
 }
 
-#' add objective: maximize benefits
+#' @title Add objective: maximize benefit
 #'
 #' @description
-#' Stores the objective specification inside the [`Data`] object so it can be
-#' materialized later when the optimization model is built (typically from `solve()`).
+#' Specify an objective that maximizes total benefit delivered by selected actions.
+#' Benefit values are taken from the benefit table produced by \code{\link{add_benefits}}
+#' (stored in \code{x$data$dist_benefit} and/or its model-ready variant).
 #'
-#' This objective maximizes the total benefit delivered by selected actions, using the
-#' benefit values stored in `dist_benefit`.
+#' This function is \strong{data-only}: it stores the objective specification inside the
+#' \code{Data} object so it can be materialized later when the optimization model is built
+#' (typically when calling \code{solve()}).
 #'
-#' If `alias` is provided, the objective is also registered in `x$data$objectives`
+#' If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 #' as an atomic objective for multi-objective workflows.
 #'
-#' @param x A [`Data`] object created with [inputData()] / [inputDataSpatial()].
-#' @param benefit_col character. Name of the column in the benefit table (model-ready
-#' `dist_benefit_model`) containing numeric benefit values. Default is `"benefit"`.
-#' @param alias character or NULL. Optional unique identifier to register this objective
+#' @details
+#' The function updates \code{x$data$model_args} with:
+#' \describe{
+#'   \item{\code{model_type}}{\code{"maximizeBenefits"}}
+#'   \item{\code{objective_id}}{\code{"max_benefit"}}
+#'   \item{\code{objective_args}}{a list with \code{benefit_col}}
+#' }
+#'
+#' The model builder will require benefit data to exist and will error if benefits are missing.
+#' If another objective setter is called afterwards, it overwrites the active single-objective
+#' specification in \code{x$data$model_args}.
+#'
+#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param benefit_col Character. Column name in the model-ready benefit table containing numeric benefits.
+#'   Default \code{"benefit"}.
+#' @param alias Character scalar or \code{NULL}. Optional identifier to register this objective
 #'   as an atomic objective for multi-objective workflows.
 #'
-#' @details
-#' This function does **not** build or solve the optimization model.
-#' It updates `x$data$model_args`:
-#' \describe{
-#'   \item{`model_type`}{`"maximizeBenefits"`}
-#'   \item{`objective_id`}{`"max_benefit"`}
-#'   \item{`objective_args`}{a list with `benefit_col`}
-#' }
-#'
-#' Notes:
-#' \itemize{
-#'   \item The model builder will require `dist_benefit` to exist (typically created by
-#'   [add_benefits()]) and will error if benefits are missing.
-#'   \item If you call another objective setter afterwards, it will overwrite the previous
-#'   active (single-objective) objective in `x$data$model_args`.
-#' }
-#'
-#' @return Updated [`Data`] object.
+#' @return The updated \code{Data} object.
 #'
 #' @examples
 #' \dontrun{
-#' x <- inputDataSpatial(pu = pu_sf, cost = "cost", features = feat_sf, pu_id_col = "id") %>%
-#'   add_actions(actions_df) %>%
-#'   add_benefits(benefits_df) %>%
+#' x <- inputDataSpatial(pu = pu_sf, cost = "cost", features = feat_sf, pu_id_col = "id") |>
+#'   add_actions(actions_df) |>
+#'   add_benefits(benefits_df) |>
 #'   add_objective_max_benefit(alias = "benefit")
 #' }
 #'
@@ -168,31 +172,39 @@ add_objective_max_benefit <- function(x, benefit_col = "benefit", alias = NULL) 
   x
 }
 
-#' add objective: maximize profit
+#' @title Add objective: maximize profit
 #'
 #' @description
-#' Stores an objective specification inside the [`Data`] object to later build an
-#' optimization model that **maximizes economic profit** from selected (pu, action) pairs.
+#' Specify an objective that maximizes economic profit from selected \code{(pu, action)} pairs.
+#' Profit values are taken from \code{x$data$dist_profit}, typically created with
+#' \code{\link{add_profit}}.
 #'
-#' This objective uses `x$data$dist_profit` (created with [add_profit()]).
+#' This function is \strong{data-only}: it stores the objective specification inside the
+#' \code{Data} object so it can be materialized later when the optimization model is built
+#' (typically when calling \code{solve()}).
 #'
-#' If `alias` is provided, the objective is also registered in `x$data$objectives`
+#' If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 #' as an atomic objective for multi-objective workflows.
 #'
-#' @param x A [`Data`] object created with [inputData()] / [inputDataSpatial()].
-#' @param profit_col character. Column name in `dist_profit` containing numeric profits.
-#'   Default `"profit"`.
-#' @param alias character or NULL. Optional unique identifier to register this objective
+#' @details
+#' The function updates \code{x$data$model_args} with:
+#' \describe{
+#'   \item{\code{model_type}}{\code{"maximizeProfit"}}
+#'   \item{\code{objective_id}}{\code{"max_profit"}}
+#'   \item{\code{objective_args}}{a list with \code{profit_col}}
+#' }
+#'
+#' If another objective setter is called afterwards, it overwrites the active single-objective
+#' specification in \code{x$data$model_args}.
+#'
+#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param profit_col Character. Column name in \code{x$data$dist_profit} containing numeric profits.
+#'   Default \code{"profit"}.
+#' @param alias Character scalar or \code{NULL}. Optional identifier to register this objective
 #'   as an atomic objective for multi-objective workflows.
 #'
-#' @details
-#' This function does **not** build or solve the model. It only updates `x$data$model_args`.
-#' The model builder (called from `solve()`) must implement the corresponding C++ objective.
+#' @return The updated \code{Data} object.
 #'
-#' If you call another objective setter afterwards, it will overwrite the previous
-#' active (single-objective) objective in `x$data$model_args`.
-#'
-#' @return Updated [`Data`] object.
 #' @export
 add_objective_max_profit <- function(x, profit_col = "profit", alias = NULL) {
   stopifnot(inherits(x, "Data"))
@@ -220,36 +232,44 @@ add_objective_max_profit <- function(x, profit_col = "profit", alias = NULL) {
   x
 }
 
-#' add objective: maximize net profit (profit - total cost)
+#' @title Add objective: maximize net profit
 #'
 #' @description
-#' Stores an objective specification inside the [`Data`] object to later build an
-#' optimization model that **maximizes net profit**, defined as:
-#' \deqn{\sum profit \cdot x \;-\; \left(\sum pu\_cost \cdot w + \sum action\_cost \cdot x\right).}
+#' Specify an objective that maximizes net profit, defined as total profit from selected
+#' \code{(pu, action)} pairs minus total costs:
+#' \deqn{\sum \mathrm{profit}\,x \;-\; \left(\sum \mathrm{pu\_cost}\,w + \sum \mathrm{action\_cost}\,x\right).}
 #'
-#' Profit is taken from `x$data$dist_profit` (created with [add_profit()]).
-#' Costs are taken from `x$data$pu` (planning-unit costs) and `x$data$dist_actions` (action costs).
+#' Profit is taken from \code{x$data$dist_profit} (created with \code{\link{add_profit}}).
+#' Planning-unit costs are taken from \code{x$data$pu}; action costs are taken from
+#' \code{x$data$dist_actions}.
 #'
-#' If `alias` is provided, the objective is also registered in `x$data$objectives`
+#' This function is \strong{data-only}: it stores the objective specification inside the
+#' \code{Data} object so it can be materialized later when the optimization model is built.
+#'
+#' If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 #' as an atomic objective for multi-objective workflows.
 #'
-#' @param x A [`Data`] object created with [inputData()] / [inputDataSpatial()].
-#' @param profit_col character. Column name in `dist_profit` containing numeric profits.
-#'   Default `"profit"`.
-#' @param include_pu_cost logical. If `TRUE`, subtract planning-unit costs.
-#' @param include_action_cost logical. If `TRUE`, subtract action costs.
-#' @param alias character or NULL. Optional unique identifier to register this objective
+#' @details
+#' The function updates \code{x$data$model_args} with:
+#' \describe{
+#'   \item{\code{model_type}}{\code{"maximizeNetProfit"}}
+#'   \item{\code{objective_id}}{\code{"max_net_profit"}}
+#'   \item{\code{objective_args}}{a list with \code{profit_col}, \code{include_pu_cost}, and \code{include_action_cost}}
+#' }
+#'
+#' If another objective setter is called afterwards, it overwrites the active single-objective
+#' specification in \code{x$data$model_args}.
+#'
+#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param profit_col Character. Column name in \code{x$data$dist_profit} containing numeric profits.
+#'   Default \code{"profit"}.
+#' @param include_pu_cost Logical. If \code{TRUE}, subtract planning-unit costs.
+#' @param include_action_cost Logical. If \code{TRUE}, subtract action costs.
+#' @param alias Character scalar or \code{NULL}. Optional identifier to register this objective
 #'   as an atomic objective for multi-objective workflows.
 #'
-#' @details
-#' This function does **not** build or solve the model. It only updates `x$data$model_args`.
-#' The model builder (called from `solve()`) must implement the corresponding objective
-#' (typically via one C++ routine that sets all objective coefficients).
+#' @return The updated \code{Data} object.
 #'
-#' If you call another objective setter afterwards, it will overwrite the previous
-#' active (single-objective) objective in `x$data$model_args`.
-#'
-#' @return Updated [`Data`] object.
 #' @export
 add_objective_max_net_profit <- function(
     x,
@@ -285,25 +305,32 @@ add_objective_max_net_profit <- function(
   x
 }
 
-#' add objective: minimize fragmentation (perimeter cut)
+#' @title Add objective: minimize fragmentation (PU cut)
 #'
 #' @description
-#' Stores an objective specification to later build a model that minimizes spatial
-#' fragmentation measured as the weighted cut between selected vs non-selected PUs:
-#' \deqn{\sum_{(i,j)} w_{ij} |z_i - z_j|.}
-#' Internally this is linearized with auxiliary edge variables.
+#' Specify an objective that minimizes spatial fragmentation measured as the weighted cut
+#' between selected and non-selected planning units over a spatial relation:
+#' \deqn{\sum_{(i,j)} w_{ij}\,|z_i - z_j|.}
 #'
-#' If `alias` is provided, the objective is also registered in `x$data$objectives`
+#' In the model builder, this objective is linearized using auxiliary edge variables.
+#' Relation weights \eqn{w_{ij}} are read from \code{x$data$spatial_relations[[relation_name]]}
+#' and can be scaled by \code{weight_multiplier} (BLM-like scaling).
+#'
+#' This function is \strong{data-only}: it stores the objective specification inside the
+#' \code{Data} object so it can be materialized later when the optimization model is built.
+#'
+#' If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 #' as an atomic objective for multi-objective workflows.
 #'
-#' @param x A [`Data`] object created with [inputData()] / [inputDataSpatial()].
-#' @param relation_name character. Name of the stored relation in `x$data$spatial_relations`
-#'   (e.g. `"boundary"`, `"rook"`, `"queen"`, `"knn"`). Default `"boundary"`.
-#' @param weight_multiplier numeric. Multiplies all relation weights (BLM-like). Default 1.
-#' @param alias character or NULL. Optional unique identifier to register this objective
+#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param relation_name Character. Name of the spatial relation in \code{x$data$spatial_relations}
+#'   (e.g., \code{"boundary"}, \code{"rook"}, \code{"queen"}, \code{"knn"}). Default \code{"boundary"}.
+#' @param weight_multiplier Numeric \eqn{\ge 0}. Multiplier applied to all relation weights. Default \code{1}.
+#' @param alias Character scalar or \code{NULL}. Optional identifier to register this objective
 #'   as an atomic objective for multi-objective workflows.
 #'
-#' @return Updated [`Data`] object.
+#' @return The updated \code{Data} object.
+#'
 #' @export
 add_objective_min_fragmentation <- function(
     x,
@@ -354,24 +381,35 @@ add_objective_min_fragmentation <- function(
   x
 }
 
-#' add objective: minimize action fragmentation
+#' @title Add objective: minimize action fragmentation
 #'
 #' @description
-#' Stores an objective specification to later build a model that minimizes *action-level*
-#' fragmentation over a given spatial relation.
+#' Specify an objective that minimizes fragmentation at the action level over a spatial relation.
+#' This objective is intended for models where action allocations (rather than only PU selection)
+#' drive spatial cohesion.
 #'
-#' If `alias` is provided, the objective is also registered in `x$data$objectives`
+#' This function is \strong{data-only}: it stores the objective specification inside the
+#' \code{Data} object so it can be materialized later when the optimization model is built.
+#'
+#' If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 #' as an atomic objective for multi-objective workflows.
 #'
-#' @param x A [`Data`] object created with [inputData()] / [inputDataSpatial()].
-#' @param relation_name character. Name of the stored relation in `x$data$spatial_relations`.
-#' @param weight_multiplier numeric. Multiplies all relation weights (BLM-like). Default 1.
-#' @param action_weights named numeric or data.frame(action, weight). Optional weights per action.
-#' @param actions optional subset of actions (ids) to include.
-#' @param alias character or NULL. Optional unique identifier to register this objective
+#' @details
+#' Action-level fragmentation can optionally weight actions differently via \code{action_weights}
+#' and can optionally restrict the objective to a subset of actions via \code{actions}.
+#' The exact linearization and interpretation are implemented in the model builder.
+#'
+#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param relation_name Character. Name of the spatial relation in \code{x$data$spatial_relations}.
+#' @param weight_multiplier Numeric \eqn{\ge 0}. Multiplier applied to all relation weights. Default \code{1}.
+#' @param action_weights Optional action weights. Either a named numeric vector (names = action ids)
+#'   or a \code{data.frame(action, weight)}.
+#' @param actions Optional subset of action ids to include in the objective.
+#' @param alias Character scalar or \code{NULL}. Optional identifier to register this objective
 #'   as an atomic objective for multi-objective workflows.
 #'
-#' @return Updated [`Data`] object.
+#' @return The updated \code{Data} object.
+#'
 #' @export
 add_objective_min_action_fragmentation <- function(
     x,
@@ -409,22 +447,27 @@ add_objective_min_action_fragmentation <- function(
   x
 }
 
-#' add objective: minimize intervention fragmentation
+#' @title Add objective: minimize intervention fragmentation
 #'
 #' @description
-#' Stores an objective specification to later build a model that minimizes *intervention-level*
-#' fragmentation over a given spatial relation.
+#' Specify an objective that minimizes fragmentation at the intervention level over a spatial relation.
+#' This objective is intended for models where interventions represent a coarser grouping of actions,
+#' and spatial cohesion is evaluated at that grouping level.
 #'
-#' If `alias` is provided, the objective is also registered in `x$data$objectives`
+#' This function is \strong{data-only}: it stores the objective specification inside the
+#' \code{Data} object so it can be materialized later when the optimization model is built.
+#'
+#' If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 #' as an atomic objective for multi-objective workflows.
 #'
-#' @param x A [`Data`] object created with [inputData()] / [inputDataSpatial()].
-#' @param relation_name character. Name of the stored relation in `x$data$spatial_relations`.
-#' @param weight_multiplier numeric. Multiplies all relation weights (BLM-like). Default 1.
-#' @param alias character or NULL. Optional unique identifier to register this objective
+#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param relation_name Character. Name of the spatial relation in \code{x$data$spatial_relations}.
+#' @param weight_multiplier Numeric \eqn{\ge 0}. Multiplier applied to all relation weights. Default \code{1}.
+#' @param alias Character scalar or \code{NULL}. Optional identifier to register this objective
 #'   as an atomic objective for multi-objective workflows.
 #'
-#' @return Updated [`Data`] object.
+#' @return The updated \code{Data} object.
+#'
 #' @export
 add_objective_min_intervention_fragmentation <- function(
     x,

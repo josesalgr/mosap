@@ -3261,4 +3261,152 @@ available_to_solve <- function(package = ""){
 }
 
 
+# -------------------------------------------------------------------------
+# Internal helpers SPATIAL relations
+# -------------------------------------------------------------------------
+.pa_has_sf <- function() requireNamespace("sf", quietly = TRUE)
+
+.pa_ensure_pu_index <- function(x) {
+  stopifnot(inherits(x, "Data"))
+  if (is.null(x$data$pu) || !inherits(x$data$pu, "data.frame")) {
+    stop("x$data$pu is missing. Create the problem with inputData()/inputDataSpatial().", call. = FALSE)
+  }
+  if (is.null(x$data$pu$internal_id)) x$data$pu$internal_id <- seq_len(nrow(x$data$pu))
+  if (is.null(x$data$pu$id)) {
+    stop("x$data$pu must contain column 'id' (planning unit id).", call. = FALSE)
+  }
+  x$data$pu$id <- as.integer(x$data$pu$id)
+  x$data$pu$internal_id <- as.integer(x$data$pu$internal_id)
+  if (anyNA(x$data$pu$id) || anyNA(x$data$pu$internal_id)) {
+    stop("x$data$pu$id/internal_id contain NA after coercion.", call. = FALSE)
+  }
+  if (anyDuplicated(x$data$pu$internal_id) != 0) stop("x$data$pu$internal_id must be unique.", call. = FALSE)
+  if (anyDuplicated(x$data$pu$id) != 0) stop("x$data$pu$id must be unique.", call. = FALSE)
+  if (is.null(x$data$index) || !is.list(x$data$index)) x$data$index <- list()
+  x$data$index$pu <- stats::setNames(x$data$pu$internal_id, as.character(x$data$pu$id))
+  x
+}
+
+.pa_store_relation <- function(x, rel, name) {
+  stopifnot(inherits(x, "Data"))
+  if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
+    x$data$spatial_relations <- list()
+  }
+  x$data$spatial_relations[[name]] <- rel
+  x
+}
+
+
+.pa_coords_from_input <- function(x, coords = NULL) {
+  stopifnot(inherits(x, "Data"))
+
+  if (!is.null(coords)) {
+    if (inherits(coords, "data.frame")) {
+      if (!all(c("id", "x", "y") %in% names(coords))) {
+        stop("coords data.frame must contain columns id, x, y.", call. = FALSE)
+      }
+      out <- coords[, c("id", "x", "y")]
+      out$id <- as.integer(out$id)
+      out$x  <- as.numeric(out$x)
+      out$y  <- as.numeric(out$y)
+      return(out)
+    }
+    if (is.matrix(coords)) {
+      if (ncol(coords) < 2) stop("coords matrix must have at least 2 columns (x,y).", call. = FALSE)
+      out <- data.frame(id = x$data$pu$id, x = coords[, 1], y = coords[, 2])
+      out$id <- as.integer(out$id)
+      out$x  <- as.numeric(out$x)
+      out$y  <- as.numeric(out$y)
+      return(out)
+    }
+    stop("Unsupported coords type. Use data.frame(id,x,y) or a matrix with 2 columns.", call. = FALSE)
+  }
+
+  # NEW fallback: x$data$pu_coords
+  if (!is.null(x$data$pu_coords) && inherits(x$data$pu_coords, "data.frame")) {
+    pc <- x$data$pu_coords
+    if (all(c("id", "x", "y") %in% names(pc))) {
+      out <- pc[, c("id", "x", "y")]
+      out$id <- as.integer(out$id)
+      out$x  <- as.numeric(out$x)
+      out$y  <- as.numeric(out$y)
+      return(out)
+    }
+  }
+
+  # fallback: try x$data$pu columns
+  if (all(c("x", "y") %in% names(x$data$pu))) {
+    out <- data.frame(id = x$data$pu$id, x = x$data$pu$x, y = x$data$pu$y)
+    out$id <- as.integer(out$id)
+    out$x  <- as.numeric(out$x)
+    out$y  <- as.numeric(out$y)
+    return(out)
+  }
+
+  stop(
+    "No coordinates available. Provide coords=data.frame(id,x,y) or store x$data$pu_coords (id,x,y), or add x$data$pu$x/y.",
+    call. = FALSE
+  )
+}
+
+
+.pa_get_pu_sf_aligned <- function(x, pu_sf = NULL, arg_name = "pu_sf") {
+  stopifnot(inherits(x, "Data"))
+  x <- .pa_ensure_pu_index(x)
+
+  if (is.null(pu_sf)) pu_sf <- x$data$pu_sf
+
+  if (is.null(pu_sf)) {
+    stop(
+      arg_name, " is NULL and x$data$pu_sf is missing.\n",
+      "Provide ", arg_name, " (sf polygons with an 'id' column) or make sure inputData() stored x$data$pu_sf.",
+      call. = FALSE
+    )
+  }
+
+  if (!requireNamespace("sf", quietly = TRUE)) {
+    stop("This function requires the 'sf' package.", call. = FALSE)
+  }
+
+  if (!inherits(pu_sf, "sf")) stop(arg_name, " must be an sf object.", call. = FALSE)
+  if (!("id" %in% names(pu_sf))) stop(arg_name, " must contain an 'id' column.", call. = FALSE)
+
+  pu_sf$id <- as.integer(pu_sf$id)
+
+  # align to x$data$pu$id (critical)
+  ord <- match(x$data$pu$id, pu_sf$id)
+  if (anyNA(ord)) {
+    missing_ids <- x$data$pu$id[is.na(ord)]
+    stop(
+      arg_name, "$id does not match x$data$pu$id (some ids missing). Missing: ",
+      paste(utils::head(missing_ids, 20), collapse = ", "),
+      if (length(missing_ids) > 20) " ..." else "",
+      call. = FALSE
+    )
+  }
+
+  pu_sf[ord, , drop = FALSE]
+}
+
+.pa_rbind_fill <- function(a, b) {
+  stopifnot(inherits(a, "data.frame"), inherits(b, "data.frame"))
+  cols <- union(names(a), names(b))
+  for (cc in setdiff(cols, names(a))) a[[cc]] <- NA
+  for (cc in setdiff(cols, names(b))) b[[cc]] <- NA
+  a <- a[, cols, drop = FALSE]
+  b <- b[, cols, drop = FALSE]
+  rbind(a, b)
+}
+
+.pa_swap_edges <- function(rel) {
+  out <- rel
+  out$internal_pu1 <- rel$internal_pu2
+  out$internal_pu2 <- rel$internal_pu1
+  if ("pu1" %in% names(rel) && "pu2" %in% names(rel)) {
+    out$pu1 <- rel$pu2
+    out$pu2 <- rel$pu1
+  }
+  out
+}
+
 

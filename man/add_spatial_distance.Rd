@@ -16,20 +16,31 @@ add_spatial_distance(
 \arguments{
 \item{x}{A \linkS4class{data} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
-\item{coords}{Optional coordinates: \code{data.frame(id,x,y)} or matrix (x,y). If \code{NULL}, uses \code{x$data$pu$x/y}.}
+\item{coords}{Optional coordinates specification (see \code{\link{add_spatial_knn}}).}
 
-\item{dmax}{Numeric. Maximum distance for an edge.}
+\item{dmax}{Numeric. Maximum distance for an edge (must be finite and positive).}
 
-\item{name}{Name/key under which the relation will be stored.}
+\item{name}{Character name/key under which to store the relation.}
 
-\item{weight_fn}{\code{"constant"}, \code{"inverse"}, or \code{"inverse_sq"}.}
+\item{weight_fn}{Character. How to convert distance to weight:
+\code{"constant"}, \code{"inverse"}, or \code{"inverse_sq"}.}
 
-\item{eps}{Small constant to avoid division by zero.}
+\item{eps}{Small numeric constant to avoid division by zero when using inverse weights.}
 }
 \value{
 Updated \linkS4class{data} object.
 }
 \description{
-Build edges between PUs whose Euclidean distance is <= \code{dmax}. Does not require \code{sf}.
-For very large instances, consider kNN instead.
+Build and register edges between planning units whose Euclidean distance is less than or equal to
+\code{dmax}, based on coordinates. This constructor does not require \code{sf}.
+}
+\details{
+This constructor uses an \eqn{O(n^2)} distance computation and is therefore best suited to small or
+moderate numbers of planning units. For large instances, consider \code{\link{add_spatial_knn}} instead.
+}
+\examples{
+\dontrun{
+x <- x |> add_spatial_distance(dmax = 1000, name = "within_1km", weight_fn = "constant")
+}
+
 }

@@ -7,40 +7,70 @@
 mosap(...)
 }
 \arguments{
-\item{...}{arguments inherited from \code{inputData()}, \code{problem()} and \code{solve()} functions.}
+\item{...}{Arguments inherited from \code{inputData()} and \code{solve()}.
+In addition, this wrapper supports \code{boundary} as described above.}
 }
 \value{
 An object of class \linkS4class{solution}.
 }
 \description{
-Create and solve a multi-actions planning problem. It can be used
-instead of following the sequence of the \code{inputData()}, \code{problem()}
-and \code{solve()} functions.
+Create and solve a multi-actions planning problem in a single call.
+This is a convenience wrapper around:
+\preformatted{
+inputData() -> (optional: add_spatial_* relations) -> solve()
+}
+}
+\details{
+\strong{No \code{problem()}:}
+This wrapper does not call \code{problem()}. The optimization model is expected to be
+built and solved by \code{solve()} from the information stored in the \code{Data} object
+(objectives, targets, relations, etc.).
+
+\strong{Spatial relations / boundary:}
+\itemize{
+\item This function does not pass \code{boundary} into \code{inputData()}.
+\item If you provide \code{boundary}, it is interpreted as a request to register a
+spatial relation after \code{inputData()} and before \code{solve()}.
+\item Supported \code{boundary} values:
+\itemize{
+\item a \code{data.frame} boundary table (e.g., columns \code{id1,id2,boundary} or \code{pu1,pu2,weight}),
+registered via \code{add_spatial_boundary()}.
+\item \code{"auto"} to derive boundary-length relations from \code{x$data$pu_sf}
+(requires \pkg{sf} and that \code{inputData()} stored \code{pu_sf}).
+}
+}
 }
 \examples{
 \donttest{
-## This example uses input files included into package.
-
-## set seed for reproducibility
 set.seed(14)
 
-## Load data
 data(sim_pu_data, sim_features_data, sim_dist_features_data,
-sim_threats_data, sim_dist_threats_data, sim_sensitivity_data,
-sim_boundary_data)
+     sim_threats_data, sim_dist_threats_data, sim_sensitivity_data,
+     sim_boundary_data)
 
-## Create data instance
-s <- prioriactions(pu = sim_pu_data, features = sim_features_data,
-                dist_features = sim_dist_features_data,
-                threats = sim_threats_data,
-                dist_threats = sim_dist_threats_data,
-                sensitivity = sim_sensitivity_data,
-                boundary = sim_boundary_data,
-                model_type = "minimizeCosts",
-                time_limit = 50,
-                output_file = FALSE,
-                cores = 2)
-
+## One-shot solve (tabular), registering a boundary relation from a table
+s <- mosap(
+  pu = sim_pu_data,
+  features = sim_features_data,
+  dist_features = sim_dist_features_data,
+  threats = sim_threats_data,
+  dist_threats = sim_dist_threats_data,
+  sensitivity = sim_sensitivity_data,
+  boundary = sim_boundary_data,
+  model_type = "minimizeCosts",
+  time_limit = 50,
+  output_file = FALSE,
+  cores = 2
+)
 print(s)
+
+## Spatial example (conceptual): boundary derived from PU polygons stored by inputData()
+## s2 <- mosap(
+##   pu = pu_sf, features = feat_r, cost = cost_r,
+##   boundary = "auto",
+##   model_type = "minimizeFragmentation",
+##   time_limit = 60
+## )
 }
+
 }

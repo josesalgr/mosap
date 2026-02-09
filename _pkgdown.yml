@@ -1,92 +1,111 @@
-title: prioriactions
+title: mosap
 
-url: https://prioriactions.github.io/prioriactions/
+url: https://josesalgr.github.io/mosap/
 
 template:
   params:
     docsearch:
       api_key: f00985ff93067595b4da97a65fe69f1a
-      index_name: prioriactions
+      index_name: mosap
     ganalytics: G-6YB8F3838H
-    #bootswatch: litera
-
+    # bootswatch: litera
 
 destination: docs
 
 authors:
   Jose Salgado-Rojas:
-    href: https://www.researchgate.net/profile/Jose_Salgado-Rojas
-  Irlanda Ceballos-Fuentealba:
-    href: https://www.researchgate.net/profile/Irlanda_Ceballos
-  Virgilio Hermoso:
-    href: https://www.researchgate.net/profile/Virgilio_Hermoso
-  Eduardo Alvarez-Miranda:
-    href: https://www.researchgate.net/profile/Eduardo_Alvarez-Miranda
-  Jordi Garcia-Gonzalo:
-    href: https://www.researchgate.net/profile/Jordi_Garcia-Gonzalo
+    href: https://scholar.google.com/citations?user=Z3F-9DgAAAAJ&hl=en
+  Núria Aquilué:
+    href: https://scholar.google.com/citations?user=OLJaCsYAAAAJ&hl=en
+
+navbar:
+  structure:
+    left:
+      - home
+      - reference
+      - articles
+      - news
+    right:
+      - github
+  components:
+    github:
+      icon: fa-github
+      href: https://github.com/josesalgr/mosap
 
 reference:
 
   - title: Create and solve problems
-    desc: Functions for creating new problems and solving them
+    desc: Core workflow to build a planning problem and solve it.
     contents:
       - inputData
-      - problem
       - solve
-      - prioriactions
+      - mosap
 
-  - title: Evaluate params
-    desc: Functions for evaluate differents params for a specific problem
+  - title: Actions, effects, targets and profits
+    desc: Define actions/effects (benefits), targets, and optional profit layers used by objectives/constraints.
     contents:
-      - evalBlm
-      - evalTarget
-      - evalBudget
+      - add_actions
+      - add_effects
+      - add_benefits
+      - add_profit
+      - add_conservation_targets_absolute
+      - add_conservation_targets_relative
+      - add_recovery_targets_absolute
+      - add_recovery_targets_relative
+      - add_mixed_targets_total_absolute
+      - add_mixed_targets_total_relative
 
-  - title: Get input data information
-    desc: Function to obtain information about the maximum benefits to achieve
+  - title: Spatial relations
+    desc: Register adjacency/boundary relations (from tables, polygons, or coordinates) used by spatial objectives.
     contents:
-      - getPotentialBenefit
+      - add_spatial_relations
+      - add_spatial_boundary
+      - add_spatial_rook
+      - add_spatial_queen
+      - add_spatial_knn
+      - add_spatial_distance
 
-  - title: Get mathematical model information
-    desc: Function to obtain information about the mathematical model
+  - title: Atomic objectives
+    desc: Register objectives that can be solved alone or combined in multi-objective methods.
     contents:
-      - getModelInfo
+      - starts_with("add_objective_")
 
-  - title: Get solution information
-    desc: Functions to obtain various information about the solution
+  - title: Solver configuration
+    desc: Configure solver and runtime options before calling solve().
     contents:
-      - getActions
-      - getPerformance
-      - getConnectivityPenalty
-      - getCost
-      - getSolutionBenefit
+      - starts_with("set_solver")
+      - starts_with("add_") # si tienes helpers tipo add_gurobi_solver(); si NO, bórralo.
 
-  - title: Class definitions
-    desc: Classes for handle mathematical problems
+  - title: Multi-objective methods
+    desc: Configure and solve multi-objective problems (e.g., weighted sum).
+    contents:
+      - set_method_weighted
+      - solve.MOProblem
+
+  - title: Results and solution helpers
+    desc: Extract tables and diagnostics from a Solution object.
+    contents:
+      - get_pu
+      - get_actions
+      - get_features
+      - get_targets
+      - get_solution_vector
+
+  - title: Classes
+    desc: Core classes used across the package.
     contents:
       - Data
-      - OptimizationProblem
+      - MOProblem
       - Solution
-      - Portfolio
 
   - title: Data
-    desc: Simulated datasets distributed with the package
+    desc: Simulated datasets distributed with the package.
     contents:
+      - starts_with("sim_")
       - simData
 
   - title: Miscellaneous
-    desc: Various useful functions
+    desc: Utilities and print methods.
     contents:
       - print
       - show
-
-articles:
-
-  - title: Introduction of prioriactions
-    navbar: Introduction
-    contents: [sensitivities, objectives, benchmark]
-
-  - title: Study cases of prioriactions
-    navbar: Study cases
-    contents: [MitchellRiver]
-

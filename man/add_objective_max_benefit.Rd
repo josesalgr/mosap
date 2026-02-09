@@ -2,54 +2,51 @@
 % Please edit documentation in R/add_objectives.R
 \name{add_objective_max_benefit}
 \alias{add_objective_max_benefit}
-\title{add objective: maximize benefits}
+\title{Add objective: maximize benefit}
 \usage{
 add_objective_max_benefit(x, benefit_col = "benefit", alias = NULL)
 }
 \arguments{
-\item{x}{A \code{\link{Data}} object created with \code{\link[=inputData]{inputData()}} / \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.}
 
-\item{benefit_col}{character. Name of the column in the benefit table (model-ready
-\code{dist_benefit_model}) containing numeric benefit values. Default is \code{"benefit"}.}
+\item{benefit_col}{Character. Column name in the model-ready benefit table containing numeric benefits.
+Default \code{"benefit"}.}
 
-\item{alias}{character or NULL. Optional unique identifier to register this objective
+\item{alias}{Character scalar or \code{NULL}. Optional identifier to register this objective
 as an atomic objective for multi-objective workflows.}
 }
 \value{
-Updated \code{\link{Data}} object.
+The updated \code{Data} object.
 }
 \description{
-Stores the objective specification inside the \code{\link{Data}} object so it can be
-materialized later when the optimization model is built (typically from \code{solve()}).
+Specify an objective that maximizes total benefit delivered by selected actions.
+Benefit values are taken from the benefit table produced by \code{\link{add_benefits}}
+(stored in \code{x$data$dist_benefit} and/or its model-ready variant).
 
-This objective maximizes the total benefit delivered by selected actions, using the
-benefit values stored in \code{dist_benefit}.
+This function is \strong{data-only}: it stores the objective specification inside the
+\code{Data} object so it can be materialized later when the optimization model is built
+(typically when calling \code{solve()}).
 
 If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 as an atomic objective for multi-objective workflows.
 }
 \details{
-This function does \strong{not} build or solve the optimization model.
-It updates \code{x$data$model_args}:
+The function updates \code{x$data$model_args} with:
 \describe{
 \item{\code{model_type}}{\code{"maximizeBenefits"}}
 \item{\code{objective_id}}{\code{"max_benefit"}}
 \item{\code{objective_args}}{a list with \code{benefit_col}}
 }
 
-Notes:
-\itemize{
-\item The model builder will require \code{dist_benefit} to exist (typically created by
-\code{\link[=add_benefits]{add_benefits()}}) and will error if benefits are missing.
-\item If you call another objective setter afterwards, it will overwrite the previous
-active (single-objective) objective in \code{x$data$model_args}.
-}
+The model builder will require benefit data to exist and will error if benefits are missing.
+If another objective setter is called afterwards, it overwrites the active single-objective
+specification in \code{x$data$model_args}.
 }
 \examples{
 \dontrun{
-x <- inputDataSpatial(pu = pu_sf, cost = "cost", features = feat_sf, pu_id_col = "id") \%>\%
-  add_actions(actions_df) \%>\%
-  add_benefits(benefits_df) \%>\%
+x <- inputDataSpatial(pu = pu_sf, cost = "cost", features = feat_sf, pu_id_col = "id") |>
+  add_actions(actions_df) |>
+  add_benefits(benefits_df) |>
   add_objective_max_benefit(alias = "benefit")
 }
 

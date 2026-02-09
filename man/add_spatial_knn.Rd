@@ -2,7 +2,7 @@
 % Please edit documentation in R/add_spatial_relations.R
 \name{add_spatial_knn}
 \alias{add_spatial_knn}
-\title{Add kNN spatial relations from coordinates}
+\title{Add k-nearest-neighbours spatial relations from coordinates}
 \usage{
 add_spatial_knn(
   x,
@@ -16,21 +16,39 @@ add_spatial_knn(
 \arguments{
 \item{x}{A \linkS4class{data} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
-\item{coords}{Optional coordinates: \code{data.frame(id,x,y)} or a matrix with 2 columns (x,y).
-If \code{NULL}, tries \code{x$data$pu$x} and \code{x$data$pu$y}.}
+\item{coords}{Optional coordinates specification:
+\itemize{
+\item a \code{data.frame(id, x, y)}, or
+\item a matrix with two columns \code{(x,y)} aligned to the PU order.
+}
+If \code{NULL}, uses \code{x$data$pu_coords} or \code{x$data$pu$x/y}.}
 
-\item{k}{Integer. Number of neighbours per PU.}
+\item{k}{Integer. Number of neighbours per planning unit (must be \code{>= 1} and \code{< n_pu}).}
 
-\item{name}{Name/key under which the relation will be stored.}
+\item{name}{Character name/key under which to store the relation.}
 
-\item{weight_fn}{How to convert distance to edge weight: \code{"constant"}, \code{"inverse"}, or \code{"inverse_sq"}.}
+\item{weight_fn}{Character. How to convert distance to weight:
+\code{"constant"}, \code{"inverse"}, or \code{"inverse_sq"}.}
 
-\item{eps}{Small constant to avoid division by zero (default 1e-9).}
+\item{eps}{Small numeric constant to avoid division by zero when using inverse weights.}
 }
 \value{
 Updated \linkS4class{data} object.
 }
 \description{
-Build a k-nearest-neighbours graph between planning units using coordinates.
-Does not require \code{sf}. For speed on large instances, it uses \code{RANN} if available.
+Build and register a k-nearest-neighbours (kNN) graph between planning units based on coordinates.
+This constructor does not require \code{sf}. If the \code{RANN} package is available, it is used for speed.
+}
+\details{
+Coordinates can be supplied explicitly via \code{coords}, stored in \code{x$data$pu_coords},
+or stored as columns \code{x$data$pu$x} and \code{x$data$pu$y}.
+
+Edge weights can be constant or derived from distance using \code{weight_fn}.
+The stored relation is undirected by default (duplicates are collapsed).
+}
+\examples{
+\dontrun{
+x <- x |> add_spatial_knn(k = 8, name = "knn8", weight_fn = "inverse")
+}
+
 }

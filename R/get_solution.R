@@ -1,23 +1,32 @@
 #' @title Get planning unit results from a Solution
 #'
 #' @description
-#' Extracts the planning-unit table from a [solution-class] object returned by [solve()].
-#' The returned table includes a \code{selected} column indicating whether each planning
-#' unit is selected in the solution.
+#' Extract the planning-unit results table from a [solution-class] object returned by [solve()].
+#' The returned table includes a \code{selected} indicator (typically \code{0/1}) showing
+#' whether each planning unit is selected in the solution.
 #'
 #' @param x A [solution-class] object returned by [solve()].
-#' @param only_selected Logical. If \code{TRUE}, return only selected planning units.
+#' @param only_selected Logical. If \code{TRUE}, return only rows where \code{selected == 1}.
 #'   Default \code{FALSE}.
 #'
-#' @return A \code{data.frame} with planning-unit information and a \code{selected} column.
-#' @export
+#' @return A \code{data.frame} with planning-unit information stored in the solution and
+#'   a \code{selected} column.
+#'
+#' @details
+#' This function expects the solution object to store a planning-unit results table at
+#' \code{x$data$tables$pu}. It errors if the table is missing. If \code{only_selected = TRUE},
+#' it also errors when the \code{selected} column is not present.
 #'
 #' @examples
 #' \dontrun{
-#' sol <- solve(hola)
+#' sol <- solve(problem)
 #' pu_tbl <- get_pu(sol)
 #' pu_sel <- get_pu(sol, only_selected = TRUE)
 #' }
+#'
+#' @export
+#'
+#' @seealso [get_actions()], [get_features()], [get_targets()], [get_solution_vector()]
 get_pu <- function(x, only_selected = FALSE) {
   stopifnot(inherits(x, "Solution"))
   pu <- x$data$tables$pu %||% NULL
@@ -33,23 +42,32 @@ get_pu <- function(x, only_selected = FALSE) {
 #' @title Get action results from a Solution
 #'
 #' @description
-#' Extracts the action-allocation table from a [solution-class] object returned by [solve()].
-#' The returned table includes a \code{selected} column indicating whether each feasible
-#' \code{(pu, action)} pair is selected in the solution.
+#' Extract the action-allocation results table from a [solution-class] object returned by [solve()].
+#' The returned table includes a \code{selected} indicator (typically \code{0/1}) showing whether
+#' each feasible \code{(pu, action)} pair is selected in the solution.
 #'
 #' @param x A [solution-class] object returned by [solve()].
-#' @param only_selected Logical. If \code{TRUE}, return only selected actions
-#'   (\code{selected == 1}). Default \code{FALSE}.
+#' @param only_selected Logical. If \code{TRUE}, return only rows where \code{selected == 1}.
+#'   Default \code{FALSE}.
 #'
-#' @return A \code{data.frame} with action allocation information and a \code{selected} column.
-#' @export
+#' @return A \code{data.frame} with action-allocation information stored in the solution and
+#'   a \code{selected} column.
+#'
+#' @details
+#' This function expects the solution object to store an action-allocation table at
+#' \code{x$data$tables$actions}. It errors if the table is missing. If \code{only_selected = TRUE},
+#' it also errors when the \code{selected} column is not present.
 #'
 #' @examples
 #' \dontrun{
-#' sol <- solve(hola)
+#' sol <- solve(problem)
 #' act_tbl <- get_actions(sol)
 #' act_sel <- get_actions(sol, only_selected = TRUE)
 #' }
+#'
+#' @export
+#'
+#' @seealso [get_pu()], [get_features()], [get_targets()], [get_solution_vector()]
 get_actions <- function(x, only_selected = FALSE) {
   stopifnot(inherits(x, "Solution"))
   a <- x$data$tables$actions %||% NULL
@@ -65,24 +83,33 @@ get_actions <- function(x, only_selected = FALSE) {
 #' @title Get feature achievement summary from a Solution
 #'
 #' @description
-#' Extracts the feature achievement table from a [solution-class] object returned by [solve()].
-#' This table typically contains:
-#' \itemize{
-#' \item \code{baseline_contrib}: contribution from baseline / conservation (e.g., z variables)
-#' \item \code{recovery_contrib}: contribution from recovery (e.g., benefit layers times actions)
-#' \item \code{total}: baseline + recovery
-#' }
+#' Extract the feature achievement table from a [solution-class] object returned by [solve()].
+#' This table typically summarizes, for each feature, how much is achieved by baseline selection
+#' and by action effects, and their total.
 #'
 #' @param x A [solution-class] object returned by [solve()].
 #'
-#' @return A \code{data.frame} with feature achievement metrics.
-#' @export
+#' @return A \code{data.frame} with feature achievement metrics stored in the solution.
+#'
+#' @details
+#' This function expects the feature achievement table at \code{x$data$tables$features} and
+#' errors if it is missing. The exact columns depend on the model and reporting options, but
+#' commonly include:
+#' \itemize{
+#' \item \code{baseline_contrib}: contribution from baseline / conservation selection.
+#' \item \code{recovery_contrib}: contribution from action effects (e.g., benefits).
+#' \item \code{total}: baseline + recovery.
+#' }
 #'
 #' @examples
 #' \dontrun{
-#' sol <- solve(hola)
+#' sol <- solve(problem)
 #' feat_tbl <- get_features(sol)
 #' }
+#'
+#' @export
+#'
+#' @seealso [get_pu()], [get_actions()], [get_targets()]
 get_features <- function(x) {
   stopifnot(inherits(x, "Solution"))
   f <- x$data$tables$features %||% NULL
@@ -90,25 +117,33 @@ get_features <- function(x) {
   f
 }
 
+
 #' @title Get target achievement table from a Solution
 #'
 #' @description
-#' Extracts the targets table (if present) from a [solution-class] object returned by [solve()].
-#' The targets table typically includes \code{target_value}, \code{achieved}, and \code{gap}
-#' (achieved - target_value), plus target metadata (e.g., type).
+#' Extract the target achievement table (if present) from a [solution-class] object returned by [solve()].
+#' The targets table typically contains the target value, achieved value, and gap
+#' (\code{achieved - target_value}), plus target metadata such as type and units.
 #'
 #' @param x A [solution-class] object returned by [solve()].
 #'
-#' @return A \code{data.frame} with target achievement metrics, or \code{NULL} if no targets
-#'   were stored/applied.
-#' @export
+#' @return A \code{data.frame} with target achievement metrics, or \code{NULL} if the solution
+#'   does not contain a targets table.
+#'
+#' @details
+#' Targets are optional. If the solution does not include \code{x$data$tables$targets},
+#' this function returns \code{NULL} without error.
 #'
 #' @examples
 #' \dontrun{
-#' sol <- solve(hola)
+#' sol <- solve(problem)
 #' tgt_tbl <- get_targets(sol)
 #' if (!is.null(tgt_tbl)) head(tgt_tbl)
 #' }
+#'
+#' @export
+#'
+#' @seealso [get_pu()], [get_actions()], [get_features()]
 get_targets <- function(x) {
   stopifnot(inherits(x, "Solution"))
   t <- x$data$tables$targets %||% NULL
@@ -116,22 +151,33 @@ get_targets <- function(x) {
   t
 }
 
+
 #' @title Get raw solution vector from a Solution
 #'
 #' @description
-#' Returns the raw decision-variable vector produced by the solver (in the model variable order).
+#' Return the raw decision-variable vector produced by the solver, in the internal model
+#' variable order used by the optimizer backend.
 #'
 #' @param x A [solution-class] object returned by [solve()].
 #'
 #' @return A numeric vector with one value per model variable.
-#' @export
+#'
+#' @details
+#' This function expects the raw solution vector at \code{x$data$sol} and errors if it is missing.
+#' The vector is returned as numeric and corresponds to the model's variable ordering (e.g.,
+#' planning-unit selection variables, action variables, and any auxiliary variables such as
+#' fragmentation variables when present).
 #'
 #' @examples
 #' \dontrun{
-#' sol <- solve(hola)
+#' sol <- solve(problem)
 #' v <- get_solution_vector(sol)
 #' length(v)
 #' }
+#'
+#' @export
+#'
+#' @seealso [get_pu()], [get_actions()], [get_features()], [get_targets()]
 get_solution_vector <- function(x) {
   stopifnot(inherits(x, "Solution"))
   v <- x$data$sol %||% NULL

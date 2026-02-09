@@ -5,35 +5,70 @@
 \alias{Data}
 \title{Data class}
 \value{
-No return value.
+No return value (class definition).
 }
 \description{
-This class is used to represent data of the instances of the corresponding
-multi-action planning problem. It includes several methods for retrieving the information
-of the instance (such as the spatial allocation of threats and species, the cost
-of management actions or the structure of the spatial connectivity across
-the area where the planning is carried out. This class is created using the
-\code{\link[=inputData]{inputData()}} function.
+The \code{Data} class is the core container used by \pkg{prioriactions} to store the
+information required to define and solve a multi-action planning problem.
+It holds the planning-unit table, feature and threat catalogues, action definitions
+and distributions (feasibility, costs, effects), optional spatial inputs (sf geometry,
+coordinate tables, spatial relations), and (optionally) a built optimization model snapshot.
+
+Objects of this class are typically created by \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.
+Downstream functions (e.g., \code{\link[=add_actions]{add_actions()}}, \code{\link[=add_effects]{add_effects()}}, target setters, objectives)
+enrich the internal \code{data} list by adding or updating the relevant tables.
 }
-\section{Fields}{
- \describe{
-\item{data}{\code{list} object containing data.}
+\details{
+The \code{Data} class is designed to support both legacy single-objective workflows and
+newer modular/multi-objective workflows. Many functions operate in a "data-first" way:
+they store specifications (e.g., targets, objectives, constraints) in \code{x$data} and the
+optimization model is built later (typically when calling \code{solve()}).
+}
+\section{Storage}{
+
+The class contains a single field:
+\describe{
+\item{data}{A named \code{list} holding all tables and metadata used by the workflow.
+Common elements include \code{pu}, \code{features}, \code{threats}, \code{actions},
+\code{dist_features}, \code{dist_actions}, \code{dist_effects}/\code{dist_benefit},
+\code{pu_sf}, \code{pu_coords}, \code{spatial_relations}, \code{targets},
+and model-related entries such as \code{model_ptr}, \code{model_list}, and \code{model_args}.}
 }
 }
 
 \section{Methods}{
- \describe{
-\item{getActionsAmount():}{\code{integer}. Number of possible actions.}
-\item{getData(\code{character} name):}{\code{\link[=data.frame]{data.frame()}}. Object stored in the \code{data} field with name \code{name}.}
-\item{getFeatureAmount():}{\code{integer}. Number of features.}
-\item{getFeatureNames():}{\code{character}. Names of features.}
-\item{getMonitoringCosts():}{\code{numeric} \code{\link[=vector]{vector()}}. Cost of monitoring each planning unit.}
-\item{getPlanningUnitsAmount():}{\code{integer}. Number of planning units.}
-\item{getActionCosts():}{\code{numeric} \code{\link[=vector]{vector()}}. Cost of actions each planning unit and threat.}
-\item{getThreatNames():}{\code{character}. Names of threats.}
-\item{getThreatsAmount():}{\code{integer}. Number of threats.}
-\item{print():}{Print basic information of the data instance and (if present) the model state.}
-\item{show():}{Call print method.}
+
+\describe{
+\item{\code{print()}}{Print a concise summary of the stored data and, when present,
+basic information about the built optimization model (dimensions, objective type, and
+auxiliary variables such as fragmentation variables). Uses \pkg{cli} when available,
+otherwise falls back to a plain-text summary.}
+
+\item{\code{show()}}{Alias of \code{print()}.}
+
+\item{\code{repr()}}{Returns a short string representation.}
+
+\item{\code{getData(name)}}{Retrieve an element stored in \code{data} by its name.}
+
+\item{\code{getPlanningUnitsAmount()}}{Return the number of planning units stored in
+\code{x$data$pu}.}
+
+\item{\code{getMonitoringCosts()}}{Return the planning-unit cost vector. Prefers column
+\code{cost} in \code{x$data$pu} and falls back to legacy \code{monitoring_cost} if present.}
+
+\item{\code{getFeatureAmount()}}{Return the number of features stored in \code{x$data$features}.}
+
+\item{\code{getFeatureNames()}}{Return feature names from \code{x$data$features$name}.}
+
+\item{\code{getThreatsAmount()}}{Return the number of threats stored in \code{x$data$threats}.}
+
+\item{\code{getThreatNames()}}{Return threat names from \code{x$data$threats$name}.}
+
+\item{\code{getActionCosts()}}{Return action costs. Prefers the model-ready action table
+\code{x$data$dist_actions$cost}; otherwise falls back to legacy \code{x$data$dist_threats$action_cost}.}
+
+\item{\code{getActionsAmount()}}{Return the number of actions. Prefers \code{x$data$actions}
+(new API); otherwise falls back to the number of rows in legacy \code{x$data$dist_threats}.}
 }
 }
 

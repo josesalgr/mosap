@@ -2,7 +2,7 @@
 % Please edit documentation in R/add_objectives.R
 \name{add_objective_min_fragmentation}
 \alias{add_objective_min_fragmentation}
-\title{add objective: minimize fragmentation (perimeter cut)}
+\title{Add objective: minimize fragmentation (PU cut)}
 \usage{
 add_objective_min_fragmentation(
   x,
@@ -12,24 +12,30 @@ add_objective_min_fragmentation(
 )
 }
 \arguments{
-\item{x}{A \code{\link{Data}} object created with \code{\link[=inputData]{inputData()}} / \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.}
 
-\item{relation_name}{character. Name of the stored relation in \code{x$data$spatial_relations}
-(e.g. \code{"boundary"}, \code{"rook"}, \code{"queen"}, \code{"knn"}). Default \code{"boundary"}.}
+\item{relation_name}{Character. Name of the spatial relation in \code{x$data$spatial_relations}
+(e.g., \code{"boundary"}, \code{"rook"}, \code{"queen"}, \code{"knn"}). Default \code{"boundary"}.}
 
-\item{weight_multiplier}{numeric. Multiplies all relation weights (BLM-like). Default 1.}
+\item{weight_multiplier}{Numeric \eqn{\ge 0}. Multiplier applied to all relation weights. Default \code{1}.}
 
-\item{alias}{character or NULL. Optional unique identifier to register this objective
+\item{alias}{Character scalar or \code{NULL}. Optional identifier to register this objective
 as an atomic objective for multi-objective workflows.}
 }
 \value{
-Updated \code{\link{Data}} object.
+The updated \code{Data} object.
 }
 \description{
-Stores an objective specification to later build a model that minimizes spatial
-fragmentation measured as the weighted cut between selected vs non-selected PUs:
-\deqn{\sum_{(i,j)} w_{ij} |z_i - z_j|.}
-Internally this is linearized with auxiliary edge variables.
+Specify an objective that minimizes spatial fragmentation measured as the weighted cut
+between selected and non-selected planning units over a spatial relation:
+\deqn{\sum_{(i,j)} w_{ij}\,|z_i - z_j|.}
+
+In the model builder, this objective is linearized using auxiliary edge variables.
+Relation weights \eqn{w_{ij}} are read from \code{x$data$spatial_relations[[relation_name]]}
+and can be scaled by \code{weight_multiplier} (BLM-like scaling).
+
+This function is \strong{data-only}: it stores the objective specification inside the
+\code{Data} object so it can be materialized later when the optimization model is built.
 
 If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 as an atomic objective for multi-objective workflows.

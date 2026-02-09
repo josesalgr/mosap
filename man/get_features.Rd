@@ -10,20 +10,30 @@ get_features(x)
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}
 }
 \value{
-A \code{data.frame} with feature achievement metrics.
+A \code{data.frame} with feature achievement metrics stored in the solution.
 }
 \description{
-Extracts the feature achievement table from a \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.
-This table typically contains:
+Extract the feature achievement table from a \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.
+This table typically summarizes, for each feature, how much is achieved by baseline selection
+and by action effects, and their total.
+}
+\details{
+This function expects the feature achievement table at \code{x$data$tables$features} and
+errors if it is missing. The exact columns depend on the model and reporting options, but
+commonly include:
 \itemize{
-\item \code{baseline_contrib}: contribution from baseline / conservation (e.g., z variables)
-\item \code{recovery_contrib}: contribution from recovery (e.g., benefit layers times actions)
-\item \code{total}: baseline + recovery
+\item \code{baseline_contrib}: contribution from baseline / conservation selection.
+\item \code{recovery_contrib}: contribution from action effects (e.g., benefits).
+\item \code{total}: baseline + recovery.
 }
 }
 \examples{
 \dontrun{
-sol <- solve(hola)
+sol <- solve(problem)
 feat_tbl <- get_features(sol)
 }
+
+}
+\seealso{
+\code{\link[=get_pu]{get_pu()}}, \code{\link[=get_actions]{get_actions()}}, \code{\link[=get_targets]{get_targets()}}
 }

@@ -10,18 +10,26 @@ get_targets(x)
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}
 }
 \value{
-A \code{data.frame} with target achievement metrics, or \code{NULL} if no targets
-were stored/applied.
+A \code{data.frame} with target achievement metrics, or \code{NULL} if the solution
+does not contain a targets table.
 }
 \description{
-Extracts the targets table (if present) from a \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.
-The targets table typically includes \code{target_value}, \code{achieved}, and \code{gap}
-(achieved - target_value), plus target metadata (e.g., type).
+Extract the target achievement table (if present) from a \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.
+The targets table typically contains the target value, achieved value, and gap
+(\code{achieved - target_value}), plus target metadata such as type and units.
+}
+\details{
+Targets are optional. If the solution does not include \code{x$data$tables$targets},
+this function returns \code{NULL} without error.
 }
 \examples{
 \dontrun{
-sol <- solve(hola)
+sol <- solve(problem)
 tgt_tbl <- get_targets(sol)
 if (!is.null(tgt_tbl)) head(tgt_tbl)
 }
+
+}
+\seealso{
+\code{\link[=get_pu]{get_pu()}}, \code{\link[=get_actions]{get_actions()}}, \code{\link[=get_features]{get_features()}}
 }

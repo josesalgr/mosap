@@ -7,41 +7,75 @@
 add_profit(x, profit = NULL, keep_zero = FALSE, na_to_zero = TRUE)
 }
 \arguments{
-\item{x}{A \linkS4class{data} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+Must contain \code{x$data$dist_actions} and \code{x$data$actions} (run \code{\link{add_actions}} first).}
 
-\item{profit}{Specification of profits. One of:
+\item{profit}{Profit specification. One of:
 \itemize{
-\item \code{NULL}: default profit = 0 for all feasible (pu, action).
-\item A numeric scalar: recycled to all feasible (pu, action).
-\item A named numeric vector: names = action ids; applies a global profit per action.
-\item A \code{data.frame(action, profit)}: global profit per action.
-\item A \code{data.frame(pu, action, profit)}: explicit spatial profits.
+\item \code{NULL}: profit is set to 0 for all feasible \code{(pu, action)} pairs.
+\item A numeric scalar: recycled to all feasible \code{(pu, action)} pairs.
+\item A named numeric vector: names are action ids; assigns a global profit per action.
+\item A \code{data.frame(action, profit)}: assigns a global profit per action.
+\item A \code{data.frame(pu, action, profit)}: assigns explicit profit values by pair.
 }}
 
-\item{keep_zero}{Logical. Keep rows with profit == 0? Default FALSE (drops them).}
+\item{keep_zero}{Logical. If \code{TRUE}, keep rows with \code{profit == 0} in the stored table.
+Default \code{FALSE} (zero-profit rows are dropped).}
 
-\item{na_to_zero}{Logical. If TRUE, treat missing profit values as 0.}
+\item{na_to_zero}{Logical. If \code{TRUE}, treat missing profit values as 0 after joins/matching.
+Default \code{TRUE}.}
 }
 \value{
-The updated \linkS4class{data} object.
+The updated \code{Data} object with \code{x$data$dist_profit} created/updated.
 }
 \description{
-Create a profit table (\code{dist_profit}) describing the (economic) profit obtained for
-each feasible (pu, action) pair.
-
-This is intentionally \strong{separate} from \code{dist_benefit} (ecological benefit).
-Profit can be used later to:
-\itemize{
-\item build a net-cost budget constraint (cost - profit),
-\item add a profit term to an objective, or
-\item compute reporting diagnostics.
-}
-
-It produces \code{x$data$dist_profit} with columns:
-\code{pu}, \code{action}, \code{profit}, plus \code{internal_pu}, \code{internal_action}.
+Define (economic) profit values for feasible \code{(pu, action)} pairs and store them in
+\code{x$data$dist_profit}. Profit is intentionally stored separately from ecological
+\code{benefit}/\code{loss} (see \code{\link{add_effects}} / \code{\link{add_benefits}}).
 }
 \details{
-This function is \strong{data-only}: it does not build or modify the optimization model.
-Any feasibility filtering (e.g., removing locked-out actions) should be handled later
-when the model-ready tables are prepared (e.g., inside the model builder called by \code{solve()}).
+This function creates a profit table aligned to the current feasibility table
+\code{x$data$dist_actions}. The resulting \code{x$data$dist_profit} contains:
+\itemize{
+\item \code{pu}: external planning unit id,
+\item \code{action}: action id,
+\item \code{profit}: numeric profit value,
+\item \code{internal_pu}: internal PU index,
+\item \code{internal_action}: internal action index.
+}
+
+Profit values can later be used to build objectives (e.g., maximize profit or maximize
+net profit), budget constraints (e.g., net cost = cost - profit), or reporting summaries.
+
+The function is \strong{data-only}: it does not build or modify the optimization model.
+It also does not change feasibility; it simply assigns profits to rows currently present
+in \code{dist_actions}. Any additional filtering (e.g., dropping locked-out pairs) should
+be applied when preparing model-ready tables (typically inside the model builder invoked by
+\code{solve()}).
+}
+\examples{
+\dontrun{
+# 1) Default: profit = 0 everywhere (table may be empty if keep_zero = FALSE)
+x <- x |> add_profit()
+
+# 2) Constant profit for every feasible (pu, action)
+x <- x |> add_profit(profit = 10)
+
+# 3) Profit per action (named vector)
+pr <- c(harvest = 50, sustainable = 20, restoration = -5)
+x <- x |> add_profit(profit = pr)
+
+# 4) Profit per action (data.frame)
+pr_df <- data.frame(action = c("harvest", "sustainable"), profit = c(50, 20))
+x <- x |> add_profit(profit = pr_df)
+
+# 5) Profit per (pu, action) pair
+pr_sp <- data.frame(
+  pu = c(1, 2, 2),
+  action = c("harvest", "harvest", "sustainable"),
+  profit = c(100, 80, 30)
+)
+x <- x |> add_profit(profit = pr_sp, keep_zero = TRUE)
+}
+
 }

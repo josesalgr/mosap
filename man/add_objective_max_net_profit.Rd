@@ -2,7 +2,7 @@
 % Please edit documentation in R/add_objectives.R
 \name{add_objective_max_net_profit}
 \alias{add_objective_max_net_profit}
-\title{add objective: maximize net profit (profit - total cost)}
+\title{Add objective: maximize net profit}
 \usage{
 add_objective_max_net_profit(
   x,
@@ -13,37 +13,44 @@ add_objective_max_net_profit(
 )
 }
 \arguments{
-\item{x}{A \code{\link{Data}} object created with \code{\link[=inputData]{inputData()}} / \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.}
 
-\item{profit_col}{character. Column name in \code{dist_profit} containing numeric profits.
+\item{profit_col}{Character. Column name in \code{x$data$dist_profit} containing numeric profits.
 Default \code{"profit"}.}
 
-\item{include_pu_cost}{logical. If \code{TRUE}, subtract planning-unit costs.}
+\item{include_pu_cost}{Logical. If \code{TRUE}, subtract planning-unit costs.}
 
-\item{include_action_cost}{logical. If \code{TRUE}, subtract action costs.}
+\item{include_action_cost}{Logical. If \code{TRUE}, subtract action costs.}
 
-\item{alias}{character or NULL. Optional unique identifier to register this objective
+\item{alias}{Character scalar or \code{NULL}. Optional identifier to register this objective
 as an atomic objective for multi-objective workflows.}
 }
 \value{
-Updated \code{\link{Data}} object.
+The updated \code{Data} object.
 }
 \description{
-Stores an objective specification inside the \code{\link{Data}} object to later build an
-optimization model that \strong{maximizes net profit}, defined as:
-\deqn{\sum profit \cdot x \;-\; \left(\sum pu\_cost \cdot w + \sum action\_cost \cdot x\right).}
+Specify an objective that maximizes net profit, defined as total profit from selected
+\code{(pu, action)} pairs minus total costs:
+\deqn{\sum \mathrm{profit}\,x \;-\; \left(\sum \mathrm{pu\_cost}\,w + \sum \mathrm{action\_cost}\,x\right).}
 
-Profit is taken from \code{x$data$dist_profit} (created with \code{\link[=add_profit]{add_profit()}}).
-Costs are taken from \code{x$data$pu} (planning-unit costs) and \code{x$data$dist_actions} (action costs).
+Profit is taken from \code{x$data$dist_profit} (created with \code{\link{add_profit}}).
+Planning-unit costs are taken from \code{x$data$pu}; action costs are taken from
+\code{x$data$dist_actions}.
+
+This function is \strong{data-only}: it stores the objective specification inside the
+\code{Data} object so it can be materialized later when the optimization model is built.
 
 If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 as an atomic objective for multi-objective workflows.
 }
 \details{
-This function does \strong{not} build or solve the model. It only updates \code{x$data$model_args}.
-The model builder (called from \code{solve()}) must implement the corresponding objective
-(typically via one C++ routine that sets all objective coefficients).
+The function updates \code{x$data$model_args} with:
+\describe{
+\item{\code{model_type}}{\code{"maximizeNetProfit"}}
+\item{\code{objective_id}}{\code{"max_net_profit"}}
+\item{\code{objective_args}}{a list with \code{profit_col}, \code{include_pu_cost}, and \code{include_action_cost}}
+}
 
-If you call another objective setter afterwards, it will overwrite the previous
-active (single-objective) objective in \code{x$data$model_args}.
+If another objective setter is called afterwards, it overwrites the active single-objective
+specification in \code{x$data$model_args}.
 }

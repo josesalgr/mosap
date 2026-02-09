@@ -473,45 +473,75 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   stopifnot(inherits(base, "Data"))
   stopifnot(is.list(ir_list), length(ir_list) > 0)
 
-  score_one <- function(ir) {
-    types <- vapply(ir$terms %||% list(), `[[`, "", "type")
-    if ("intervention_boundary_cut" %in% types) return(3L)
-    if ("action_boundary_cut" %in% types) return(2L)
-    if ("boundary_cut" %in% types) return(1L)
-    0L
+  # ---- collect needs across ALL objectives
+  all_terms <- unlist(lapply(ir_list, function(ir) ir$terms %||% list()), recursive = FALSE)
+  all_types <- unique(vapply(all_terms, `[[`, "", "type"))
+
+  need_z      <- "representation" %in% all_types
+  need_y_pu   <- "boundary_cut" %in% all_types
+  need_y_act  <- "action_boundary_cut" %in% all_types
+  need_y_int  <- "intervention_boundary_cut" %in% all_types
+
+  # ---- choose IR used to build the base model
+  # Priority 1: if we need z, try to build using a representation objective
+  ir_best <- NULL
+  if (isTRUE(need_z)) {
+    idx_rep <- which(vapply(ir_list, function(ir) {
+      any(vapply(ir$terms %||% list(), function(t) identical(t$type, "representation"), logical(1)))
+    }, logical(1)))
+    if (length(idx_rep) > 0) ir_best <- ir_list[[idx_rep[1]]]
   }
 
-  scores  <- vapply(ir_list, score_one, integer(1))
-  ir_best <- ir_list[[which.max(scores)]]
+  # Priority 2: otherwise use the one most likely to require prepares (fragmentation)
+  if (is.null(ir_best)) {
+    score_one <- function(ir) {
+      types <- vapply(ir$terms %||% list(), `[[`, "", "type")
+      s <- 0L
+      if ("intervention_boundary_cut" %in% types) s <- s + 30L
+      if ("action_boundary_cut"       %in% types) s <- s + 20L
+      if ("boundary_cut"              %in% types) s <- s + 10L
+      # representation doesn't add aux vars, but keep as a small preference
+      if ("representation"            %in% types) s <- s + 1L
+      s
+    }
+    scores  <- vapply(ir_list, score_one, integer(1))
+    ir_best <- ir_list[[which.max(scores)]]
+  }
 
-  # 1) Build once (prioriactions expects exactly one objective active)
+  # ---- build once (engine expects exactly one objective active)
   b <- .pamo_clone_base(base)
   b <- .pamo_activate_ir_as_single_objective(b, ir_best)
 
   b$data$model_args$mo_mode <- TRUE
   b <- prioriactions:::.pa_build_model(b)
 
-  # 2) Identify required "prepared components" across all IRs
-  all_terms <- unlist(lapply(ir_list, function(ir) ir$terms %||% list()), recursive = FALSE)
-  all_types <- unique(vapply(all_terms, `[[`, "", "type"))
+  op <- b$data$model_ptr
+  if (is.null(op)) stop("Superset build failed: model_ptr is NULL.", call. = FALSE)
 
-  # 3) Prepare PU fragmentation auxiliaries if ANY objective needs boundary_cut
-  if ("boundary_cut" %in% all_types) {
+  # ---- sanity check: if we need z, ensure the built model has z
+  if (isTRUE(need_z)) {
+    op_list <- prioriactions:::.pa_model_from_ptr(op, args = b$data$model_args %||% list(), drop_triplets = TRUE)
+    n_z <- as.integer(op_list$n_z %||% 0L)
+    if (n_z <= 0L) {
+      stop(
+        "MO superset requires z variables (representation objectives present), ",
+        "but the built model has n_z = 0.\n",
+        "Fix: make .pa_build_model() create z when model_args$mo_mode=TRUE and any IR needs representation.",
+        call. = FALSE
+      )
+    }
+  }
 
-    op <- b$data$model_ptr
+  did_prepare <- FALSE
 
-    # IMPORTANT: do NOT call prioriactions::rcpp_optimization_problem_as_list (not exported)
-    op_list <- prioriactions:::.pa_model_from_ptr(
-      op,
-      args = b$data$model_args %||% list(),
-      drop_triplets = TRUE
-    )
+  # ---- prepare PU fragmentation auxiliaries if needed
+  if (isTRUE(need_y_pu)) {
 
+    op_list <- prioriactions:::.pa_model_from_ptr(op, args = b$data$model_args %||% list(), drop_triplets = TRUE)
     n_y_pu <- as.integer(op_list$n_y_pu %||% 0L)
 
     if (n_y_pu <= 0L) {
 
-      # You may have multiple boundary_cut terms with different relation_name
       rel_names <- unique(vapply(
         Filter(function(t) identical(t$type, "boundary_cut"), all_terms),
         function(t) as.character(t$relation_name %||% "boundary")[1],
@@ -533,16 +563,36 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
         }
 
         prioriactionsMO::rcpp_prepare_fragmentation_pu(op, rel_model)
+        did_prepare <- TRUE
       }
-
-      # After mutating the model pointer, the snapshot is stale
-      b$data$meta$model_dirty <- TRUE
-      b <- prioriactions:::.pa_refresh_model_snapshot(b)
     }
+  }
+
+  # ---- placeholders for future: action/intervention fragmentation prepares
+  # (Leave hooks now so adding epsilon/augmecon later doesn't require refactors)
+  if (isTRUE(need_y_act)) {
+    # TODO: when you implement it:
+    # - check op_list$n_y_actions (or your chosen indicator)
+    # - prepare using relation_names present in action_boundary_cut terms
+    # did_prepare <- TRUE
+  }
+
+  if (isTRUE(need_y_int)) {
+    # TODO: when you implement it:
+    # - check op_list$n_y_interventions (or your chosen indicator)
+    # - prepare using relation_names present in intervention_boundary_cut terms
+    # did_prepare <- TRUE
+  }
+
+  # ---- refresh snapshot once if needed
+  if (isTRUE(did_prepare)) {
+    b$data$meta$model_dirty <- TRUE
+    b <- prioriactions:::.pa_refresh_model_snapshot(b)
   }
 
   b
 }
+
 
 
 .pamo_model_obj_length <- function(x) {

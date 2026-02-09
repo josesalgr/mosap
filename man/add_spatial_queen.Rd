@@ -9,17 +9,23 @@ add_spatial_queen(x, pu_sf = NULL, name = "default", weight = 1)
 \arguments{
 \item{x}{A \linkS4class{data} object created with \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
-\item{pu_sf}{Optional sf object with planning units geometry and an \code{id} column. If \code{NULL},
-tries \code{x$data$pu_sf}.}
+\item{pu_sf}{Optional \code{sf} object with PU polygons and an \code{id} column. If \code{NULL},
+uses \code{x$data$pu_sf}.}
 
-\item{name}{Name/key under which the relation will be stored.}
+\item{name}{Character name/key under which to store the relation.}
 
-\item{weight}{Weight assigned to each adjacency edge (default 1).}
+\item{weight}{Numeric edge weight assigned to each queen adjacency (default 1).}
 }
 \value{
 Updated \linkS4class{data} object.
 }
 \description{
-Build a queen adjacency relation (shared edge or vertex) from planning unit polygons.
-Requires \code{sf}.
+Build and register a queen adjacency relation (shared edge or shared vertex) from planning-unit polygons.
+Queen adjacency includes all rook neighbours plus corner-touching neighbours.
+}
+\examples{
+\dontrun{
+x <- x |> add_spatial_queen(name = "queen", weight = 1)
+}
+
 }

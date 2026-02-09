@@ -13,49 +13,87 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Multi-Action Conservation Planning <img src="man/figures/logo.png" align="right" width=15% />
+# mosap: Integrated Multi-Objective Spatial Action Planning
 
 <!-- badges: start -->
-![CRAN/METACRAN](https://www.r-pkg.org/badges/version/prioriactions)
 [![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
-[![R-CMD-check](https://github.com/prioriactions/prioriactions/workflows/R-CMD-check/badge.svg)](https://github.com/prioriactions/prioriactions/actions)
 <!-- badges: end -->
 
-**This project was financed by the National Agency of Research and Development, ANID, Chile,  through the grant FONDECYT N.1180670 and through the Complex Engineering Systems Institute PIA/BASAL AFB180003. Also it has received funding from the European Union’s H2020 research and innovation program under the Marie Sklodowska-Curie grant agreement N.691149 (SuFoRun).**
+**⚠️ Experimental package: mosap is an experimental research package under active development.
+Breaking changes may occur at any time (API, internal tables, solver interfaces, outputs).
+Use it at your own risk and do not rely on it for production workflows yet.**
 
 ## Overview
 
-The `prioriactions` package allows you to create and solve conservation planning problems that involve multiple threats and actions. This uses techniques of integer linear programming (ILP), obtaining optimal solutions or with a certain degree of guaranteed quality (gap). Due to its flexibility, the package offers the possibility of creating different mathematical models with multiple requirements (spatial, budget requirements, etc.). All the included models are presented in detail in Salgado-Rojas et al. (2020). The package has a variety of commercial and open-source exact algorithm solvers that guarantee to find optimal solutions.
+The `mosap` is designed to support atomic objectives (e.g., minimize cost, minimize fragmentation, maximize benefits) and to combine them through multi-objective methods (e.g., weighted sum). The package supports both tabular and spatial inputs (vector- and raster-based workflows), and stores intermediate artifacts (tables, spatial relations, targets, solver configuration) to enable reproducible experimentation and reporting.
 
 
 ## Installation
 
-Package `prioriactions` can be found at CRAN, where it is updated every few months. Installation from CRAN can be done via:
-
-```{r, eval = FALSE}
-install.packages("prioriactions")
-```
-
-Also, the latest development version of `prioriactions` can be installed from [GitHub](https://github.com/prioriactions/prioriactions/) using the following code (If you are using Windows, it is necessary to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) beforehand).
+The latest development version of `mosap` can be installed from GitHub:
 
 ```{r, eval = FALSE}
 if (!require(remotes)) install.packages("remotes")
-remotes::install_github("prioriactions/prioriactions")
+remotes::install_github("josesalgr/mosap")
 ```
 
 ## Usage
 
-You can browse the package documentation online at
-<https://prioriactions.github.io/prioriactions/>.
+Below is a minimal end-to-end example showing the intended pipeline.
 
-If this is your first time using `prioriactions`, we strongly recommend reading the
-[Introduction to prioriactions](https://prioriactions.github.io/prioriactions/articles/prioriactions.html)
-vignette.
+```{r, eval = FALSE}
+library(mosap)
 
-If you believe you've found a bug in `prioriactions`, please file a bug (and, if
-possible, a [reproducible example](https://reprex.tidyverse.org)) at
-<https://github.com/prioriactions/prioriactions/issues>.
+# --- Example inputs (replace with your own)
+# pu_data            : data.frame(id, cost, locked_in?, locked_out?)
+# features_data      : data.frame(id, name)
+# dist_features_data : data.frame(pu, feature, amount)
 
-## References
+# 1) Build the Data object
+x <- inputData(
+  pu = pu_data,
+  features = features_data,
+  dist_features = dist_features_data
+)
 
-+ Salgado-Rojas J, Alvarez-Miranda E, Hermoso V, Garcia-Gonzalo J, Weintraub A. _A mixed integer programming approach for multi-action planning for threat management_. Ecological Modelling 2020; 418:108901. DOI: <https://doi.org/10.1016/j.ecolmodel.2019.108901>.
+# 2) Add actions/effects/targets/spatial relations as needed
+x <- x |>
+  add_actions(actions_df) |>
+  add_effects(effects_df) |>
+  add_conservation_targets_relative(0.17) |>
+  add_spatial_boundary()
+
+# 3) Register atomic objectives (aliases are later used by MO methods)
+x <- x |>
+  add_objective_min_cost(alias = "cost") |>
+  add_objective_min_fragmentation(alias = "frag")
+
+# 4) Configure a multi-objective method (weighted sum)
+mo <- set_method_weighted(
+  x,
+  aliases = c("cost", "frag"),
+  weights = c(1, 1),
+  normalize = TRUE
+)
+
+# 5) Configure solver (example; adapt to your solver and preferences)
+mo <- set_solver(
+  mo,
+  solver = "auto",
+  time_limit = 60,
+  gap_limit = 0.01,
+  verbose = TRUE
+)
+
+# 6) Solve
+res <- solve(mo)
+
+# 7) Inspect results (examples)
+get_pu(res, only_selected = TRUE)
+get_actions(res, only_selected = TRUE)
+get_features(res)
+get_targets(res)
+```
+
+If you believe you've found a bug in mosap, please file an issue (ideally with a
+reproducible example) at: <https://github.com/josesalgr/mosap/issues>.

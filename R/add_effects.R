@@ -3,76 +3,126 @@
 #' @title Add effects (benefit/loss) to a planning problem
 #'
 #' @description
-#' Create an effects table (\code{dist_effects}) describing the marginal change caused by
-#' each feasible (pu, action) pair on each feature, split into two **non-negative**
-#' components:
+#' Define the ecological (or any feature-based) effects of implementing actions in planning units.
+#' Effects are stored in \code{x$data$dist_effects} as two non-negative components per
+#' feasible \code{(pu, action, feature)} triple:
 #' \itemize{
-#' \item \code{benefit} \eqn{\ge 0}: positive delta (improvement)
-#' \item \code{loss} \eqn{\ge 0}: negative delta magnitude (damage), i.e. \code{loss = -min(delta,0)}
+#'   \item \code{benefit} \eqn{\ge 0}: positive change (improvement),
+#'   \item \code{loss} \eqn{\ge 0}: magnitude of negative change (damage), computed as
+#'   \code{loss = -min(delta, 0)}.
 #' }
 #'
-#' Internally, the model can still work with signed effects (e.g., net effect = benefit - loss),
-#' but \code{dist_effects} stores only non-negative columns to avoid ambiguity.
+#' @details
+#' Internally, effects may originate from signed values (deltas) or from after-action amounts.
+#' Regardless of input, \code{dist_effects} always stores \code{benefit} and \code{loss} as
+#' non-negative values to avoid ambiguity and to support models that separately account for
+#' gains and damages.
 #'
-#' If you provide "after-action" amounts, they are converted to signed deltas:
-#' \deqn{delta = after - baseline}
-#' where baseline is \code{x$data$dist_features$amount} (missing baseline treated as 0).
-#' Then the delta is split into \code{benefit/loss}.
+#' \strong{Baseline and after-action amounts.}
+#' If \code{effect_type = "after"}, provided values are interpreted as after-action amounts and
+#' converted to signed deltas using the baseline amounts in \code{x$data$dist_features$amount}:
+#' \deqn{\mathrm{delta} = \mathrm{after} - \mathrm{baseline}.}
+#' Missing baseline values are treated as 0.
 #'
-#' The function supports:
+#' \strong{Supported effect specifications.}
 #' \enumerate{
-#' \item Tabular specifications (NULL / multipliers / explicit table), and
-#' \item Spatial rasters per action (recommended for spatial workflows).
+#'   \item \emph{NULL}: store an empty effects table (recommended default when effects are not available yet).
+#'   \item \emph{Multipliers}: a \code{data.frame(action, feature, multiplier)} that applies a signed multiplier to
+#'   baseline amounts: \eqn{\mathrm{delta} = \mathrm{amount} \times \mathrm{multiplier}}.
+#'   \item \emph{Explicit rows}: a \code{data.frame(pu, action, feature, ...)} providing either signed deltas
+#'   (\code{delta} or \code{effect}, or legacy signed \code{benefit}), after-action amounts (\code{after}),
+#'   or already split non-negative \code{benefit}/\code{loss}.
+#'   \item \emph{Rasters per action}: a named list of \code{terra::SpatRaster} objects (names are action ids),
+#'   each with one layer per feature. Raster values are aggregated by planning unit using
+#'   \code{effect_aggregation} and then interpreted as deltas or after-action amounts depending on \code{effect_type}.
 #' }
 #'
-#' It produces \code{x$data$dist_effects} with columns:
-#' \code{pu, action, feature, benefit, loss, internal_pu, internal_action, internal_feature}.
+#' \strong{Feasibility and locks.}
+#' Effects are retained only for feasible \code{(pu, action)} pairs present in \code{x$data$dist_actions}.
+#' If \code{drop_locked_out = TRUE} and \code{x$data$dist_actions$status} exists, pairs with \code{status == 3}
+#' are excluded before effects are processed.
 #'
-#' @param x A [data-class] object created with [inputData()] or [inputDataSpatial()].
+#' \strong{Filtering.}
+#' You can keep only beneficial effects (\code{benefit > 0}) or only losses (\code{loss > 0}) using \code{filter}.
+#' By default, rows with both \code{benefit == 0} and \code{loss == 0} are dropped unless \code{keep_zero = TRUE}.
 #'
-#' @param effects Specification of effects. One of:
+#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#'   Must contain \code{x$data$dist_actions} (run \code{\link{add_actions}} first).
+#' @param effects Effect specification. One of:
 #' \itemize{
-#' \item NULL: store an empty table (recommended default; no info).
-#' \item A data.frame(action, feature, multiplier):
-#' signed \code{delta = amount * multiplier} (multiplier can be negative).
-#' feature can be numeric ids OR character feature names (matching \code{x$data$features$name}).
-#' \item A data.frame(pu, action, feature, ...):
-#' with either:
-#' \itemize{
-#'   \item \code{delta} (signed), or alias \code{effect} (signed), or legacy \code{benefit} (signed), or
-#'   \item \code{after} (after-action amount; use \code{effect_type="after"}), or
-#'   \item already split columns \code{benefit} and/or \code{loss} (both non-negative).
+#'   \item \code{NULL}: store an empty effects table.
+#'   \item \code{data.frame(action, feature, multiplier)}: apply signed multipliers to baseline amounts.
+#'     \code{feature} may be feature ids or feature names (matching \code{x$data$features$name}).
+#'   \item \code{data.frame(pu, action, feature, ...)}: explicit effects with one of:
+#'     \itemize{
+#'       \item \code{delta} (signed) or \code{effect} (signed),
+#'       \item \code{after} (after-action amount; set \code{effect_type = "after"}),
+#'       \item \code{benefit} and/or \code{loss} (both non-negative; missing component treated as 0),
+#'       \item legacy signed \code{benefit} without \code{loss} (treated as signed delta).
+#'     }
+#'   \item A named list of \code{terra::SpatRaster} objects: names = action ids; one layer per feature.
 #' }
-#' \item A named list of terra::SpatRaster objects:
-#' names = action ids; each raster has one layer per feature. Values are aggregated by PU.
-#' If \code{effect_type="after"}, raster values are treated as after-action amounts and
-#' converted to deltas; otherwise treated as signed deltas.
-#' }
-#'
-#' @param effect_type character. Interpretation of provided values when \code{effects} is an
-#' explicit table or a list of rasters:
-#' \itemize{
-#' \item "delta" (default): values represent signed deltas.
-#' \item "after": values represent after-action amounts (converted to deltas).
-#' }
-#'
-#' @param effect_aggregation Aggregation used to compute PU-level values from rasters
-#' (default: "sum").
-#' @param align_rasters Logical. If TRUE, attempt to align effect rasters to the PU raster
-#' grid before zonal operations (default TRUE).
-#'
-#' @param keep_zero Logical. Keep rows with \code{benefit==0 AND loss==0}? Default FALSE (drops them).
-#' @param drop_locked_out Logical. If TRUE, drop rows for (pu, action) with status == 3 in dist_actions.
-#' @param na_to_zero Logical. If TRUE, treat missing values as 0.
-#'
+#' @param effect_type Character. How to interpret provided values for explicit tables or raster lists:
+#'   \itemize{
+#'     \item \code{"delta"}: values represent signed deltas (default),
+#'     \item \code{"after"}: values represent after-action amounts (converted to deltas using baseline).
+#'   }
+#' @param effect_aggregation Character. Aggregation used to compute PU-level values from rasters.
+#'   One of \code{"sum"} or \code{"mean"}.
+#' @param align_rasters Logical. If \code{TRUE}, attempt to align effect rasters to the PU raster grid
+#'   before zonal operations (default \code{TRUE}).
+#' @param keep_zero Logical. If \code{TRUE}, keep rows where \code{benefit == 0} and \code{loss == 0}.
+#'   Default \code{FALSE}.
+#' @param drop_locked_out Logical. If \code{TRUE}, drop rows for \code{(pu, action)} pairs with
+#'   \code{status == 3} in \code{x$data$dist_actions} (if the column exists). Default \code{TRUE}.
+#' @param na_to_zero Logical. If \code{TRUE}, treat missing values as 0 when computing benefit/loss.
+#'   Default \code{TRUE}.
 #' @param filter Character. Filter rows by non-zero component:
-#' \itemize{
-#' \item "any": keep all rows (default)
-#' \item "benefit": keep only rows with \code{benefit > 0}
-#' \item "loss": keep only rows with \code{loss > 0}
+#'   \itemize{
+#'     \item \code{"any"}: keep both benefit and loss rows (default),
+#'     \item \code{"benefit"}: keep only rows with \code{benefit > 0},
+#'     \item \code{"loss"}: keep only rows with \code{loss > 0}.
+#'   }
+#'
+#' @return The updated \code{Data} object with \code{x$data$dist_effects} created/updated, and
+#'   metadata stored in \code{x$data$effects_meta}.
+#'
+#' @examples
+#' \dontrun{
+#' # 1) Empty effects (default)
+#' p <- add_effects(p, effects = NULL)
+#'
+#' # 2) Multipliers (action x feature): delta = amount * multiplier
+#' mult <- data.frame(
+#'   action = c("harvest", "harvest", "restoration"),
+#'   feature = c("sp1", "sp2", "sp1"),      # feature names (requires x$data$features$name)
+#'   multiplier = c(-0.2, -0.1, 0.3)
+#' )
+#' p <- add_effects(p, effects = mult, effect_type = "delta")
+#'
+#' # 3) Explicit deltas by (pu, action, feature)
+#' eff <- data.frame(
+#'   pu = c(1, 1, 2),
+#'   action = c("harvest", "harvest", "restoration"),
+#'   feature = c(1, 2, 1),
+#'   delta = c(-0.5, 0.2, 1.0)
+#' )
+#' p <- add_effects(p, effects = eff)
+#'
+#' # 4) After-action amounts (converted to delta = after - baseline)
+#' after_tbl <- transform(eff, after = delta) # example only; typically after is an absolute amount
+#' p <- add_effects(p, effects = after_tbl, effect_type = "after")
+#'
+#' # 5) Raster effects per action (one layer per feature)
+#' # effects_rasters <- list(harvest = r_harv, restoration = r_rest) # terra::SpatRaster
+#' # p <- add_effects(p, effects = effects_rasters, effect_type = "delta", effect_aggregation = "sum")
+#'
+#' # Keep only beneficial effects
+#' p <- add_effects(p, effects = eff, filter = "benefit")
 #' }
 #'
-#' @return The updated [data-class] object.
+#' @seealso \code{\link{add_benefits}}, \code{\link{add_losses}}
+#'
 #' @export
 add_effects <- function(
     x,
@@ -481,10 +531,21 @@ add_effects <- function(
   x
 }
 
-#' @title Add benefits (positive deltas)
-#' @description Convenience wrapper around add_effects() keeping only rows with benefit > 0.
+#' @title Add benefits (positive effects)
+#'
+#' @description
+#' Convenience wrapper around \code{\link{add_effects}} that keeps only rows with
+#' \code{benefit > 0} (i.e., positive changes). For backwards compatibility, the argument
+#' \code{benefits} is an alias of \code{effects}.
+#'
+#' In addition to writing \code{x$data$dist_effects}, this function also writes a
+#' backward-compatible table \code{x$data$dist_benefit} containing only the benefit component.
+#'
 #' @inheritParams add_effects
-#' @param benefits Alias of `effects` for backwards compatibility.
+#' @param benefits Alias of \code{effects} for backwards compatibility.
+#'
+#' @return The updated \code{Data} object.
+#'
 #' @export
 add_benefits <- function(
     x,
@@ -527,11 +588,14 @@ add_benefits <- function(
 #' @title Add losses (negative effects magnitude)
 #'
 #' @description
-#' Convenience wrapper around [add_effects()] that keeps only rows with \code{loss > 0}.
-#' Also writes \code{x$data$dist_loss} with column \code{loss}.
+#' Convenience wrapper around \code{\link{add_effects}} that keeps only rows with
+#' \code{loss > 0} (i.e., the magnitude of negative changes). Also writes
+#' \code{x$data$dist_loss} containing only the loss component.
 #'
 #' @inheritParams add_effects
-#' @return Updated [data-class] object.
+#'
+#' @return The updated \code{Data} object.
+#'
 #' @export
 add_losses <- function(
     x,

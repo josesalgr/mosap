@@ -13,20 +13,23 @@ add_recovery_targets_relative(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \linkS4class{data} object.}
 
-\item{targets}{Target specification (proportions).}
+\item{targets}{Target specification (proportions in \eqn{[0,1]}).}
 
-\item{relative_basis}{"potential" (default) or "baseline".}
+\item{relative_basis}{Character. Basis used to convert relative targets to absolute thresholds:
+\code{"potential"} (default) or \code{"baseline"}.}
 
-\item{overwrite}{Logical. If TRUE, replace existing recovery targets for the same features.}
+\item{overwrite}{Logical. If \code{TRUE}, replace existing recovery targets for the same features.}
 
-\item{label}{Optional label.}
+\item{label}{Optional character label stored with the targets.}
 }
 \value{
-Updated \code{Data} object.
+Updated \linkS4class{data} object.
 }
 \description{
-Adds relative recovery targets specified as proportions in \link{0,1} of a chosen basis.
-By default, basis is the potential maximum improvement per feature from dist_benefit.
+Adds relative recovery targets as proportions in \eqn{[0,1]} of a per-feature basis.
+By default, the basis is the \emph{potential} maximum improvement per feature derived from
+available actions (via \code{.pa_feature_potential()}). Alternatively, \code{relative_basis="baseline"}
+uses baseline totals (via \code{.pa_feature_totals()}).
 }

@@ -1,8 +1,84 @@
 #' @title Plot a Solution (if spatial geometry is available)
+#'
+#' @description
+#' Plot a solution using planning unit (PU) geometries when available.
+#'
+#' The method supports two views controlled by \code{what}:
+#' \itemize{
+#'   \item \code{"pu"}: highlights selected planning units.
+#'   \item \code{"actions"}: highlights selected actions within planning units. Optionally,
+#'   selected PUs with no selected action can be labelled as \dQuote{conservation}.
+#' }
+#'
+#' For \code{what = "actions"}, the function aggregates selected actions per PU into a
+#' single label by concatenating unique action names using \code{"+"}
+#' (e.g., \code{"harvest+sustainable"}). If many actions can co-occur in the same PU,
+#' the number of distinct labels can grow quickly; in such cases, consider filtering a
+#' single action via \code{action = "..."}, or ensure at most one action per PU.
+#'
+#' @details
+#' This plotting method requires PU geometry stored as an \code{sf} object in either
+#' \code{x$Data$data$pu_sf} or \code{x$data$pu_sf}. The geometry must contain an \code{id}
+#' column matching planning unit identifiers.
+#'
+#' Colors for \code{what = "actions"} are controlled by either:
+#' \itemize{
+#'   \item \code{fill_values}: a named vector mapping action labels to colors; or
+#'   \itemize{
+#'     \item a discrete \pkg{viridis} palette if \code{fill_values} is \code{NULL},
+#'     \code{use_viridis = TRUE}, and the \pkg{viridis} package is installed.
+#'   }
+#' }
+#'
+#' @param x A \code{Solution} object. It must contain PU geometry as an \code{sf} object
+#'   in \code{x$Data$data$pu_sf} (preferred) or \code{x$data$pu_sf}.
+#' @param what Character string indicating what to plot. One of \code{"pu"} or \code{"actions"}.
+#' @param only_selected Logical. Only used when \code{what = "pu"}. If \code{TRUE}, throw an
+#'   error when no selected PUs exist. If \code{FALSE}, the map is still drawn with the base layer.
+#' @param action Optional character scalar. Only used when \code{what = "actions"}.
+#'   If provided, filter the plot to a single action label.
+#' @param ... Additional arguments (reserved for future extensions).
+#' @param include_conservation Logical. Only used when \code{what = "actions"}.
+#'   If \code{TRUE}, selected PUs that have no selected action are added to the map with
+#'   label \code{conservation_label}.
+#' @param conservation_label Character scalar. Label used for selected PUs with no selected action
+#'   when \code{include_conservation = TRUE}.
+#' @param base_alpha Numeric in \eqn{[0,1]}. Alpha used for the base PU layer.
+#' @param selected_alpha Numeric in \eqn{[0,1]}. Alpha used for highlighted (selected) geometries.
+#' @param base_fill Fill color for the base PU layer.
+#' @param base_color Border color for the base PU layer. Use \code{NA} for no border.
+#' @param selected_color Border color for highlighted geometries. Use \code{NA} for no border.
+#' @param fill_values Optional named character vector of colors. Names must match the labels shown
+#'   in the legend (i.e., values of the \code{action} field used in the plot, including
+#'   \code{conservation_label} if enabled). If provided, overrides \pkg{viridis}.
+#' @param fill_na Color used for missing values in the manual scale (only relevant when
+#'   \code{fill_values} is provided).
+#' @param use_viridis Logical. If \code{TRUE} and \code{fill_values} is \code{NULL}, use a
+#'   discrete \pkg{viridis} palette when \pkg{viridis} is installed.
+#'
+#' @return Invisibly returns a \code{ggplot} object. The plot is printed as a side effect.
+#'
+#' @examples
+#' \dontrun{
+#' # Plot selected planning units
+#' plot(sol, what = "pu")
+#'
+#' # Plot selected actions
+#' plot(sol, what = "actions")
+#'
+#' # Plot a single action only
+#' plot(sol, what = "actions", action = "harvest")
+#'
+#' # Manual colors for actions (and conservation)
+#' cols <- c(harvest = "#E41A1C", sustainable = "#4DAF4A", conservation = "#377EB8")
+#' plot(sol, what = "actions", fill_values = cols, conservation_label = "conservation")
+#' }
+#'
+#' @seealso \code{\link{get_pu}}, \code{\link{get_actions}}
+#'
 #' @export
 #' @method plot Solution
-#' @export
-#' @method plot Solution
+
 plot.Solution <- function(
     x,
     what = c("pu", "actions"),
@@ -15,7 +91,10 @@ plot.Solution <- function(
     selected_alpha = 0.90,
     base_fill = "grey60",
     base_color = NA,
-    selected_color = NA
+    selected_color = NA,
+    fill_values = NULL,   # named vector: names must match labels in g_sel$action
+    fill_na = "grey60",
+    use_viridis = TRUE
 ) {
   what <- match.arg(what)
 
@@ -60,7 +139,7 @@ plot.Solution <- function(
   }
 
   # -----------------------------
-  # what == "actions" (extended)
+  # what == "actions"
   # -----------------------------
 
   pu_tbl <- get_pu(x, only_selected = FALSE)
@@ -81,7 +160,6 @@ plot.Solution <- function(
   }
 
   # One label per PU for actions
-  lab_act <- NULL
   if (nrow(act_tbl) > 0) {
     lab_act <- stats::aggregate(
       action ~ pu,
@@ -122,9 +200,15 @@ plot.Solution <- function(
       color = selected_color,
       alpha = selected_alpha
     ) +
-    ggplot2::labs(title = "Selected actions (+ conservation when no action)", fill = "allocation")
+    ggplot2::labs(title = "", fill = "")
 
-  if (has_viridis) {
+  # ---- choose fill scale (manual overrides viridis)
+  if (!is.null(fill_values)) {
+    if (is.null(names(fill_values)) || any(names(fill_values) == "")) {
+      stop("fill_values must be a *named* vector with names matching action labels.", call. = FALSE)
+    }
+    p <- p + ggplot2::scale_fill_manual(values = fill_values, na.value = fill_na)
+  } else if (isTRUE(use_viridis) && has_viridis) {
     p <- p + viridis::scale_fill_viridis(discrete = TRUE, option = "C")
   }
 

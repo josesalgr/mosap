@@ -2,7 +2,7 @@
 % Please edit documentation in R/add_objectives.R
 \name{add_objective_min_intervention_fragmentation}
 \alias{add_objective_min_intervention_fragmentation}
-\title{add objective: minimize intervention fragmentation}
+\title{Add objective: minimize intervention fragmentation}
 \usage{
 add_objective_min_intervention_fragmentation(
   x,
@@ -12,21 +12,25 @@ add_objective_min_intervention_fragmentation(
 )
 }
 \arguments{
-\item{x}{A \code{\link{Data}} object created with \code{\link[=inputData]{inputData()}} / \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.}
 
-\item{relation_name}{character. Name of the stored relation in \code{x$data$spatial_relations}.}
+\item{relation_name}{Character. Name of the spatial relation in \code{x$data$spatial_relations}.}
 
-\item{weight_multiplier}{numeric. Multiplies all relation weights (BLM-like). Default 1.}
+\item{weight_multiplier}{Numeric \eqn{\ge 0}. Multiplier applied to all relation weights. Default \code{1}.}
 
-\item{alias}{character or NULL. Optional unique identifier to register this objective
+\item{alias}{Character scalar or \code{NULL}. Optional identifier to register this objective
 as an atomic objective for multi-objective workflows.}
 }
 \value{
-Updated \code{\link{Data}} object.
+The updated \code{Data} object.
 }
 \description{
-Stores an objective specification to later build a model that minimizes \emph{intervention-level}
-fragmentation over a given spatial relation.
+Specify an objective that minimizes fragmentation at the intervention level over a spatial relation.
+This objective is intended for models where interventions represent a coarser grouping of actions,
+and spatial cohesion is evaluated at that grouping level.
+
+This function is \strong{data-only}: it stores the objective specification inside the
+\code{Data} object so it can be materialized later when the optimization model is built.
 
 If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 as an atomic objective for multi-objective workflows.

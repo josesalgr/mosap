@@ -17,31 +17,35 @@ add_losses(
 )
 }
 \arguments{
-\item{x}{A \linkS4class{data} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+Must contain \code{x$data$dist_actions} (run \code{\link{add_actions}} first).}
 
-\item{effect_type}{character. Interpretation of provided values when \code{effects} is an
-explicit table or a list of rasters:
+\item{effect_type}{Character. How to interpret provided values for explicit tables or raster lists:
 \itemize{
-\item "delta" (default): values represent signed deltas.
-\item "after": values represent after-action amounts (converted to deltas).
+\item \code{"delta"}: values represent signed deltas (default),
+\item \code{"after"}: values represent after-action amounts (converted to deltas using baseline).
 }}
 
-\item{effect_aggregation}{Aggregation used to compute PU-level values from rasters
-(default: "sum").}
+\item{effect_aggregation}{Character. Aggregation used to compute PU-level values from rasters.
+One of \code{"sum"} or \code{"mean"}.}
 
-\item{align_rasters}{Logical. If TRUE, attempt to align effect rasters to the PU raster
-grid before zonal operations (default TRUE).}
+\item{align_rasters}{Logical. If \code{TRUE}, attempt to align effect rasters to the PU raster grid
+before zonal operations (default \code{TRUE}).}
 
-\item{keep_zero}{Logical. Keep rows with \code{benefit==0 AND loss==0}? Default FALSE (drops them).}
+\item{keep_zero}{Logical. If \code{TRUE}, keep rows where \code{benefit == 0} and \code{loss == 0}.
+Default \code{FALSE}.}
 
-\item{drop_locked_out}{Logical. If TRUE, drop rows for (pu, action) with status == 3 in dist_actions.}
+\item{drop_locked_out}{Logical. If \code{TRUE}, drop rows for \code{(pu, action)} pairs with
+\code{status == 3} in \code{x$data$dist_actions} (if the column exists). Default \code{TRUE}.}
 
-\item{na_to_zero}{Logical. If TRUE, treat missing values as 0.}
+\item{na_to_zero}{Logical. If \code{TRUE}, treat missing values as 0 when computing benefit/loss.
+Default \code{TRUE}.}
 }
 \value{
-Updated \linkS4class{data} object.
+The updated \code{Data} object.
 }
 \description{
-Convenience wrapper around \code{\link[=add_effects]{add_effects()}} that keeps only rows with \code{loss > 0}.
-Also writes \code{x$data$dist_loss} with column \code{loss}.
+Convenience wrapper around \code{\link{add_effects}} that keeps only rows with
+\code{loss > 0} (i.e., the magnitude of negative changes). Also writes
+\code{x$data$dist_loss} containing only the loss component.
 }

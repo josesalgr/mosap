@@ -2,35 +2,42 @@
 % Please edit documentation in R/add_objectives.R
 \name{add_objective_max_profit}
 \alias{add_objective_max_profit}
-\title{add objective: maximize profit}
+\title{Add objective: maximize profit}
 \usage{
 add_objective_max_profit(x, profit_col = "profit", alias = NULL)
 }
 \arguments{
-\item{x}{A \code{\link{Data}} object created with \code{\link[=inputData]{inputData()}} / \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.}
 
-\item{profit_col}{character. Column name in \code{dist_profit} containing numeric profits.
+\item{profit_col}{Character. Column name in \code{x$data$dist_profit} containing numeric profits.
 Default \code{"profit"}.}
 
-\item{alias}{character or NULL. Optional unique identifier to register this objective
+\item{alias}{Character scalar or \code{NULL}. Optional identifier to register this objective
 as an atomic objective for multi-objective workflows.}
 }
 \value{
-Updated \code{\link{Data}} object.
+The updated \code{Data} object.
 }
 \description{
-Stores an objective specification inside the \code{\link{Data}} object to later build an
-optimization model that \strong{maximizes economic profit} from selected (pu, action) pairs.
+Specify an objective that maximizes economic profit from selected \code{(pu, action)} pairs.
+Profit values are taken from \code{x$data$dist_profit}, typically created with
+\code{\link{add_profit}}.
 
-This objective uses \code{x$data$dist_profit} (created with \code{\link[=add_profit]{add_profit()}}).
+This function is \strong{data-only}: it stores the objective specification inside the
+\code{Data} object so it can be materialized later when the optimization model is built
+(typically when calling \code{solve()}).
 
 If \code{alias} is provided, the objective is also registered in \code{x$data$objectives}
 as an atomic objective for multi-objective workflows.
 }
 \details{
-This function does \strong{not} build or solve the model. It only updates \code{x$data$model_args}.
-The model builder (called from \code{solve()}) must implement the corresponding C++ objective.
+The function updates \code{x$data$model_args} with:
+\describe{
+\item{\code{model_type}}{\code{"maximizeProfit"}}
+\item{\code{objective_id}}{\code{"max_profit"}}
+\item{\code{objective_args}}{a list with \code{profit_col}}
+}
 
-If you call another objective setter afterwards, it will overwrite the previous
-active (single-objective) objective in \code{x$data$model_args}.
+If another objective setter is called afterwards, it overwrites the active single-objective
+specification in \code{x$data$model_args}.
 }

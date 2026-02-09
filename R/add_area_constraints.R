@@ -2,15 +2,41 @@
 #' @title Add minimum selected area constraint
 #'
 #' @description
-#' Adds \eqn{\sum_i area_i w_i \ge A_{min}} using only PU selection vars \code{w_i}.
+#' Add a linear constraint enforcing a minimum total selected area using only planning unit
+#' selection variables \eqn{w_i}:
+#' \deqn{\sum_i \mathrm{area}_i \, w_i \ge A_{\min}.}
 #'
-#' @param x A [data-class] object.
-#' @param area_min Numeric. Minimum area to select (in \code{area_unit}).
-#' @param area_col Character. Column in \code{x$data$pu} containing area (optional).
-#' @param area_unit Character. Units for \code{area_min}: "m2", "ha", or "km2".
-#' @param name Optional constraint name.
+#' @details
+#' This function adds a linear constraint to the current optimization model snapshot.
+#' Areas are retrieved from the planning unit table (\code{x$data$pu}) via \code{area_col}
+#' or via the package defaults implemented in \code{.pa_get_area_vec()}, and are converted
+#' to the requested \code{area_unit}. The coefficient vector is aligned with the model's
+#' planning unit order (\code{n_pu} and the internal \eqn{w} variable offset stored in
+#' \code{x$data$model_list}).
 #'
-#' @return Updated [data-class] object.
+#' Constraint metadata is also stored in \code{x$data$constraints$area_min} for printing/reporting.
+#'
+#' @param x A \code{Data} object.
+#' @param area_min Numeric scalar \eqn{\ge 0}. Minimum area to select (expressed in \code{area_unit}).
+#' @param area_col Optional character. Name of the column in \code{x$data$pu} containing areas.
+#'   If \code{NULL}, areas are obtained using internal defaults (see Details).
+#' @param area_unit Character. Units for \code{area_min}. One of \code{"m2"}, \code{"ha"}, or \code{"km2"}.
+#' @param name Character. Name for the constraint in the model. Default \code{"area_min"}.
+#'
+#' @return The updated \code{Data} object with the new linear constraint added to the model
+#'   and metadata stored in \code{x$data$constraints$area_min}.
+#'
+#' @examples
+#' \dontrun{
+#' # Enforce selecting at least 1000 ha
+#' p <- add_area_min_constraint(p, area_min = 1000, area_unit = "ha")
+#'
+#' # Use a custom area column stored in x$data$pu$Area_km2
+#' p <- add_area_min_constraint(p, area_min = 250, area_unit = "km2", area_col = "Area_km2")
+#' }
+#'
+#' @seealso \code{\link{add_area_max_constraint}}
+#'
 #' @export
 add_area_min_constraint <- function(x,
                                     area_min,
@@ -56,15 +82,41 @@ add_area_min_constraint <- function(x,
 #' @title Add maximum selected area constraint
 #'
 #' @description
-#' Adds \eqn{\sum_i area_i w_i \le A_{max}} using only PU selection vars \code{w_i}.
+#' Add a linear constraint enforcing a maximum total selected area using only planning unit
+#' selection variables \eqn{w_i}:
+#' \deqn{\sum_i \mathrm{area}_i \, w_i \le A_{\max}.}
 #'
-#' @param x A [data-class] object.
-#' @param area_max Numeric. Maximum area to select (in \code{area_unit}).
-#' @param area_col Character. Column in \code{x$data$pu} containing area (optional).
-#' @param area_unit Character. Units for \code{area_max}: "m2", "ha", or "km2".
-#' @param name Optional constraint name.
+#' @details
+#' This function adds a linear constraint to the current optimization model snapshot.
+#' Areas are retrieved from the planning unit table (\code{x$data$pu}) via \code{area_col}
+#' or via the package defaults implemented in \code{.pa_get_area_vec()}, and are converted
+#' to the requested \code{area_unit}. The coefficient vector is aligned with the model's
+#' planning unit order (\code{n_pu} and the internal \eqn{w} variable offset stored in
+#' \code{x$data$model_list}).
 #'
-#' @return Updated [data-class] object.
+#' Constraint metadata is also stored in \code{x$data$constraints$area_max} for printing/reporting.
+#'
+#' @param x A \code{Data} object.
+#' @param area_max Numeric scalar \eqn{\ge 0}. Maximum area to select (expressed in \code{area_unit}).
+#' @param area_col Optional character. Name of the column in \code{x$data$pu} containing areas.
+#'   If \code{NULL}, areas are obtained using internal defaults (see Details).
+#' @param area_unit Character. Units for \code{area_max}. One of \code{"m2"}, \code{"ha"}, or \code{"km2"}.
+#' @param name Character. Name for the constraint in the model. Default \code{"area_max"}.
+#'
+#' @return The updated \code{Data} object with the new linear constraint added to the model
+#'   and metadata stored in \code{x$data$constraints$area_max}.
+#'
+#' @examples
+#' \dontrun{
+#' # Enforce selecting at most 500 km2
+#' p <- add_area_max_constraint(p, area_max = 500, area_unit = "km2")
+#'
+#' # Use a custom area column stored in x$data$pu$area_m2
+#' p <- add_area_max_constraint(p, area_max = 2e6, area_unit = "m2", area_col = "area_m2")
+#' }
+#'
+#' @seealso \code{\link{add_area_min_constraint}}
+#'
 #' @export
 add_area_max_constraint <- function(x,
                                     area_max,

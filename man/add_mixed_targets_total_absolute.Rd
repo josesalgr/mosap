@@ -7,26 +7,26 @@
 add_mixed_targets_total_absolute(x, targets, overwrite = FALSE, label = NULL)
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \linkS4class{data} object.}
 
-\item{targets}{Target specification (absolute). See Targets format in
-\code{add_conservation_targets_absolute()}.}
+\item{targets}{Target specification (absolute). See \strong{Targets format} in \code{\link{targets}} details.}
 
-\item{overwrite}{Logical. If \code{TRUE}, replaces existing mixed_total targets for the same features
+\item{overwrite}{Logical. If \code{TRUE}, replace existing mixed-total targets for the same features
 (but still errors if conservation/recovery targets exist for those features).}
 
-\item{label}{Optional label stored with targets.}
+\item{label}{Optional character label stored with the targets.}
 }
 \value{
-Updated \code{Data} object.
+Updated \linkS4class{data} object.
 }
 \description{
-Adds \strong{absolute mixed-total targets} per feature. A mixed-total target enforces that
-baseline + action deltas together reach a single threshold:
-\deqn{\sum_i z_{is} r_{is} + \sum_{i,a} x_{ia}\Delta_{ias} \ge T^{mix}_s}
-
-This is \strong{different} from setting separate conservation + recovery targets for the same feature.
-Therefore, mixed targets are \strong{mutually exclusive} with conservation/recovery targets for the same feature.
-
-Internally, targets are stored in \code{x$data$targets} with \code{type="mixed_total"}.
+Adds absolute mixed-total targets per feature. A mixed-total target enforces that
+baseline representation plus action-induced deltas jointly reach a single threshold:
+\deqn{\sum_i z_{is} r_{is} + \sum_{i,a} x_{ia}\Delta_{ias} \ge T^{mix}_s.}
+}
+\details{
+Mixed-total targets are conceptually different from specifying separate conservation and recovery
+targets for the same feature. As such, mixed-total targets are intended to be mutually exclusive
+with conservation/recovery targets for the same feature. Conflict checks are handled by
+\code{.pa_store_targets()}.
 }

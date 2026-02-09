@@ -13,19 +13,46 @@ add_area_min_constraint(
 )
 }
 \arguments{
-\item{x}{A \linkS4class{data} object.}
+\item{x}{A \code{Data} object.}
 
-\item{area_min}{Numeric. Minimum area to select (in \code{area_unit}).}
+\item{area_min}{Numeric scalar \eqn{\ge 0}. Minimum area to select (expressed in \code{area_unit}).}
 
-\item{area_col}{Character. Column in \code{x$data$pu} containing area (optional).}
+\item{area_col}{Optional character. Name of the column in \code{x$data$pu} containing areas.
+If \code{NULL}, areas are obtained using internal defaults (see Details).}
 
-\item{area_unit}{Character. Units for \code{area_min}: "m2", "ha", or "km2".}
+\item{area_unit}{Character. Units for \code{area_min}. One of \code{"m2"}, \code{"ha"}, or \code{"km2"}.}
 
-\item{name}{Optional constraint name.}
+\item{name}{Character. Name for the constraint in the model. Default \code{"area_min"}.}
 }
 \value{
-Updated \linkS4class{data} object.
+The updated \code{Data} object with the new linear constraint added to the model
+and metadata stored in \code{x$data$constraints$area_min}.
 }
 \description{
-Adds \eqn{\sum_i area_i w_i \ge A_{min}} using only PU selection vars \code{w_i}.
+Add a linear constraint enforcing a minimum total selected area using only planning unit
+selection variables \eqn{w_i}:
+\deqn{\sum_i \mathrm{area}_i \, w_i \ge A_{\min}.}
+}
+\details{
+This function adds a linear constraint to the current optimization model snapshot.
+Areas are retrieved from the planning unit table (\code{x$data$pu}) via \code{area_col}
+or via the package defaults implemented in \code{.pa_get_area_vec()}, and are converted
+to the requested \code{area_unit}. The coefficient vector is aligned with the model's
+planning unit order (\code{n_pu} and the internal \eqn{w} variable offset stored in
+\code{x$data$model_list}).
+
+Constraint metadata is also stored in \code{x$data$constraints$area_min} for printing/reporting.
+}
+\examples{
+\dontrun{
+# Enforce selecting at least 1000 ha
+p <- add_area_min_constraint(p, area_min = 1000, area_unit = "ha")
+
+# Use a custom area column stored in x$data$pu$Area_km2
+p <- add_area_min_constraint(p, area_min = 250, area_unit = "km2", area_col = "Area_km2")
+}
+
+}
+\seealso{
+\code{\link{add_area_max_constraint}}
 }

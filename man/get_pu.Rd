@@ -9,21 +9,31 @@ get_pu(x, only_selected = FALSE)
 \arguments{
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}
 
-\item{only_selected}{Logical. If \code{TRUE}, return only selected planning units.
+\item{only_selected}{Logical. If \code{TRUE}, return only rows where \code{selected == 1}.
 Default \code{FALSE}.}
 }
 \value{
-A \code{data.frame} with planning-unit information and a \code{selected} column.
+A \code{data.frame} with planning-unit information stored in the solution and
+a \code{selected} column.
 }
 \description{
-Extracts the planning-unit table from a \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.
-The returned table includes a \code{selected} column indicating whether each planning
-unit is selected in the solution.
+Extract the planning-unit results table from a \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.
+The returned table includes a \code{selected} indicator (typically \code{0/1}) showing
+whether each planning unit is selected in the solution.
+}
+\details{
+This function expects the solution object to store a planning-unit results table at
+\code{x$data$tables$pu}. It errors if the table is missing. If \code{only_selected = TRUE},
+it also errors when the \code{selected} column is not present.
 }
 \examples{
 \dontrun{
-sol <- solve(hola)
+sol <- solve(problem)
 pu_tbl <- get_pu(sol)
 pu_sel <- get_pu(sol, only_selected = TRUE)
 }
+
+}
+\seealso{
+\code{\link[=get_actions]{get_actions()}}, \code{\link[=get_features]{get_features()}}, \code{\link[=get_targets]{get_targets()}}, \code{\link[=get_solution_vector]{get_solution_vector()}}
 }

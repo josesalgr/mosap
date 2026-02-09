@@ -7,17 +7,19 @@
 add_recovery_targets_absolute(x, targets, overwrite = FALSE, label = NULL)
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \linkS4class{data} object.}
 
-\item{targets}{Target specification.}
+\item{targets}{Target specification. See \strong{Targets format} in \code{\link{targets}} details.}
 
-\item{overwrite}{Logical. If TRUE, replace existing recovery targets for the same features.}
+\item{overwrite}{Logical. If \code{TRUE}, replace existing recovery targets for the same features.}
 
-\item{label}{Optional label.}
+\item{label}{Optional character label stored with the targets.}
 }
 \value{
-Updated \code{Data} object.
+Updated \linkS4class{data} object.
 }
 \description{
-Adds absolute recovery targets (absolute amount of recovery gain required).
+Adds absolute recovery targets per feature. Recovery targets represent thresholds on action-driven
+improvements (deltas) rather than baseline representation. The provided values are treated as
+absolute thresholds in the same units as the effect/benefit amounts used by the model builder.
 }

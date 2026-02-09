@@ -2,194 +2,99 @@
 #'
 #' Spatial relations infrastructure
 #'
-#' This file defines a single internal representation for spatial relations
-#' between planning units, plus multiple constructors:
-#' - boundary table (Marxan-style),
-#' - rook/queen adjacency from sf geometry,
-#' - kNN graph from coordinates,
-#' - distance-threshold graph from coordinates.
+#' @description
+#' Defines a unified internal representation for spatial relations (graphs) between planning units
+#' and provides constructors to populate these relations from common sources:
+#' \itemize{
+#'   \item boundary tables (Marxan-style),
+#'   \item rook/queen adjacency derived from \code{sf} polygons,
+#'   \item k-nearest-neighbours (kNN) graphs from coordinates,
+#'   \item distance-threshold graphs from coordinates.
+#' }
 #'
-#' Internally, relations are stored in:
-#'   x$data$spatial_relations[[name]]
+#' Relations are stored inside the problem object as:
+#' \code{x$data$spatial_relations[[name]]}.
 #'
-#' Each relation is a data.frame with at least:
-#'   - internal_pu1 (int, 1..n_pu)
-#'   - internal_pu2 (int, 1..n_pu)
-#'   - weight       (numeric >= 0)
+#' @details
+#' \strong{Internal representation.}
+#' Each relation is stored as a \code{data.frame} with (at minimum) the columns:
+#' \describe{
+#'   \item{\code{internal_pu1}}{Integer index of the first PU (1..n\_pu).}
+#'   \item{\code{internal_pu2}}{Integer index of the second PU (1..n\_pu).}
+#'   \item{\code{weight}}{Non-negative numeric edge weight. Its interpretation depends on the relation type.}
+#' }
+#' Additional columns may be present for provenance or diagnostics (e.g., \code{pu1}, \code{pu2},
+#' \code{distance}, \code{source}).
 #'
-#' Additional columns can exist (e.g., pu1, pu2, distance, source, etc.).
+#' \strong{Directed vs undirected.}
+#' Some constructors create undirected relations (default); these are stored once per unordered
+#' pair \code{(i,j)} with \code{i < j}. If \code{symmetric=TRUE} is used in
+#' \code{\link{add_spatial_relations}}, undirected relations can be expanded to a directed
+#' representation by duplicating edges in both directions.
+#'
+#' \strong{Boundary relations and diagonal weights.}
+#' \code{\link{add_spatial_boundary}} supports two common inputs:
+#' \itemize{
+#'   \item a boundary table (e.g., Marxan \code{bound.dat}), and
+#'   \item \code{sf} polygon planning units.
+#' }
+#' When \code{include_self=TRUE}, the function also creates diagonal entries
+#' \code{(i,i)} representing the effective boundary length exposed to the outside of the solution.
+#' This is computed as:
+#' \deqn{\mathrm{diag\_eff}_i = \mathrm{edge\_factor} \cdot \max\{ \mathrm{total}_i - \mathrm{incident}_i,\, 0 \}}
+#' where \code{total} is the PU perimeter and \code{incident} is the sum of shared boundary lengths
+#' with neighbouring PUs.
+#'
+#' \strong{Geometry safety.}
+#' All \code{sf}-based constructors operate only through spatial predicates and length calculations;
+#' they never cut polygons or create new planning unit geometries. Planning units are aligned to
+#' the \code{x$data$pu$id} order before any computation.
+#'
+#' @name spatial_relations
+#' @keywords internal
 NULL
-
-# ---- internal helpers --------------------------------------------------------
-
-.pa_has_sf <- function() requireNamespace("sf", quietly = TRUE)
-
-.pa_ensure_pu_index <- function(x) {
-  stopifnot(inherits(x, "Data"))
-  if (is.null(x$data$pu) || !inherits(x$data$pu, "data.frame")) {
-    stop("x$data$pu is missing. Create the problem with inputData()/inputDataSpatial().", call. = FALSE)
-  }
-  if (is.null(x$data$pu$internal_id)) x$data$pu$internal_id <- seq_len(nrow(x$data$pu))
-  if (is.null(x$data$pu$id)) {
-    stop("x$data$pu must contain column 'id' (planning unit id).", call. = FALSE)
-  }
-  x$data$pu$id <- as.integer(x$data$pu$id)
-  x$data$pu$internal_id <- as.integer(x$data$pu$internal_id)
-  if (anyNA(x$data$pu$id) || anyNA(x$data$pu$internal_id)) {
-    stop("x$data$pu$id/internal_id contain NA after coercion.", call. = FALSE)
-  }
-  if (anyDuplicated(x$data$pu$internal_id) != 0) stop("x$data$pu$internal_id must be unique.", call. = FALSE)
-  if (anyDuplicated(x$data$pu$id) != 0) stop("x$data$pu$id must be unique.", call. = FALSE)
-  if (is.null(x$data$index) || !is.list(x$data$index)) x$data$index <- list()
-  x$data$index$pu <- stats::setNames(x$data$pu$internal_id, as.character(x$data$pu$id))
-  x
-}
-
-.pa_store_relation <- function(x, rel, name) {
-  stopifnot(inherits(x, "Data"))
-  if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
-    x$data$spatial_relations <- list()
-  }
-  x$data$spatial_relations[[name]] <- rel
-  x
-}
-
-
-.pa_coords_from_input <- function(x, coords = NULL) {
-  stopifnot(inherits(x, "Data"))
-
-  if (!is.null(coords)) {
-    if (inherits(coords, "data.frame")) {
-      if (!all(c("id", "x", "y") %in% names(coords))) {
-        stop("coords data.frame must contain columns id, x, y.", call. = FALSE)
-      }
-      out <- coords[, c("id", "x", "y")]
-      out$id <- as.integer(out$id)
-      out$x  <- as.numeric(out$x)
-      out$y  <- as.numeric(out$y)
-      return(out)
-    }
-    if (is.matrix(coords)) {
-      if (ncol(coords) < 2) stop("coords matrix must have at least 2 columns (x,y).", call. = FALSE)
-      out <- data.frame(id = x$data$pu$id, x = coords[, 1], y = coords[, 2])
-      out$id <- as.integer(out$id)
-      out$x  <- as.numeric(out$x)
-      out$y  <- as.numeric(out$y)
-      return(out)
-    }
-    stop("Unsupported coords type. Use data.frame(id,x,y) or a matrix with 2 columns.", call. = FALSE)
-  }
-
-  # NEW fallback: x$data$pu_coords
-  if (!is.null(x$data$pu_coords) && inherits(x$data$pu_coords, "data.frame")) {
-    pc <- x$data$pu_coords
-    if (all(c("id", "x", "y") %in% names(pc))) {
-      out <- pc[, c("id", "x", "y")]
-      out$id <- as.integer(out$id)
-      out$x  <- as.numeric(out$x)
-      out$y  <- as.numeric(out$y)
-      return(out)
-    }
-  }
-
-  # fallback: try x$data$pu columns
-  if (all(c("x", "y") %in% names(x$data$pu))) {
-    out <- data.frame(id = x$data$pu$id, x = x$data$pu$x, y = x$data$pu$y)
-    out$id <- as.integer(out$id)
-    out$x  <- as.numeric(out$x)
-    out$y  <- as.numeric(out$y)
-    return(out)
-  }
-
-  stop(
-    "No coordinates available. Provide coords=data.frame(id,x,y) or store x$data$pu_coords (id,x,y), or add x$data$pu$x/y.",
-    call. = FALSE
-  )
-}
-
-
-.pa_get_pu_sf_aligned <- function(x, pu_sf = NULL, arg_name = "pu_sf") {
-  stopifnot(inherits(x, "Data"))
-  x <- .pa_ensure_pu_index(x)
-
-  if (is.null(pu_sf)) pu_sf <- x$data$pu_sf
-
-  if (is.null(pu_sf)) {
-    stop(
-      arg_name, " is NULL and x$data$pu_sf is missing.\n",
-      "Provide ", arg_name, " (sf polygons with an 'id' column) or make sure inputData() stored x$data$pu_sf.",
-      call. = FALSE
-    )
-  }
-
-  if (!requireNamespace("sf", quietly = TRUE)) {
-    stop("This function requires the 'sf' package.", call. = FALSE)
-  }
-
-  if (!inherits(pu_sf, "sf")) stop(arg_name, " must be an sf object.", call. = FALSE)
-  if (!("id" %in% names(pu_sf))) stop(arg_name, " must contain an 'id' column.", call. = FALSE)
-
-  pu_sf$id <- as.integer(pu_sf$id)
-
-  # align to x$data$pu$id (critical)
-  ord <- match(x$data$pu$id, pu_sf$id)
-  if (anyNA(ord)) {
-    missing_ids <- x$data$pu$id[is.na(ord)]
-    stop(
-      arg_name, "$id does not match x$data$pu$id (some ids missing). Missing: ",
-      paste(utils::head(missing_ids, 20), collapse = ", "),
-      if (length(missing_ids) > 20) " ..." else "",
-      call. = FALSE
-    )
-  }
-
-  pu_sf[ord, , drop = FALSE]
-}
-
-.pa_rbind_fill <- function(a, b) {
-  stopifnot(inherits(a, "data.frame"), inherits(b, "data.frame"))
-  cols <- union(names(a), names(b))
-  for (cc in setdiff(cols, names(a))) a[[cc]] <- NA
-  for (cc in setdiff(cols, names(b))) b[[cc]] <- NA
-  a <- a[, cols, drop = FALSE]
-  b <- b[, cols, drop = FALSE]
-  rbind(a, b)
-}
-
-.pa_swap_edges <- function(rel) {
-  out <- rel
-  out$internal_pu1 <- rel$internal_pu2
-  out$internal_pu2 <- rel$internal_pu1
-  if ("pu1" %in% names(rel) && "pu2" %in% names(rel)) {
-    out$pu1 <- rel$pu2
-    out$pu2 <- rel$pu1
-  }
-  out
-}
-
-
-# ---- public API --------------------------------------------------------------
-
-#' Add spatial relations (core)
+#
+#' @title Add spatial relations (core)
 #'
 #' @description
-#' Store a spatial relation graph between planning units using a single internal representation.
-#' Most users should call one of the convenience wrappers:
-#' [add_spatial_boundary()], [add_spatial_rook()], [add_spatial_queen()],
-#' [add_spatial_knn()], or [add_spatial_distance()].
+#' Register an externally computed spatial relation inside a \code{Data} object using the unified
+#' internal representation. Most users should prefer the convenience wrappers:
+#' \code{\link{add_spatial_boundary}}, \code{\link{add_spatial_rook}}, \code{\link{add_spatial_queen}},
+#' \code{\link{add_spatial_knn}}, or \code{\link{add_spatial_distance}}.
 #'
-#' This function is useful when you already computed the relation externally and want to
-#' register it inside the problem object.
+#' @details
+#' The input can be given in external PU ids (\code{pu1}, \code{pu2}) or in internal PU indices
+#' (\code{internal_pu1}, \code{internal_pu2}). If external ids are provided, they are mapped using
+#' \code{x$data$pu$id} and \code{x$data$pu$internal_id}.
+#'
+#' If \code{directed = FALSE}, edges are treated as undirected and duplicates are collapsed using
+#' \code{duplicate_agg}. If \code{symmetric = TRUE}, the relation is expanded to a directed edge list
+#' by adding swapped copies for off-diagonal edges.
 #'
 #' @param x A [data-class] object created with [inputData()] or [inputDataSpatial()].
-#' @param relations A `data.frame` with columns `pu1`, `pu2`, and `weight`, or already with
-#' `internal_pu1`, `internal_pu2`, `weight`.
-#' @param name Character. Name/key under which the relation will be stored.
-#' @param directed Logical. If `FALSE` (default), edges are treated as undirected and duplicates
-#' are collapsed.
-#' @param allow_self Logical. Allow self-edges (almost always `FALSE`).
+#' @param relations A \code{data.frame} describing edges. Must contain either:
+#' \itemize{
+#'   \item \code{pu1}, \code{pu2}, \code{weight} (external PU ids), or
+#'   \item \code{internal_pu1}, \code{internal_pu2}, \code{weight} (internal indices).
+#' }
+#' Extra columns (e.g., \code{distance}, \code{source}) are allowed and preserved when possible.
+#' @param name Character. Name/key under which to store the relation (default \code{"default"}).
+#' @param directed Logical. If \code{FALSE} (default), treats edges as undirected and collapses duplicates.
+#' If \code{TRUE}, keeps directed edges as provided.
+#' @param allow_self Logical. Whether to allow self-edges \code{(i,i)}. Default \code{FALSE}.
+#' @param duplicate_agg Aggregation for duplicate undirected edges when \code{directed=FALSE}.
+#' One of \code{"sum"}, \code{"max"}, \code{"min"}, \code{"mean"}.
+#' @param symmetric Logical. If \code{TRUE}, expands an undirected relation into a directed one by duplicating
+#' off-diagonal edges in both directions. Default \code{FALSE}.
 #'
-#' @return Updated [data-class] object with `x$data$spatial_relations[[name]]`.
+#' @return Updated [data-class] object with \code{x$data$spatial_relations[[name]]}.
+#' @examples
+#' \dontrun{
+#' # Register an externally computed adjacency list:
+#' rel <- data.frame(pu1 = c(1, 1, 2), pu2 = c(2, 3, 3), weight = 1)
+#' x <- x |> add_spatial_relations(relations = rel, name = "my_adj")
+#' }
+#'
 #' @export
 add_spatial_relations <- function(x,
                                   relations,
@@ -326,22 +231,52 @@ add_spatial_relations <- function(x,
 }
 
 
-#' Add spatial boundary-length relations from sf polygons OR a boundary table
+#' @title Add spatial boundary-length relations from sf polygons or a boundary table
 #'
 #' @description
-#' Registers a boundary-length relation between planning units.
-#' - If `boundary` is provided: uses it (expects id1/id2/boundary or pu1/pu2/weight).
-#' - If `boundary` is NULL: derives boundary lengths from `pu_sf` (or x$data$pu_sf).
+#' Register a boundary-length relation between planning units. Boundary relations represent
+#' shared edge length between adjacent polygons (not queen touches).
 #'
-#' This function defines *boundary* (shared-edge length), not queen touches.
+#' @details
+#' Two input modes are supported:
+#' \enumerate{
+#'   \item \strong{Boundary table mode.} If \code{boundary} is provided, it is interpreted as a table
+#'   containing PU pairs and a boundary-length weight (e.g., Marxan-style \code{bound.dat}).
+#'   \item \strong{Geometry mode.} If \code{boundary} is \code{NULL}, boundary lengths are derived from
+#'   planning-unit polygons (\code{pu_sf} or \code{x$data$pu_sf}).
+#' }
 #'
-#' @param x Data object.
-#' @param boundary Optional data.frame with columns (id1,id2,boundary) or (pu1,pu2,weight).
-#' @param pu_sf Optional sf with PU polygons and an `id` column. If NULL, uses x$data$pu_sf.
-#' @param name Name to store relation under (default "boundary").
-#' @param weight_col For boundary tables, which column to use as weight. Defaults to "boundary" or "weight".
-#' @param weight_multiplier Multiplier applied to computed/loaded weights.
-#' @param progress Show basic progress for large N (logical).
+#' If \code{include_self=TRUE}, the function also adds diagonal entries \code{(i,i)} with weights equal to
+#' an "effective exposed boundary" (scaled by \code{edge_factor}). This is useful for objectives such as
+#' boundary-length modifier / fragmentation penalties where perimeter exposed to the outside should be counted.
+#'
+#' @param x A [data-class] object.
+#' @param boundary Optional \code{data.frame} describing boundaries. Accepted formats:
+#' \itemize{
+#'   \item \code{(id1, id2, boundary)} (Marxan-style), or
+#'   \item \code{(pu1, pu2, weight)}.
+#' }
+#' @param pu_sf Optional \code{sf} object with PU polygons and an \code{id} column. If \code{NULL},
+#' uses \code{x$data$pu_sf}.
+#' @param name Character name/key under which to store the relation (default \code{"boundary"}).
+#' @param weight_col Character. Column in \code{boundary} to use as weights. If \code{NULL}, attempts to
+#' guess \code{"boundary"} or \code{"weight"}.
+#' @param weight_multiplier Numeric multiplier applied to boundary weights (e.g., BLM scaling).
+#' Must be finite and positive.
+#' @param progress Logical. If \code{TRUE}, prints basic progress messages for large instances.
+#' @param include_self Logical. If \code{TRUE} (default), include diagonal \code{(i,i)} entries representing
+#' effective exposed boundary length.
+#' @param edge_factor Numeric \eqn{\ge 0}. Multiplier applied to exposed boundary when computing diagonal weights.
+#'
+#' @return Updated [data-class] object with a stored relation \code{x$data$spatial_relations[[name]]}.
+#' @examples
+#' \dontrun{
+#' # From a Marxan-style boundary table:
+#' x <- x |> add_spatial_boundary(boundary = bound_df, name = "boundary")
+#'
+#' # From sf polygons:
+#' x <- x |> add_spatial_boundary(pu_sf = pu_sf, include_self = TRUE, edge_factor = 1)
+#' }
 #'
 #' @export
 add_spatial_boundary <- function(x,
@@ -597,19 +532,24 @@ add_spatial_boundary <- function(x,
 }
 
 
-#' Add rook adjacency from sf polygons
+#' @title Add rook adjacency from sf polygons
 #'
 #' @description
-#' Build a rook adjacency relation (shared edge) from planning unit polygons.
-#' Requires `sf`.
+#' Build and register a rook adjacency relation (shared edge) from planning-unit polygons.
+#' Rook adjacency detects pairs of polygons that share a non-zero-length boundary segment.
 #'
 #' @param x A [data-class] object created with [inputDataSpatial()].
-#' @param pu_sf Optional sf object with planning units geometry and an `id` column. If `NULL`,
-#' tries `x$data$pu_sf`.
-#' @param name Name/key under which the relation will be stored.
-#' @param weight Weight assigned to each adjacency edge (default 1).
+#' @param pu_sf Optional \code{sf} object with PU polygons and an \code{id} column. If \code{NULL},
+#' uses \code{x$data$pu_sf}.
+#' @param name Character name/key under which to store the relation.
+#' @param weight Numeric edge weight assigned to each rook adjacency (default 1).
 #'
 #' @return Updated [data-class] object.
+#' @examples
+#' \dontrun{
+#' x <- x |> add_spatial_rook(name = "rook", weight = 1)
+#' }
+#'
 #' @export
 add_spatial_rook <- function(x,
                              pu_sf = NULL,
@@ -651,19 +591,24 @@ add_spatial_rook <- function(x,
   )
 }
 
-#' Add queen adjacency from sf polygons
+#' @title Add queen adjacency from sf polygons
 #'
 #' @description
-#' Build a queen adjacency relation (shared edge or vertex) from planning unit polygons.
-#' Requires `sf`.
+#' Build and register a queen adjacency relation (shared edge or shared vertex) from planning-unit polygons.
+#' Queen adjacency includes all rook neighbours plus corner-touching neighbours.
 #'
 #' @param x A [data-class] object created with [inputDataSpatial()].
-#' @param pu_sf Optional sf object with planning units geometry and an `id` column. If `NULL`,
-#' tries `x$data$pu_sf`.
-#' @param name Name/key under which the relation will be stored.
-#' @param weight Weight assigned to each adjacency edge (default 1).
+#' @param pu_sf Optional \code{sf} object with PU polygons and an \code{id} column. If \code{NULL},
+#' uses \code{x$data$pu_sf}.
+#' @param name Character name/key under which to store the relation.
+#' @param weight Numeric edge weight assigned to each queen adjacency (default 1).
 #'
 #' @return Updated [data-class] object.
+#' @examples
+#' \dontrun{
+#' x <- x |> add_spatial_queen(name = "queen", weight = 1)
+#' }
+#'
 #' @export
 add_spatial_queen <- function(x,
                               pu_sf = NULL,
@@ -705,21 +650,38 @@ add_spatial_queen <- function(x,
 }
 
 
-#' Add kNN spatial relations from coordinates
+#' @title Add k-nearest-neighbours spatial relations from coordinates
 #'
 #' @description
-#' Build a k-nearest-neighbours graph between planning units using coordinates.
-#' Does not require `sf`. For speed on large instances, it uses `RANN` if available.
+#' Build and register a k-nearest-neighbours (kNN) graph between planning units based on coordinates.
+#' This constructor does not require \code{sf}. If the \code{RANN} package is available, it is used for speed.
+#'
+#' @details
+#' Coordinates can be supplied explicitly via \code{coords}, stored in \code{x$data$pu_coords},
+#' or stored as columns \code{x$data$pu$x} and \code{x$data$pu$y}.
+#'
+#' Edge weights can be constant or derived from distance using \code{weight_fn}.
+#' The stored relation is undirected by default (duplicates are collapsed).
 #'
 #' @param x A [data-class] object created with [inputData()] or [inputDataSpatial()].
-#' @param coords Optional coordinates: `data.frame(id,x,y)` or a matrix with 2 columns (x,y).
-#' If `NULL`, tries `x$data$pu$x` and `x$data$pu$y`.
-#' @param k Integer. Number of neighbours per PU.
-#' @param name Name/key under which the relation will be stored.
-#' @param weight_fn How to convert distance to edge weight: `"constant"`, `"inverse"`, or `"inverse_sq"`.
-#' @param eps Small constant to avoid division by zero (default 1e-9).
+#' @param coords Optional coordinates specification:
+#' \itemize{
+#'   \item a \code{data.frame(id, x, y)}, or
+#'   \item a matrix with two columns \code{(x,y)} aligned to the PU order.
+#' }
+#' If \code{NULL}, uses \code{x$data$pu_coords} or \code{x$data$pu$x/y}.
+#' @param k Integer. Number of neighbours per planning unit (must be \code{>= 1} and \code{< n_pu}).
+#' @param name Character name/key under which to store the relation.
+#' @param weight_fn Character. How to convert distance to weight:
+#' \code{"constant"}, \code{"inverse"}, or \code{"inverse_sq"}.
+#' @param eps Small numeric constant to avoid division by zero when using inverse weights.
 #'
 #' @return Updated [data-class] object.
+#' @examples
+#' \dontrun{
+#' x <- x |> add_spatial_knn(k = 8, name = "knn8", weight_fn = "inverse")
+#' }
+#'
 #' @export
 add_spatial_knn <- function(x,
                             coords = NULL,
@@ -779,20 +741,31 @@ add_spatial_knn <- function(x,
   add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE, duplicate_agg = "max")
 }
 
-#' Add distance-threshold spatial relations from coordinates
+#'
+#' @title Add distance-threshold spatial relations from coordinates
 #'
 #' @description
-#' Build edges between PUs whose Euclidean distance is <= `dmax`. Does not require `sf`.
-#' For very large instances, consider kNN instead.
+#' Build and register edges between planning units whose Euclidean distance is less than or equal to
+#' \code{dmax}, based on coordinates. This constructor does not require \code{sf}.
+#'
+#' @details
+#' This constructor uses an \eqn{O(n^2)} distance computation and is therefore best suited to small or
+#' moderate numbers of planning units. For large instances, consider \code{\link{add_spatial_knn}} instead.
 #'
 #' @param x A [data-class] object created with [inputData()] or [inputDataSpatial()].
-#' @param coords Optional coordinates: `data.frame(id,x,y)` or matrix (x,y). If `NULL`, uses `x$data$pu$x/y`.
-#' @param dmax Numeric. Maximum distance for an edge.
-#' @param name Name/key under which the relation will be stored.
-#' @param weight_fn `"constant"`, `"inverse"`, or `"inverse_sq"`.
-#' @param eps Small constant to avoid division by zero.
+#' @param coords Optional coordinates specification (see \code{\link{add_spatial_knn}}).
+#' @param dmax Numeric. Maximum distance for an edge (must be finite and positive).
+#' @param name Character name/key under which to store the relation.
+#' @param weight_fn Character. How to convert distance to weight:
+#' \code{"constant"}, \code{"inverse"}, or \code{"inverse_sq"}.
+#' @param eps Small numeric constant to avoid division by zero when using inverse weights.
 #'
 #' @return Updated [data-class] object.
+#' @examples
+#' \dontrun{
+#' x <- x |> add_spatial_distance(dmax = 1000, name = "within_1km", weight_fn = "constant")
+#' }
+#'
 #' @export
 add_spatial_distance <- function(x,
                                  coords = NULL,
