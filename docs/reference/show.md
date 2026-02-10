@@ -8,10 +8,7 @@ Display information about an object.
 # S4 method for class 'Data'
 show(x)
 
-# S4 method for class 'OptimizationProblem'
-show(x)
-
-# S4 method for class 'Portfolio'
+# S4 method for class 'MOProblem'
 show(x)
 ```
 

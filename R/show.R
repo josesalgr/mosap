@@ -27,16 +27,8 @@ methods::setMethod("show", "Data",
 #'
 #' @rdname show
 #'
-#' @usage \S4method{show}{OptimizationProblem}(x)
+#' @usage \S4method{show}{MOProblem}(x)
 #'
-methods::setMethod("show", "OptimizationProblem",
+methods::setMethod("show", "MOProblem",
                    function(object) object$show())
 
-#' @name show
-#'
-#' @rdname show
-#'
-#' @usage \S4method{show}{Portfolio}(x)
-#'
-methods::setMethod("show", "Portfolio",
-                   function(object) object$show())

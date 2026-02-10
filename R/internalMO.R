@@ -101,7 +101,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
     return(obj)
   }
 
-  stop("Expected a prioriactions::Data or a MOProblem.", call. = FALSE)
+  stop("Expected a Data or a MOProblem.", call. = FALSE)
 }
 
 
@@ -350,6 +350,19 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
     ))
   }
 
+  # --- max representation
+  if (identical(id, "max_representation")) {
+    acol <- .c1(a$amount_col, "amount")
+    a$amount_col <- acol
+
+    return(list(
+      sense = "max",
+      terms = list(list(type = "representation", amount_col = acol)),
+      objective_id = id,
+      objective_args = a
+    ))
+  }
+
   # --- custom objective (advanced path)
   if (identical(id, "custom")) {
     # aquí el sentido REAL lo controlas por spec$sense; si viene NA, fija "min"
@@ -409,6 +422,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
     max_benefit = "maximizeBenefits",
     max_profit = "maximizeProfit",
     max_net_profit = "maximizeNetProfit",
+    max_representation = "maximizeRepresentation",
     min_fragmentation = "minimizeFragmentation",
     min_action_fragmentation = "minimizeActionFragmentation",
     min_intervention_fragmentation = "minimizeInterventionFragmentation",
@@ -512,15 +526,22 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   b <- .pamo_clone_base(base)
   b <- .pamo_activate_ir_as_single_objective(b, ir_best)
 
+  b$data$model_args$needs <- list(
+    z = need_z,
+    y_pu = need_y_pu,
+    y_action = need_y_act,
+    y_intervention = need_y_int
+  )
+
   b$data$model_args$mo_mode <- TRUE
-  b <- prioriactions:::.pa_build_model(b)
+  b <- .pa_build_model(b)
 
   op <- b$data$model_ptr
   if (is.null(op)) stop("Superset build failed: model_ptr is NULL.", call. = FALSE)
 
   # ---- sanity check: if we need z, ensure the built model has z
   if (isTRUE(need_z)) {
-    op_list <- prioriactions:::.pa_model_from_ptr(op, args = b$data$model_args %||% list(), drop_triplets = TRUE)
+    op_list <- .pa_model_from_ptr(op, args = b$data$model_args %||% list(), drop_triplets = TRUE)
     n_z <- as.integer(op_list$n_z %||% 0L)
     if (n_z <= 0L) {
       stop(
@@ -537,7 +558,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   # ---- prepare PU fragmentation auxiliaries if needed
   if (isTRUE(need_y_pu)) {
 
-    op_list <- prioriactions:::.pa_model_from_ptr(op, args = b$data$model_args %||% list(), drop_triplets = TRUE)
+    op_list <- .pa_model_from_ptr(op, args = b$data$model_args %||% list(), drop_triplets = TRUE)
     n_y_pu <- as.integer(op_list$n_y_pu %||% 0L)
 
     if (n_y_pu <= 0L) {
@@ -562,7 +583,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
           b$data$spatial_relations_model[[rel_name]] <- rel_model
         }
 
-        prioriactionsMO::rcpp_prepare_fragmentation_pu(op, rel_model)
+        rcpp_prepare_fragmentation_pu(op, rel_model)
         did_prepare <- TRUE
       }
     }
@@ -587,7 +608,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   # ---- refresh snapshot once if needed
   if (isTRUE(did_prepare)) {
     b$data$meta$model_dirty <- TRUE
-    b <- prioriactions:::.pa_refresh_model_snapshot(b)
+    b <- .pa_refresh_model_snapshot(b)
   }
 
   b
@@ -599,86 +620,13 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   stopifnot(inherits(x, "Data"))
   if (is.null(x$data$model_ptr)) stop("Data has no model_ptr; build model first.", call. = FALSE)
 
-  m <- prioriactions:::.pa_model_from_ptr(
+  m <- .pa_model_from_ptr(
     x$data$model_ptr,
     args = x$data$model_args %||% list(),
     drop_triplets = TRUE
   )
   length(m$obj)
 }
-
-.pamo_ir_to_objvec <- function(base_superset, ir) {
-  stopifnot(inherits(base_superset, "Data"))
-  stopifnot(is.list(ir), !is.null(ir$objective_id))
-  if (is.null(base_superset$data$model_ptr)) {
-    stop("Superset model is not built (missing model_ptr).", call. = FALSE)
-  }
-
-  op <- base_superset$data$model_ptr
-
-  # 1) reset objective (MO convention: everything becomes MIN; flip max in R if needed)
-  rcpp_reset_objective(op, modelsense = "min")
-
-  # 2) add each term (ADDITIVE)
-  terms <- ir$terms %||% list()
-  for (t in terms) {
-    type <- t$type
-
-    if (identical(type, "pu_cost")) {
-
-      rcpp_add_objective_min_cost(
-        op,
-        pu_data = base_superset$data$pu,
-        dist_actions_data = base_superset$data$dist_actions_model,
-        include_pu_cost = TRUE,
-        include_action_cost = FALSE,
-        weight = 1.0
-      )
-
-    } else if (identical(type, "action_cost")) {
-
-      rcpp_add_objective_min_cost(
-        op,
-        pu_data = base_superset$data$pu,
-        dist_actions_data = base_superset$data$dist_actions_model,
-        include_pu_cost = FALSE,
-        include_action_cost = TRUE,
-        weight = 1.0
-      )
-
-    } else if (identical(type, "boundary_cut")) {
-
-      rel_name <- as.character(t$relation_name %||% "boundary")[1]
-
-      rel_model <- base_superset$data$spatial_relations_model[[rel_name]] %||%
-        base_superset$data$spatial_relations[[rel_name]]
-
-      if (is.null(rel_model)) {
-        stop("Missing relation '", rel_name, "' in base_superset$data$spatial_relations[_model].", call. = FALSE)
-      }
-
-      rcpp_add_objective_min_fragmentation(
-        op,
-        relation_data = rel_model,
-        weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1]
-      )
-
-    } else {
-      stop("Unknown term type in .pamo_ir_to_objvec(): ", type, call. = FALSE)
-    }
-  }
-
-  # 3) read objective vector from ptr using prioriactions internal snapshot helper
-  m <- prioriactions:::.pa_model_from_ptr(
-    op,
-    args = base_superset$data$model_args %||% list(),
-    drop_triplets = TRUE
-  )
-
-  as.numeric(m$obj)
-}
-
-
 
 
 # -------------------------------------------------------------------------
@@ -785,7 +733,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 .pamo_solve_one <- function(x, spec) {
 
   if (!inherits(x, "MOProblem")) stop(".pamo_solve_one expects MOProblem.", call. = FALSE)
-  if (!inherits(x$base, "Data")) stop("MOProblem$base must be a prioriactions::Data.", call. = FALSE)
+  if (!inherits(x$base, "Data")) stop("MOProblem$base must be a Data.", call. = FALSE)
 
   base <- .pamo_clone_base(x$base)
 
@@ -814,7 +762,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   }
 
   # run single-objective solve using prioriactions
-  out <- prioriactions::solve(base)
+  out <- solve(base)
 
   .pamo_extract_solution(out)
 }
@@ -892,53 +840,154 @@ add_objective <- function(x, objective) {
 
 
 .pamo_objvec_from_ir <- function(base_superset, ir) {
+  stopifnot(inherits(base_superset, "Data"))
   op <- base_superset$data$model_ptr
+  if (is.null(op)) stop("Superset model is not built (missing model_ptr).", call. = FALSE)
 
-  # 1) reset
+  # Convención MO: motor en MIN; luego flip en R para sense=max
   rcpp_reset_objective(op, "min")
 
-  # 2) add terms (solo escriben coeficientes en op->_obj)
-  for (t in ir$terms) {
-    if (t$type == "pu_cost") {
+  terms <- ir$terms %||% list()
+  for (t in terms) {
+    type <- t$type
+
+    if (identical(type, "pu_cost")) {
       rcpp_add_objective_min_cost(
         op,
         pu_data = base_superset$data$pu,
         dist_actions_data = base_superset$data$dist_actions_model,
-        weight = 1.0,
         include_pu_cost = TRUE,
-        include_action_cost = FALSE
+        include_action_cost = FALSE,
+        weight = 1.0
       )
-    }
-    if (t$type == "action_cost") {
+
+    } else if (identical(type, "action_cost")) {
       rcpp_add_objective_min_cost(
         op,
         pu_data = base_superset$data$pu,
         dist_actions_data = base_superset$data$dist_actions_model,
-        weight = 1.0,
         include_pu_cost = FALSE,
-        include_action_cost = TRUE
+        include_action_cost = TRUE,
+        weight = 1.0
       )
-    }
-    if (t$type == "boundary_cut") {
-      rel_name <- t$relation_name %||% "boundary"
+
+    } else if (identical(type, "boundary_cut")) {
+      rel_name <- as.character(t$relation_name %||% "boundary")[1]
       rel_model <- base_superset$data$spatial_relations_model[[rel_name]] %||%
         base_superset$data$spatial_relations[[rel_name]]
+      if (is.null(rel_model)) stop("Missing relation '", rel_name, "'.", call. = FALSE)
+
+      # ENSURE prepare (idempotente; en C++ ya chequea)
+      rcpp_prepare_fragmentation_pu(op, rel_model)
 
       rcpp_add_objective_min_fragmentation(
         op,
         relation_data = rel_model,
-        weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1],
-        block_name = "objective_add_min_fragmentation",
-        tag = ""
+        weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1]
       )
+    } else if (identical(type, "representation")) {
+      # Necesitas la versión aditiva: rcpp_add_objective_max_representation (C++)
+      acol <- as.character(t$amount_col %||% "amount")[1]
+
+      feats <- t$features_to_use %||% integer()
+      ifcol <- as.character(t$internal_feature_col %||% "internal_feature")[1]
+
+      rcpp_add_objective_max_representation(
+        op,
+        dist_features_data = base_superset$data$dist_features,
+        amount_col = acol,
+        features_to_use = as.integer(feats),
+        internal_feature_col = ifcol,
+        weight = 1.0
+      )
+
+    } else if (identical(type, "benefit")) {
+      # Necesitas versión aditiva: rcpp_add_objective_max_benefit
+      bcol <- as.character(t$benefit_col %||% "benefit")[1]
+      rcpp_add_objective_max_benefit(
+        op,
+        dist_actions_data = base_superset$data$dist_actions_model,
+        dist_benefit_data = base_superset$data$dist_benefit_model,
+        benefit_col = bcol,
+        weight = 1.0
+      )
+
+    } else if (identical(type, "profit")) {
+      # Necesitas versión aditiva: rcpp_add_objective_max_profit
+      pcol <- as.character(t$profit_col %||% "profit")[1]
+      rcpp_add_objective_max_profit(
+        op,
+        dist_actions_data = base_superset$data$dist_actions_model,
+        dist_profit_data  = base_superset$data$dist_profit_model,
+        profit_col = pcol,
+        weight = 1.0
+      )
+
+    } else if (identical(type, "net_profit")) {
+      # Opción A: función aditiva directa rcpp_add_objective_max_net_profit
+      # Opción B: componer: +profit  -pu_cost -action_cost (pero ojo con signos en convención MIN)
+      pcol <- as.character(t$profit_col %||% "profit")[1]
+      inc_pu  <- isTRUE(t$include_pu_cost %||% TRUE)
+      inc_act <- isTRUE(t$include_action_cost %||% TRUE)
+
+      rcpp_add_objective_max_net_profit(
+        op,
+        pu_data = base_superset$data$pu,
+        dist_actions_data = base_superset$data$dist_actions_model,
+        dist_profit_data  = base_superset$data$dist_profit_model,
+        profit_col = pcol,
+        include_pu_cost = inc_pu,
+        include_action_cost = inc_act,
+        weight = 1.0
+      )
+
+    } else if (identical(type, "action_boundary_cut")) {
+      # Requiere: superset preparado con auxiliares de action frag
+      rel_name <- as.character(t$relation_name %||% "boundary")[1]
+      rel_model <- base_superset$data$spatial_relations_model[[rel_name]] %||%
+        base_superset$data$spatial_relations[[rel_name]]
+      if (is.null(rel_model)) stop("Missing relation '", rel_name, "'.", call. = FALSE)
+
+      aw <- t$action_weights %||% NULL
+      acts <- t$actions %||% NULL
+
+      # ideal: C++ aditivo que usa action_weights vector ya expandido
+      rcpp_add_objective_min_fragmentation_actions_by_action(
+        op,
+        dist_actions_data = base_superset$data$dist_actions_model,
+        relation_data = rel_model,
+        actions_to_use = acts %||% NULL,  # o NULL si pasas weights full-length
+        action_weights = aw %||% NULL,    # según tu firma
+        weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1],
+        weight = 1.0
+      )
+
+    } else if (identical(type, "intervention_boundary_cut")) {
+      rel_name <- as.character(t$relation_name %||% "boundary")[1]
+      rel_model <- base_superset$data$spatial_relations_model[[rel_name]] %||%
+        base_superset$data$spatial_relations[[rel_name]]
+      if (is.null(rel_model)) stop("Missing relation '", rel_name, "'.", call. = FALSE)
+
+      rcpp_add_objective_min_fragmentation_interventions(
+        op,
+        dist_actions_data = base_superset$data$dist_actions_model,
+        relation_data = rel_model,
+        weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1],
+        weight = 1.0
+      )
+
+    } else if (identical(type, "custom")) {
+      stop("custom objectives are not supported in weighted yet.", call. = FALSE)
+
+    } else {
+      stop("Unknown term type in .pamo_objvec_from_ir(): ", type, call. = FALSE)
     }
   }
 
-  # 3) leer obj desde el ptr, PERO sin depender de export:
-  # usa el internal de prioriactions (es feo, pero sirve en dev)
-  m <- prioriactions:::.pa_model_from_ptr(op, args = base_superset$data$model_args, drop_triplets = TRUE)
+  m <- .pa_model_from_ptr(op, args = base_superset$data$model_args %||% list(), drop_triplets = TRUE)
   as.numeric(m$obj)
 }
+
 
 
 .pamo_apply_weighted_objective <- function(base, ir_list, weights, normalize = FALSE) {
@@ -1070,7 +1119,7 @@ add_objective <- function(x, objective) {
 .pamo_solve_one <- function(x, spec) {
 
   if (!inherits(x, "MOProblem")) stop(".pamo_solve_one expects MOProblem.", call. = FALSE)
-  if (!inherits(x$base, "Data")) stop("MOProblem$base must be a prioriactions::Data.", call. = FALSE)
+  if (!inherits(x$base, "Data")) stop("MOProblem$base must be a Data.", call. = FALSE)
 
   base <- .pamo_clone_base(x$base)
 
@@ -1099,7 +1148,7 @@ add_objective <- function(x, objective) {
   }
 
   # run single-objective solve using prioriactions
-  out <- prioriactions::solve(base)
+  out <- solve(base)
 
   .pamo_extract_solution(out)
 }

@@ -3,18 +3,15 @@
 \name{print}
 \alias{print}
 \alias{print.Data}
-\alias{print.OptimizationProblem}
 \alias{print.Solution}
-\alias{print.Portfolio}
+\alias{print.MOProblem}
 \title{Print}
 \usage{
 \method{print}{Data}(x, ...)
 
-\method{print}{OptimizationProblem}(x, ...)
-
 \method{print}{Solution}(x, ...)
 
-\method{print}{Portfolio}(x, ...)
+\method{print}{MOProblem}(x, ...)
 }
 \arguments{
 \item{x}{Any object.}

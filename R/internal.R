@@ -2556,8 +2556,7 @@ available_to_solve <- function(package = ""){
       model$rhs[i] <<- -bigM
     } else if (identical(s, "<=")) {
       model$rhs[i] <<-  bigM
-    } else if (identical(s, "==")) {
-      # relaja igualdad convirtiéndola en <= bigM (redundante)
+    } else if (identical(s, "==") || identical(s, "=")) {
       model$sense[i] <<- "<="
       model$rhs[i]   <<-  bigM
     } else {
@@ -2577,7 +2576,8 @@ available_to_solve <- function(package = ""){
   }
 
   if (!is.null(upd$deactivate_groups) && !is.null(reg$cons)) {
-    for (g in upd$deactivate_groups) {
+    gs <- as.character(upd$deactivate_groups)
+    for (g in gs) {
       rows <- reg$cons[[g]] %||% integer(0)
       rows <- as.integer(rows)
       rows <- rows[rows >= 1L & rows <= length(model$rhs)]
@@ -2620,9 +2620,7 @@ available_to_solve <- function(package = ""){
       model$modelsense <- ms
     }
   }
-
-  # 3) objetivo: swap por plantilla (vector obj completo)
-  if (!is.null(upd$objective_template) && !is.null(reg$obj_templates)) {
+  else if (!is.null(upd$objective_template) && !is.null(reg$obj_templates)) {
     tpl <- reg$obj_templates[[upd$objective_template]]
     if (!is.null(tpl)) {
       if (length(tpl$obj) != length(model$obj)) {
@@ -3410,3 +3408,153 @@ available_to_solve <- function(package = ""){
 }
 
 
+# -------------------------------------------------------------------------
+# Needs flags (feature requirements) for build
+# -------------------------------------------------------------------------
+
+.pa_needs_default <- function() {
+  list(
+    z = FALSE,                # z vars (representation)
+    y_pu = FALSE,             # PU fragmentation auxiliaries
+    y_action = FALSE,         # action fragmentation auxiliaries
+    y_intervention = FALSE,   # intervention fragmentation auxiliaries
+    u_intervention = FALSE    # intervention extra vars (if applicable)
+  )
+}
+
+.pa_build_model_init_needs <- function(x) {
+  stopifnot(inherits(x, "Data"))
+  if (is.null(x$data$model_args) || !is.list(x$data$model_args)) x$data$model_args <- list()
+
+  needs <- x$data$model_args$needs
+  if (is.null(needs) || !is.list(needs)) needs <- list()
+
+  # merge defaults without overwriting existing values
+  def <- .pa_needs_default()
+  for (nm in names(def)) {
+    if (is.null(needs[[nm]])) needs[[nm]] <- def[[nm]]
+  }
+
+  x$data$model_args$needs <- needs
+  x
+}
+
+.pa_build_model_set_needs_from_objective <- function(x) {
+  stopifnot(inherits(x, "Data"))
+  args  <- x$data$model_args %||% list()
+  mtype <- args$model_type %||% "minimizeCosts"
+
+  needs <- args$needs %||% list()
+
+  # ---- defaults (always explicit booleans)
+  needs$z             <- isTRUE(needs$z)             # allow user/MO to force
+  needs$y_pu          <- isTRUE(needs$y_pu)
+  needs$y_action      <- isTRUE(needs$y_action)
+  needs$y_intervention<- isTRUE(needs$y_intervention)
+  needs$u_intervention<- isTRUE(needs$u_intervention)
+
+  # ---- infer from single objective unless already set (MO can pre-set)
+  # z: only required for representation objective (because z <= w and z vars)
+  if (is.null(args$needs$z)) {
+    needs$z <- identical(mtype, "maximizeRepresentation")
+  }
+
+  # PU fragmentation auxiliaries
+  if (is.null(args$needs$y_pu)) {
+    needs$y_pu <- identical(mtype, "minimizeFragmentation")
+  }
+
+  # action fragmentation auxiliaries (future)
+  if (is.null(args$needs$y_action)) {
+    needs$y_action <- identical(mtype, "minimizeActionFragmentation")
+  }
+
+  # intervention fragmentation auxiliaries (future)
+  if (is.null(args$needs$y_intervention)) {
+    needs$y_intervention <- identical(mtype, "minimizeInterventionFragmentation")
+  }
+
+  # u_intervention (future, if you add a different auxiliary set)
+  if (is.null(args$needs$u_intervention)) {
+    needs$u_intervention <- FALSE
+  }
+
+  x$data$model_args$needs <- needs
+  x
+}
+
+
+.pa_build_model_prepare_needs_cpp <- function(x) {
+  stopifnot(inherits(x, "Data"))
+  .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
+
+  op    <- x$data$model_ptr
+  args  <- x$data$model_args %||% list()
+  needs <- args$needs %||% list()
+  oargs <- args$objective_args %||% list()
+
+  # nothing to do
+  if (!isTRUE(needs$y_pu) &&
+      !isTRUE(needs$y_action) &&
+      !isTRUE(needs$y_intervention) &&
+      !isTRUE(needs$u_intervention)) {
+    return(x)
+  }
+
+  # helper: relation model (reuse the same logic as set_objective)
+  .pa_prepare_relation_model <- function(rel) {
+    rel <- rel[, c(
+      "internal_pu1","internal_pu2","weight",
+      intersect(names(rel), c("distance","source","relation_name"))
+    ), drop = FALSE]
+    rel$internal_pu1 <- as.integer(rel$internal_pu1)
+    rel$internal_pu2 <- as.integer(rel$internal_pu2)
+    rel$weight <- as.numeric(rel$weight)
+    rel <- rel[order(rel$internal_pu1, rel$internal_pu2), , drop = FALSE]
+    rel$internal_edge <- seq_len(nrow(rel))
+    rel
+  }
+
+  # fragmentations need a relation
+  rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
+  rels <- x$data$spatial_relations
+  if (is.null(rels) || is.null(rels[[rel_name]])) {
+    .pa_abort("prepare_needs: missing spatial relation '", rel_name, "'.")
+  }
+
+  rel_model <- x$data$spatial_relations_model %||% list()
+  if (is.null(rel_model[[rel_name]])) {
+    rel_model[[rel_name]] <- .pa_prepare_relation_model(rels[[rel_name]])
+    x$data$spatial_relations_model <- rel_model
+  }
+  rel_model <- x$data$spatial_relations_model[[rel_name]]
+
+  # ---- PU fragmentation prepare
+  if (isTRUE(needs$y_pu)) {
+    if (!exists("rcpp_prepare_fragmentation_pu", mode = "function")) {
+      .pa_abort("Missing rcpp_prepare_fragmentation_pu() in the package.")
+    }
+    res <- rcpp_prepare_fragmentation_pu(op, rel_model)
+    x$data$model_registry$vars$y_pu <- res
+  }
+
+  # ---- Action fragmentation prepare (future hook)
+  if (isTRUE(needs$y_action)) {
+    if (!exists("rcpp_prepare_fragmentation_actions_by_action", mode = "function")) {
+      .pa_abort("Missing rcpp_prepare_fragmentation_actions_by_action() in the package.")
+    }
+    res <- rcpp_prepare_fragmentation_actions_by_action(op, rel_model)
+    x$data$model_registry$vars$y_action <- res
+  }
+
+  # ---- Intervention fragmentation prepare (future hook)
+  if (isTRUE(needs$y_intervention) || isTRUE(needs$u_intervention)) {
+    if (!exists("rcpp_prepare_fragmentation_interventions", mode = "function")) {
+      .pa_abort("Missing rcpp_prepare_fragmentation_interventions() in the package.")
+    }
+    res <- rcpp_prepare_fragmentation_interventions(op, rel_model)
+    x$data$model_registry$vars$y_intervention <- res
+  }
+
+  x
+}

@@ -18,6 +18,7 @@
 <url><loc>https://josesalgr.github.io/mosap/reference/add_objective_max_benefit.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/add_objective_max_net_profit.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/add_objective_max_profit.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/add_objective_max_representation.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/add_objective_min_action_fragmentation.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/add_objective_min_cost.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/add_objective_min_fragmentation.html</loc></url>
@@ -61,6 +62,8 @@
 <url><loc>https://josesalgr.github.io/mosap/reference/plot.Solution.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/portfolio-class.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/print.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/print.OptimizationProblem.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/print.Portfolio.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/prioriactions.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/problem.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/register_objective.html</loc></url>

@@ -53,12 +53,28 @@ rcpp_add_linking_z_le_w <- function(x, dist_features_data, block_name = "linking
     .Call(`_mosap_rcpp_add_linking_z_le_w`, x, dist_features_data, block_name, tag)
 }
 
+rcpp_add_objective_max_benefit <- function(x, coef_x, weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_max_benefit", tag = "") {
+    .Call(`_mosap_rcpp_add_objective_max_benefit`, x, coef_x, weight, weight_multiplier, block_name, tag)
+}
+
+rcpp_add_objective_max_profit <- function(x, dist_actions_data, dist_profit_data, profit_col = "profit", weight = 1.0, block_name = "objective_max_profit", tag = "") {
+    .Call(`_mosap_rcpp_add_objective_max_profit`, x, dist_actions_data, dist_profit_data, profit_col, weight, block_name, tag)
+}
+
+rcpp_add_objective_max_representation <- function(x, dist_features_data, amount_col = "amount", features_to_use = integerVector(), internal_feature_col = "internal_feature", weight = 1.0, block_name = "objective_add_max_representation", tag = "") {
+    .Call(`_mosap_rcpp_add_objective_max_representation`, x, dist_features_data, amount_col, features_to_use, internal_feature_col, weight, block_name, tag)
+}
+
 rcpp_add_objective_min_cost <- function(x, pu_data, dist_actions_data, weight = 1.0, include_pu_cost = TRUE, include_action_cost = TRUE, block_name = "objective_add_min_cost", tag = "") {
     .Call(`_mosap_rcpp_add_objective_min_cost`, x, pu_data, dist_actions_data, weight, include_pu_cost, include_action_cost, block_name, tag)
 }
 
 rcpp_add_objective_min_fragmentation <- function(x, relation_data, weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_fragmentation", tag = "") {
     .Call(`_mosap_rcpp_add_objective_min_fragmentation`, x, relation_data, weight, weight_multiplier, block_name, tag)
+}
+
+rcpp_add_objective_min_fragmentation_actions_by_action <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, action_weights = NULL, weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_fragmentation_actions_by_action", tag = "") {
+    .Call(`_mosap_rcpp_add_objective_min_fragmentation_actions_by_action`, x, dist_actions_data, relation_data, actions_to_use, action_weights, weight, weight_multiplier, block_name, tag)
 }
 
 rcpp_add_pu_locks <- function(x, pu_data, block_name = "pu_locks", tag = "") {
@@ -109,8 +125,20 @@ rcpp_add_to_objective_scalar <- function(x, ind1, val) {
     invisible(.Call(`_mosap_rcpp_add_to_objective_scalar`, x, ind1, val))
 }
 
+rcpp_prepare_fragmentation_actions_by_action <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, block_name = "fragmentation_actions_by_action", tag = "") {
+    .Call(`_mosap_rcpp_prepare_fragmentation_actions_by_action`, x, dist_actions_data, relation_data, actions_to_use, block_name, tag)
+}
+
 rcpp_prepare_fragmentation_pu <- function(x, relation_data, block_name = "fragmentation_pu", tag = "") {
     .Call(`_mosap_rcpp_prepare_fragmentation_pu`, x, relation_data, block_name, tag)
+}
+
+rcpp_prepare_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit", block_name = "prepare_max_benefit", tag = "") {
+    .Call(`_mosap_rcpp_prepare_objective_max_benefit`, x, dist_actions_data, dist_benefit_data, benefit_col, block_name, tag)
+}
+
+rcpp_prepare_objective_max_profit <- function(x, dist_actions_data, dist_profit_data, profit_col = "profit") {
+    .Call(`_mosap_rcpp_prepare_objective_max_profit`, x, dist_actions_data, dist_profit_data, profit_col)
 }
 
 rcpp_set_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit", block_name = "objective_max_benefit", tag = "") {
@@ -125,8 +153,8 @@ rcpp_set_objective_max_profit <- function(x, dist_actions_data, dist_profit_data
     .Call(`_mosap_rcpp_set_objective_max_profit`, x, dist_actions_data, dist_profit_data, profit_col, block_name, tag)
 }
 
-rcpp_set_objective_max_representation <- function(x, dist_features_data, amount_col = "amount", block_name = "objective_max_representation", tag = "") {
-    .Call(`_mosap_rcpp_set_objective_max_representation`, x, dist_features_data, amount_col, block_name, tag)
+rcpp_set_objective_max_representation <- function(x, dist_features_data, amount_col = "amount", features_to_use = integerVector(), internal_feature_col = "internal_feature", block_name = "objective_max_representation", tag = "") {
+    .Call(`_mosap_rcpp_set_objective_max_representation`, x, dist_features_data, amount_col, features_to_use, internal_feature_col, block_name, tag)
 }
 
 rcpp_set_objective_min_cost <- function(x, pu_data, dist_actions_data, include_pu_cost = TRUE, include_action_cost = TRUE, block_name = "objective_min_cost", tag = "") {

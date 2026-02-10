@@ -102,7 +102,7 @@ function.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Create optimization model</span></span></span>
 <span class="r-in"><span><span class="va">problem_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="problem.html">problem</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">problem_data</span>, blm <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'problem_data' not found</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in problem(x = problem_data, blm = 1):</span> could not find function "problem"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Solve the optimization model</span></span></span>
 <span class="r-in"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="solve.html">solve</a></span><span class="op">(</span>a <span class="op">=</span> <span class="va">problem_model</span>, time_limit <span class="op">=</span> <span class="fl">5</span>, output_file <span class="op">=</span> <span class="cn">FALSE</span>, cores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>

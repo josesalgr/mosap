@@ -50,7 +50,7 @@ problem_data <- inputData(
 
 ## Create optimization model
 problem_model <- problem(x = problem_data, blm = 1)
-#> Error: object 'problem_data' not found
+#> Error in problem(x = problem_data, blm = 1): could not find function "problem"
 
 ## Solve the optimization model
 s <- solve(a = problem_model, time_limit = 5, output_file = FALSE, cores = 2)

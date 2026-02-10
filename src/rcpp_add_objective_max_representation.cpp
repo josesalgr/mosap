@@ -5,16 +5,17 @@
 #include <string>
 #include <algorithm>
 #include <cmath>
-#include <unordered_set>  // NEW
+#include <unordered_set>
 
 // [[Rcpp::export]]
-Rcpp::List rcpp_set_objective_max_representation(
+Rcpp::List rcpp_add_objective_max_representation(
     SEXP x,
     Rcpp::DataFrame dist_features_data,
     std::string amount_col = "amount",
     Rcpp::IntegerVector features_to_use = Rcpp::IntegerVector(), // internal_feature ids (1..n_features)
     std::string internal_feature_col = "internal_feature",       // column in dist_features_data
-    std::string block_name = "objective_max_representation",
+    double weight = 1.0,                                         // NEW: scaling for add()
+    std::string block_name = "objective_add_max_representation",
     std::string tag = ""
 )
 {
@@ -27,7 +28,11 @@ Rcpp::List rcpp_set_objective_max_representation(
 
   // must have z
   if (op->_n_z <= 0) {
-    Rcpp::stop("maximize_representation requires z variables. Build with add_z=TRUE and non-empty dist_features_data.");
+    Rcpp::stop("add_max_representation requires z variables. Build with add_z=TRUE and non-empty dist_features_data.");
+  }
+
+  if (!std::isfinite(weight)) {
+    Rcpp::stop("weight must be finite.");
   }
 
   // amount column
@@ -51,16 +56,13 @@ Rcpp::List rcpp_set_objective_max_representation(
     Rcpp::stop("z block out of bounds: check op->_z_offset/op->_n_z and that z variables exist.");
   }
 
-  // modelsense
-  op->_modelsense = "max";
-
-  // Reset all objective coefficients to 0
-  std::fill(op->_obj.begin(), op->_obj.end(), 0.0);
+  // IMPORTANT: do NOT change modelsense here (additive function)
+  // IMPORTANT: do NOT reset objective here (additive function)
 
   // read amount
   Rcpp::NumericVector amount = dist_features_data[amount_col.c_str()];
 
-  // ---- NEW: subset support
+  // subset support
   const bool use_subset = (features_to_use.size() > 0);
 
   std::unordered_set<int> keep;
@@ -71,7 +73,6 @@ Rcpp::List rcpp_set_objective_max_representation(
       Rcpp::stop("Column '" + internal_feature_col + "' not found in dist_features_data.");
     }
 
-    // Build keep-set
     keep.reserve((std::size_t)features_to_use.size());
     for (int i = 0; i < features_to_use.size(); ++i) {
       const int f = features_to_use[i];
@@ -81,12 +82,13 @@ Rcpp::List rcpp_set_objective_max_representation(
       keep.insert(f);
     }
 
-    // Read internal_feature vector from DF
     ifeat = dist_features_data[internal_feature_col.c_str()];
   }
 
-  double sum_added = 0.0;
-  int used = 0;
+  double sum_added = 0.0;     // sum of coefficients ADDED (after applying weight)
+  int used = 0;               // number of z entries touched (kept by subset)
+  int skipped = 0;            // subset skipped rows
+  double sum_amount_raw = 0.0; // raw sum of amounts used (before weight)
 
   for (int t = 0; t < op->_n_z; ++t) {
     const double a = (double)amount[t];
@@ -100,26 +102,32 @@ Rcpp::List rcpp_set_objective_max_representation(
         Rcpp::stop("Non-positive internal_feature at dist_features_data row " + std::to_string(t + 1) + ".");
       }
       if (keep.find(f) == keep.end()) {
-        op->_obj[z0 + t] = 0.0;
+        ++skipped;
         continue;
       }
     }
 
-    op->_obj[z0 + t] = a;
-    sum_added += a;
+    const double add = weight * a;
+    op->_obj[z0 + t] += add;
+
+    sum_amount_raw += a;
+    sum_added += add;
     ++used;
   }
 
-  // ---- registry: record objective touched z block
+  // registry: record objective touched z block
   std::string full_tag = tag;
   if (!full_tag.empty()) full_tag += ";";
   full_tag +=
-    "modelsense=max"
+    "modelsense=" + op->_modelsense +
     ";amount_col=" + amount_col +
-      ";n_z=" + std::to_string(op->_n_z) +
-      ";n_used=" + std::to_string(used) +
-      ";sum_added=" + std::to_string(sum_added) +
-      ";reset_objective=TRUE";
+    ";n_z=" + std::to_string(op->_n_z) +
+    ";n_used=" + std::to_string(used) +
+    ";n_skipped=" + std::to_string(skipped) +
+    ";sum_amount_raw=" + std::to_string(sum_amount_raw) +
+    ";sum_added=" + std::to_string(sum_added) +
+    ";weight=" + std::to_string(weight) +
+    ";reset_objective=FALSE";
 
   if (use_subset) {
     full_tag +=
@@ -142,7 +150,10 @@ Rcpp::List rcpp_set_objective_max_representation(
     Rcpp::Named("block_id") = (double)block_id,
     Rcpp::Named("z_range") = Rcpp::NumericVector::create((double)z0 + 1.0, (double)z1),
     Rcpp::Named("n_used") = used,
+    Rcpp::Named("n_skipped") = skipped,
+    Rcpp::Named("sum_amount_raw_used") = sum_amount_raw,
     Rcpp::Named("sum_added") = sum_added,
+    Rcpp::Named("weight_used") = weight,
     Rcpp::Named("amount_col_used") = amount_col,
     Rcpp::Named("subset_used") = use_subset,
     Rcpp::Named("subset_size") = (double)features_to_use.size()

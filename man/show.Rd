@@ -10,9 +10,7 @@
 \usage{
 \S4method{show}{Data}(x)
 
-\S4method{show}{OptimizationProblem}(x)
-
-\S4method{show}{Portfolio}(x)
+\S4method{show}{MOProblem}(x)
 }
 \arguments{
 \item{x}{Any object.}

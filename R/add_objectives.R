@@ -500,3 +500,109 @@ add_objective_min_intervention_fragmentation <- function(
 
   x
 }
+
+#' @title Add objective: maximize representation
+#'
+#' @description
+#' Specify an objective that maximizes total representation across features,
+#' using the z variables associated with (pu, feature) rows in `dist_features`.
+#'
+#' This is a data-only setter: it stores the objective specification inside the `Data`
+#' object so it can be materialized later when the optimization model is built.
+#'
+#' If `alias` is provided, the objective is also registered in `x$data$objectives`
+#' as an atomic objective for multi-objective workflows.
+#'
+#' @param x A `Data` object created with [inputData()] or [inputDataSpatial()].
+#' @param amount_col Character. Column name in `dist_features` containing non-negative amounts.
+#' @param features Optional subset of feature ids to include in the objective.
+#'   Can be:
+#'   - integer/numeric feature ids (matching `x$data$features$id`), or
+#'   - character feature ids (matching `x$data$features$id` if those are character), or
+#'   - internal feature indices (1..n_features) if `internal = TRUE`.
+#' @param internal Logical. If `TRUE`, interpret `features` as internal feature indices.
+#' @param alias Character scalar or `NULL`. Optional identifier to register this objective
+#'   as an atomic objective for multi-objective workflows.
+#'
+#' @return Updated `Data` object.
+#' @export
+add_objective_max_representation <- function(
+    x,
+    amount_col = "amount",
+    features = NULL,
+    internal = FALSE,
+    alias = NULL
+) {
+  stopifnot(inherits(x, "Data"))
+  if (is.null(x$data$model_args)) x$data$model_args <- list()
+
+  amount_col <- as.character(amount_col)[1]
+  if (is.na(amount_col) || !nzchar(amount_col)) {
+    stop("`amount_col` must be a non-empty string.", call. = FALSE)
+  }
+
+  # ---- normalize/validate feature subset
+  feat_ids <- NULL
+
+  if (!is.null(features)) {
+    if (!is.logical(internal) || length(internal) != 1L || is.na(internal)) {
+      stop("`internal` must be TRUE or FALSE.", call. = FALSE)
+    }
+    internal <- isTRUE(internal)
+
+    if (internal) {
+      idx <- as.integer(features)
+      if (anyNA(idx) || any(idx < 1L)) stop("`features` (internal=TRUE) must be valid indices >= 1.", call. = FALSE)
+
+      nF <- nrow(x$data$features %||% data.frame())
+      if (nF <= 0) stop("No features found in x$data$features.", call. = FALSE)
+      if (any(idx > nF)) stop("Some internal feature indices are out of range (1..n_features).", call. = FALSE)
+
+      feat_ids <- x$data$features$id[idx]
+    } else {
+      # treat as feature ids
+      feat_ids <- features
+    }
+
+    feat_ids <- unique(feat_ids)
+    if (length(feat_ids) == 0L) stop("`features` subset is empty after processing.", call. = FALSE)
+
+    # must exist in x$data$features$id
+    if (is.null(x$data$features) || !inherits(x$data$features, "data.frame") || nrow(x$data$features) == 0) {
+      stop("x$data$features is missing/empty; cannot validate `features` subset.", call. = FALSE)
+    }
+    ok <- feat_ids %in% x$data$features$id
+    if (any(!ok)) {
+      stop(
+        "Some feature ids in `features` were not found in x$data$features$id: ",
+        paste(feat_ids[!ok], collapse = ", "),
+        call. = FALSE
+      )
+    }
+  }
+
+  args <- list(
+    amount_col = amount_col,
+    features = feat_ids
+  )
+
+  # single-objective (legacy) behavior
+  x$data$model_args$model_type <- "maximizeRepresentation"
+  x$data$model_args$objective_id <- "max_representation"
+  x$data$model_args$objective_args <- args
+
+  # atomic registration (MO)
+  x <- .pa_register_objective(
+    x = x,
+    alias = alias,
+    objective_id = "max_representation",
+    model_type = "maximizeRepresentation",
+    objective_args = args,
+    sense = "max"
+  )
+
+  x
+}
+
+
+

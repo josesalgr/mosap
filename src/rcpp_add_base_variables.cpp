@@ -33,6 +33,20 @@ Rcpp::List rcpp_add_base_variables(SEXP x,
   op->_rhs.clear(); op->_sense.clear();
   op->_name.clear();
 
+  // ---- NEW: reset auxiliary blocks (VERY IMPORTANT)
+  op->_n_y_pu = 0;
+  op->_n_y_action = 0;
+  op->_n_y_intervention = 0;
+  op->_n_u_intervention = 0;
+
+  op->_y_pu_offset = -1;
+  op->_y_action_offset = -1;
+  op->_y_intervention_offset = -1;
+  op->_u_intervention_offset = -1;
+
+  op->_boundary_size = 0; // optional, if you use it as cache
+
+
   // IMPORTANT: en tu OptimizationProblem.h esto también limpia _active_blocks
   op->clear_registry();
 

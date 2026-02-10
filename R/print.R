@@ -23,10 +23,6 @@ NULL
 #' @export
 print.Data <- function(x, ...) x$print()
 
-#' @rdname print
-#' @method print OptimizationProblem
-#' @export
-print.OptimizationProblem <- function(x, ...) x$print()
 
 #' @rdname print
 #' @method print Solution
@@ -34,6 +30,6 @@ print.OptimizationProblem <- function(x, ...) x$print()
 print.Solution <- function(x, ...) x$print()
 
 #' @rdname print
-#' @method print Portfolio
+#' @method print MOProblem
 #' @export
-print.Portfolio <- function(x, ...) x$print()
+print.MOProblem <- function(x, ...) x$print()

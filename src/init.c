@@ -32,7 +32,7 @@ extern SEXP _mosap_rcpp_set_objective_max_benefit(SEXP, SEXP, SEXP, SEXP, SEXP, 
 extern SEXP _mosap_rcpp_set_objective_min_loss(SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_set_objective_max_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_set_objective_max_net_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _mosap_rcpp_set_objective_max_representation(SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _mosap_rcpp_set_objective_max_representation(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_add_linear_constraint(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_add_target_mixed_total_power(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_add_target_recovery_power(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -48,9 +48,12 @@ extern SEXP _mosap_rcpp_add_action_max_per_pu(SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_add_to_objective_scalar(SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_prepare_fragmentation_pu(SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_add_objective_min_fragmentation(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-
-
-
+extern SEXP _mosap_rcpp_add_objective_max_benefit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _mosap_rcpp_prepare_objective_max_benefit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _mosap_rcpp_add_objective_min_fragmentation_actions_by_action(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _mosap_rcpp_prepare_fragmentation_actions_by_action(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _mosap_rcpp_prepare_objective_max_profit(SEXP, SEXP, SEXP, SEXP);
+extern SEXP _mosap_rcpp_add_objective_max_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
   {"_mosap_rcpp_new_optimization_problem", (DL_FUNC) &_mosap_rcpp_new_optimization_problem, 3},
@@ -75,7 +78,7 @@ static const R_CallMethodDef CallEntries[] = {
   {"_mosap_rcpp_set_objective_min_loss", (DL_FUNC) &_mosap_rcpp_set_objective_min_loss, 4},
   {"_mosap_rcpp_set_objective_max_profit", (DL_FUNC) &_mosap_rcpp_set_objective_max_profit, 6},
   {"_mosap_rcpp_set_objective_max_net_profit", (DL_FUNC) &_mosap_rcpp_set_objective_max_net_profit, 9},
-  {"_mosap_rcpp_set_objective_max_representation", (DL_FUNC) &_mosap_rcpp_set_objective_max_representation, 5},
+  {"_mosap_rcpp_set_objective_max_representation", (DL_FUNC) &_mosap_rcpp_set_objective_max_representation, 7},
   {"_mosap_rcpp_add_linear_constraint", (DL_FUNC) &_mosap_rcpp_add_linear_constraint, 8},
   {"_mosap_rcpp_add_target_mixed_total_power", (DL_FUNC) &_mosap_rcpp_add_target_mixed_total_power, 9},
   {"_mosap_rcpp_add_target_recovery_power", (DL_FUNC) &_mosap_rcpp_add_target_recovery_power, 8},
@@ -90,6 +93,12 @@ static const R_CallMethodDef CallEntries[] = {
   {"_mosap_rcpp_add_to_objective_scalar", (DL_FUNC) &_mosap_rcpp_add_to_objective_scalar, 3},
   {"_mosap_rcpp_prepare_fragmentation_pu", (DL_FUNC) &_mosap_rcpp_prepare_fragmentation_pu, 4},
   {"_mosap_rcpp_add_objective_min_fragmentation", (DL_FUNC) &_mosap_rcpp_add_objective_min_fragmentation, 6},
+  {"_mosap_rcpp_add_objective_max_benefit", (DL_FUNC) &_mosap_rcpp_add_objective_max_benefit, 6},
+  {"_mosap_rcpp_prepare_objective_max_benefit", (DL_FUNC) &_mosap_rcpp_prepare_objective_max_benefit, 6},
+  {"_mosap_rcpp_add_objective_min_fragmentation_actions_by_action", (DL_FUNC) &_mosap_rcpp_add_objective_min_fragmentation_actions_by_action, 9},
+  {"_mosap_rcpp_prepare_fragmentation_actions_by_action", (DL_FUNC) &_mosap_rcpp_prepare_fragmentation_actions_by_action, 6},
+  {"_mosap_rcpp_prepare_objective_max_profit", (DL_FUNC) &_mosap_rcpp_prepare_objective_max_profit, 4},
+  {"_mosap_rcpp_add_objective_max_profit", (DL_FUNC) &_mosap_rcpp_add_objective_max_profit, 7},
   {NULL, NULL, 0}
 
 };

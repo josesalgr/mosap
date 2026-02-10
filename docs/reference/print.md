@@ -8,13 +8,10 @@ Displays information about an object.
 # S3 method for class 'Data'
 print(x, ...)
 
-# S3 method for class 'OptimizationProblem'
-print(x, ...)
-
 # S3 method for class 'Solution'
 print(x, ...)
 
-# S3 method for class 'Portfolio'
+# S3 method for class 'MOProblem'
 print(x, ...)
 ```
 

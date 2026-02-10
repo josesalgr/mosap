@@ -116,6 +116,9 @@
   if (is.null(x$data$model_args$curve))    x$data$model_args$curve    <- 1L
   if (is.null(x$data$model_args$segments)) x$data$model_args$segments <- 3L
 
+  # ---- NEW: initialize + set needs flags (single-objective safe, MO-safe)
+  x <- .pa_build_model_set_needs_from_objective(x)
+
   # ------------------------------------------------------------
   # legacy adapters
   # ------------------------------------------------------------
@@ -147,6 +150,11 @@
   # build C++ model pointer + base vars + minimal constraints
   # ------------------------------------------------------------
   x <- .pa_build_model_build_cpp_core(x)
+
+  # ------------------------------------------------------------
+  # prepare auxiliary variables/constraints required by needs
+  # ------------------------------------------------------------
+  x <- .pa_build_model_prepare_needs_cpp(x)
 
   # ------------------------------------------------------------
   # objective (C++ side)
@@ -636,6 +644,11 @@
     .pa_abort("Missing rcpp_add_base_variables() in the package.")
   }
 
+  # ---- NEW: read needs flags (default-safe)
+  args  <- x$data$model_args %||% list()
+  needs <- args$needs %||% list()
+  need_z <- isTRUE(needs$z)
+
   op <- rcpp_new_optimization_problem()
 
   # registry placeholder for future MO updates (constraint/objective IDs)
@@ -650,7 +663,8 @@
     op,
     pu_data            = x$data$pu,
     dist_actions_data  = x$data$dist_actions_model,
-    dist_features_data = x$data$dist_features
+    dist_features_data = x$data$dist_features,
+    add_z              = need_z            # <- NEW
   )
 
   # structural constraints
@@ -658,14 +672,18 @@
     res_locks <- rcpp_add_linking_x_le_w(op, x$data$dist_actions_model)
     x$data$model_registry$cons$x_le_w <- res_locks
   }
-  if (exists("rcpp_add_linking_z_le_w", mode = "function")) {
+
+  # ---- NEW: only add z <= w if z exists
+  if (isTRUE(need_z) && exists("rcpp_add_linking_z_le_w", mode = "function")) {
     res_locks <- rcpp_add_linking_z_le_w(op, x$data$dist_features)
     x$data$model_registry$cons$z_le_w <- res_locks
   }
+
   if (exists("rcpp_add_pu_locks", mode = "function")) {
     res_locks <- rcpp_add_pu_locks(op, x$data$pu)
     x$data$model_registry$cons$pu_locks <- res_locks
   }
+
   if (!is.null(x$data$dist_actions_model) && nrow(x$data$dist_actions_model) > 0 &&
       exists("rcpp_add_action_locks", mode = "function")) {
 
@@ -673,12 +691,12 @@
     x$data$model_registry$cons$action_locks <- res_locks
   }
 
-
   x$data$model_ptr   <- op
   x$data$model_index <- idx
 
   x
 }
+
 
 .pa_build_model_set_objective_cpp <- function(x) {
 
@@ -800,15 +818,38 @@
     }
 
     acol <- as.character(oargs$amount_col %||% "amount")[1]
+
+    # ---- NEW: subset features (ids -> internal_feature)
+    feats <- oargs$features %||% NULL
+    feats_internal <- integer(0)
+
+    if (!is.null(feats)) {
+      if (is.null(x$data$features) || !inherits(x$data$features, "data.frame") || nrow(x$data$features) == 0) {
+        .pa_abort("maximizeRepresentation: x$data$features is missing/empty; cannot map `features` subset.")
+      }
+      # map feature ids to internal_id (robusto a id numeric/char)
+      m <- match(feats, x$data$features$id)
+      if (anyNA(m)) {
+        .pa_abort(
+          "maximizeRepresentation: some `features` were not found in x$data$features$id: ",
+          paste(feats[is.na(m)], collapse = ", ")
+        )
+      }
+      feats_internal <- as.integer(x$data$features$internal_id[m])
+    }
+
     res <- rcpp_set_objective_max_representation(
       op,
       dist_features_data = x$data$dist_features,
-      amount_col = acol
+      amount_col = acol,
+      features_to_use = feats_internal,           # NEW
+      internal_feature_col = "internal_feature"   # NEW (si quieres hardcodear, puedes omitirlo)
     )
 
     x$data$model_registry$objective$cpp <- res
     objective_id <- "max_representation"
     modelsense   <- "max"
+
 
   } else if (identical(mtype, "minimizeFragmentation")) {
 
@@ -818,10 +859,9 @@
 
     rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
     rel <- x$data$spatial_relations[[rel_name]]
-    rel_model <- .pa_prepare_relation_model(rel)
-
-    x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
+    rel_model <- x$data$spatial_relations_model[[rel_name]] %||% .pa_prepare_relation_model(x$data$spatial_relations[[rel_name]])
     x$data$spatial_relations_model[[rel_name]] <- rel_model
+
 
     res <- rcpp_set_objective_min_fragmentation(
       op,
