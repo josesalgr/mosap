@@ -3446,37 +3446,39 @@ available_to_solve <- function(package = ""){
 
   needs <- args$needs %||% list()
 
-  # ---- defaults (always explicit booleans)
-  needs$z             <- isTRUE(needs$z)             # allow user/MO to force
-  needs$y_pu          <- isTRUE(needs$y_pu)
-  needs$y_action      <- isTRUE(needs$y_action)
-  needs$y_intervention<- isTRUE(needs$y_intervention)
-  needs$u_intervention<- isTRUE(needs$u_intervention)
+  # defaults: asegura booleanos
+  needs$z              <- isTRUE(needs$z)
+  needs$y_pu           <- isTRUE(needs$y_pu)
+  needs$y_action       <- isTRUE(needs$y_action)
+  needs$y_intervention <- isTRUE(needs$y_intervention)
+  needs$u_intervention <- isTRUE(needs$u_intervention)
 
-  # ---- infer from single objective unless already set (MO can pre-set)
-  # z: only required for representation objective (because z <= w and z vars)
-  if (is.null(args$needs$z)) {
+  # infer only if not explicitly specified (NULL in model_args)
+  raw_needs <- args$needs %||% list()
+
+  if (is.null(raw_needs$z)) {
     needs$z <- identical(mtype, "maximizeRepresentation")
   }
-
-  # PU fragmentation auxiliaries
-  if (is.null(args$needs$y_pu)) {
+  if (is.null(raw_needs$y_pu)) {
     needs$y_pu <- identical(mtype, "minimizeFragmentation")
   }
-
-  # action fragmentation auxiliaries (future)
-  if (is.null(args$needs$y_action)) {
+  if (is.null(raw_needs$y_action)) {
     needs$y_action <- identical(mtype, "minimizeActionFragmentation")
   }
-
-  # intervention fragmentation auxiliaries (future)
-  if (is.null(args$needs$y_intervention)) {
+  if (is.null(raw_needs$y_intervention)) {
     needs$y_intervention <- identical(mtype, "minimizeInterventionFragmentation")
   }
-
-  # u_intervention (future, if you add a different auxiliary set)
-  if (is.null(args$needs$u_intervention)) {
+  if (is.null(raw_needs$u_intervention)) {
     needs$u_intervention <- FALSE
+  }
+
+
+  t <- x$data$targets
+  if (is.data.frame(t) && nrow(t) && "type" %in% names(t)) {
+    tt <- unique(as.character(t$type))
+    if (any(tt %in% c("conservation", "mixed_total"))) {
+      x$data$model_args$needs$z <- TRUE
+    }
   }
 
   x$data$model_args$needs <- needs

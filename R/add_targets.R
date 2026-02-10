@@ -91,6 +91,8 @@ add_conservation_targets_absolute <- function(x, targets, overwrite = FALSE, lab
     stringsAsFactors = FALSE
   )
 
+  x$data$model_args$needs$z <- TRUE
+  x$data$meta$model_dirty <- TRUE
   .pa_store_targets(x, out, overwrite = overwrite)
 }
 
@@ -137,6 +139,8 @@ add_conservation_targets_relative <- function(x, targets, overwrite = FALSE, lab
     stringsAsFactors = FALSE
   )
 
+  x$data$model_args$needs$z <- TRUE
+  x$data$meta$model_dirty <- TRUE
   .pa_store_targets(x, out, overwrite = overwrite)
 }
 
@@ -173,6 +177,8 @@ add_recovery_targets_absolute <- function(x, targets, overwrite = FALSE, label =
     stringsAsFactors = FALSE
   )
 
+  x$data$model_args$needs$z <- TRUE
+  x$data$meta$model_dirty <- TRUE
   .pa_store_targets(x, out, overwrite = overwrite)
 }
 
@@ -232,6 +238,8 @@ add_recovery_targets_relative <- function(x,
     stringsAsFactors = FALSE
   )
 
+  x$data$model_args$needs$z <- TRUE
+  x$data$meta$model_dirty <- TRUE
   .pa_store_targets(x, out, overwrite = overwrite)
 }
 
@@ -273,6 +281,10 @@ add_mixed_targets_total_absolute <- function(x, targets, overwrite = FALSE, labe
     created_at   = as.character(Sys.time()),
     stringsAsFactors = FALSE
   )
+
+  # Mixed-total constraints require baseline variables (z)
+  x$data$model_args$needs$z <- TRUE
+  x$data$meta$model_dirty <- TRUE
 
   .pa_store_targets(x, out, overwrite = overwrite)
 }
@@ -320,6 +332,11 @@ add_mixed_targets_total_relative <- function(x, targets, overwrite = FALSE, labe
     created_at   = as.character(Sys.time()),
     stringsAsFactors = FALSE
   )
+
+  # Mixed-total constraints require baseline variables (z)
+  x$data$model_args$needs$z <- TRUE
+  x$data$meta$model_dirty <- TRUE
+
 
   .pa_store_targets(x, out, overwrite = overwrite)
 }
