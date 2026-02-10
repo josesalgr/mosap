@@ -635,6 +635,9 @@
 
 .pa_build_model_build_cpp_core <- function(x) {
 
+  message("BUILD_CPP_CORE: rebuilding model_ptr (new op)")
+
+
   .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
 
   if (!exists("rcpp_new_optimization_problem", mode = "function")) {
@@ -716,245 +719,300 @@
   }
 
   op <- x$data$model_ptr
+  if (is.null(op)) .pa_abort("model_ptr is NULL. Build core model first.")
+
   args  <- x$data$model_args %||% list()
   mtype <- args$model_type %||% "minimizeCosts"
   oargs <- args$objective_args %||% list()
 
+  # ------------------------------------------------------------
+  # Decide modelsense for the atomic objective we are activating
+  # ------------------------------------------------------------
+  modelsense <- if (mtype %in% c("minimizeCosts","minimizeLosses",
+                                 "minimizeFragmentation",
+                                 "minimizeActionFragmentation",
+                                 "minimizeInterventionFragmentation")) "min" else "max"
+
+  if (!exists("rcpp_reset_objective", mode = "function")) {
+    .pa_abort("Missing rcpp_reset_objective() in the package.")
+  }
+  rcpp_reset_objective(op, modelsense)
+
+  if (exists("rcpp_reset_objective_blocks", mode = "function")) {
+    rcpp_reset_objective_blocks(op)
+  }
+
+  # ------------------------------------------------------------
+  # ONE atomic objective (prepare + add)
+  # ------------------------------------------------------------
   if (identical(mtype, "minimizeCosts")) {
 
-    if (!exists("rcpp_set_objective_min_cost", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_min_cost() in the package.")
-    }
+    if (!exists("rcpp_prepare_objective_min_cost", mode = "function")) .pa_abort("Missing rcpp_prepare_objective_min_cost().")
+    if (!exists("rcpp_add_objective_min_cost",     mode = "function")) .pa_abort("Missing rcpp_add_objective_min_cost().")
 
-    res <- rcpp_set_objective_min_cost(
+    rcpp_prepare_objective_min_cost(
       op,
       pu_data = x$data$pu,
       dist_actions_data = x$data$dist_actions_model,
       include_pu_cost = isTRUE(oargs$include_pu_cost %||% TRUE),
-      include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE)
+      include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE),
+      block_name = "objective_min_cost",
+      tag = as.character(oargs$tag %||% "")[1]
     )
 
-    x$data$model_registry$objective$cpp <- res
+    res <- rcpp_add_objective_min_cost(
+      op,
+      pu_data = x$data$pu,
+      dist_actions_data = x$data$dist_actions_model,
+      include_pu_cost = isTRUE(oargs$include_pu_cost %||% TRUE),
+      include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE),
+      weight = 1.0
+    )
+
     objective_id <- "min_cost"
-    modelsense   <- "min"
 
   } else if (identical(mtype, "maximizeBenefits")) {
 
-    if (!exists("rcpp_set_objective_max_benefit", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_max_benefit() in the package.")
-    }
+    if (!exists("rcpp_prepare_objective_max_benefit", mode = "function")) .pa_abort("Missing rcpp_prepare_objective_max_benefit().")
+    if (!exists("rcpp_add_objective_max_benefit",     mode = "function")) .pa_abort("Missing rcpp_add_objective_max_benefit().")
 
     bcol <- as.character(oargs$benefit_col %||% "benefit")[1]
-    res <- rcpp_set_objective_max_benefit(
+
+    rcpp_prepare_objective_max_benefit(
       op,
       dist_actions_data = x$data$dist_actions_model,
       dist_benefit_data = x$data$dist_benefit_model,
-      benefit_col = bcol
+      benefit_col = bcol,
+      block_name = "objective_max_benefit",
+      tag = as.character(oargs$tag %||% "")[1]
     )
 
-    x$data$model_registry$objective$cpp <- res
+    res <- rcpp_add_objective_max_benefit(
+      op,
+      dist_actions_data = x$data$dist_actions_model,
+      dist_benefit_data = x$data$dist_benefit_model,
+      benefit_col = bcol,
+      weight = 1.0
+    )
+
     objective_id <- "max_benefit"
-    modelsense   <- "max"
 
   } else if (identical(mtype, "minimizeLosses")) {
 
-    if (!exists("rcpp_set_objective_min_loss", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_min_loss() in the package.")
-    }
+    if (!exists("rcpp_prepare_objective_min_loss", mode = "function")) .pa_abort("Missing rcpp_prepare_objective_min_loss().")
+    if (!exists("rcpp_add_objective_min_loss",     mode = "function")) .pa_abort("Missing rcpp_add_objective_min_loss().")
 
     lcol <- as.character(oargs$loss_col %||% "loss")[1]
-    res <- rcpp_set_objective_min_loss(
+
+    rcpp_prepare_objective_min_loss(
       op,
       dist_actions_data = x$data$dist_actions_model,
       dist_effects_data = x$data$dist_effects_model,
-      loss_col = lcol
+      loss_col = lcol,
+      block_name = "objective_min_loss",
+      tag = as.character(oargs$tag %||% "")[1]
     )
 
-    x$data$model_registry$objective$cpp <- res
+    res <- rcpp_add_objective_min_loss(
+      op,
+      dist_actions_data = x$data$dist_actions_model,
+      dist_effects_data = x$data$dist_effects_model,
+      loss_col = lcol,
+      weight = 1.0
+    )
+
     objective_id <- "min_loss"
-    modelsense   <- "min"
 
   } else if (identical(mtype, "maximizeProfit")) {
 
-    if (!exists("rcpp_set_objective_max_profit", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_max_profit() in the package.")
-    }
+    if (!exists("rcpp_prepare_objective_max_profit", mode = "function")) .pa_abort("Missing rcpp_prepare_objective_max_profit().")
+    if (!exists("rcpp_add_objective_max_profit",     mode = "function")) .pa_abort("Missing rcpp_add_objective_max_profit().")
 
-    res <- rcpp_set_objective_max_profit(
+    pcol <- as.character(oargs$profit_col %||% "profit")[1]
+
+    rcpp_prepare_objective_max_profit(
       op,
       dist_actions_data = x$data$dist_actions_model,
-      dist_profit_data  = x$data$dist_profit_model,
-      profit_col = as.character(oargs$profit_col %||% "profit")[1]
+      dist_profit_data = x$data$dist_profit_model,
+      profit_col = pcol,
+      block_name = "objective_max_profit",
+      tag = as.character(oargs$tag %||% "")[1]
     )
 
-    x$data$model_registry$objective$cpp <- res
+    res <- rcpp_add_objective_max_profit(
+      op,
+      dist_actions_data = x$data$dist_actions_model,
+      dist_profit_data = x$data$dist_profit_model,
+      profit_col = pcol,
+      weight = 1.0
+    )
+
     objective_id <- "max_profit"
-    modelsense   <- "max"
 
   } else if (identical(mtype, "maximizeNetProfit")) {
 
-    if (!exists("rcpp_set_objective_max_net_profit", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_max_net_profit() in the package.")
-    }
+    if (!exists("rcpp_prepare_objective_max_net_profit", mode = "function")) .pa_abort("Missing rcpp_prepare_objective_max_net_profit().")
+    if (!exists("rcpp_add_objective_max_net_profit",     mode = "function")) .pa_abort("Missing rcpp_add_objective_max_net_profit().")
 
-    res <- rcpp_set_objective_max_net_profit(
+    pcol <- as.character(oargs$profit_col %||% "profit")[1]
+
+    rcpp_prepare_objective_max_net_profit(
       op,
       pu_data = x$data$pu,
       dist_actions_data = x$data$dist_actions_model,
-      dist_profit_data  = x$data$dist_profit_model,
-      profit_col = as.character(oargs$profit_col %||% "profit")[1],
+      dist_profit_data = x$data$dist_profit_model,
+      profit_col = pcol,
       include_pu_cost = isTRUE(oargs$include_pu_cost %||% TRUE),
-      include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE)
+      include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE),
+      block_name = "objective_max_net_profit",
+      tag = as.character(oargs$tag %||% "")[1]
     )
 
-    x$data$model_registry$objective$cpp <- res
+    res <- rcpp_add_objective_max_net_profit(
+      op,
+      pu_data = x$data$pu,
+      dist_actions_data = x$data$dist_actions_model,
+      dist_profit_data = x$data$dist_profit_model,
+      profit_col = pcol,
+      include_pu_cost = isTRUE(oargs$include_pu_cost %||% TRUE),
+      include_action_cost = isTRUE(oargs$include_action_cost %||% TRUE),
+      weight = 1.0
+    )
+
     objective_id <- "max_net_profit"
-    modelsense   <- "max"
 
   } else if (identical(mtype, "maximizeRepresentation")) {
 
-    if (!exists("rcpp_set_objective_max_representation", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_max_representation() in the package.")
-    }
+    if (!exists("rcpp_prepare_objective_max_representation", mode = "function")) .pa_abort("Missing rcpp_prepare_objective_max_representation().")
+    if (!exists("rcpp_add_objective_max_representation",     mode = "function")) .pa_abort("Missing rcpp_add_objective_max_representation().")
 
     acol <- as.character(oargs$amount_col %||% "amount")[1]
 
-    # ---- NEW: subset features (ids -> internal_feature)
     feats <- oargs$features %||% NULL
     feats_internal <- integer(0)
-
     if (!is.null(feats)) {
-      if (is.null(x$data$features) || !inherits(x$data$features, "data.frame") || nrow(x$data$features) == 0) {
-        .pa_abort("maximizeRepresentation: x$data$features is missing/empty; cannot map `features` subset.")
-      }
-      # map feature ids to internal_id (robusto a id numeric/char)
       m <- match(feats, x$data$features$id)
-      if (anyNA(m)) {
-        .pa_abort(
-          "maximizeRepresentation: some `features` were not found in x$data$features$id: ",
-          paste(feats[is.na(m)], collapse = ", ")
-        )
-      }
+      if (anyNA(m)) .pa_abort("maximizeRepresentation: some features not in x$data$features$id: ", paste(feats[is.na(m)], collapse=", "))
       feats_internal <- as.integer(x$data$features$internal_id[m])
     }
 
-    res <- rcpp_set_objective_max_representation(
+    rcpp_prepare_objective_max_representation(
       op,
       dist_features_data = x$data$dist_features,
       amount_col = acol,
-      features_to_use = feats_internal,           # NEW
-      internal_feature_col = "internal_feature"   # NEW (si quieres hardcodear, puedes omitirlo)
+      features_to_use = feats_internal,
+      internal_feature_col = "internal_feature",
+      block_name = "objective_max_representation",
+      tag = as.character(oargs$tag %||% "")[1]
     )
 
-    x$data$model_registry$objective$cpp <- res
-    objective_id <- "max_representation"
-    modelsense   <- "max"
+    res <- rcpp_add_objective_max_representation(
+      op,
+      dist_features_data = x$data$dist_features,
+      amount_col = acol,
+      features_to_use = feats_internal,
+      internal_feature_col = "internal_feature",
+      weight = 1.0
+    )
 
+    objective_id <- "max_representation"
 
   } else if (identical(mtype, "minimizeFragmentation")) {
 
-    if (!exists("rcpp_set_objective_min_fragmentation", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_min_fragmentation() in the package.")
-    }
+    if (!exists("rcpp_add_objective_min_fragmentation", mode = "function")) .pa_abort("Missing rcpp_add_objective_min_fragmentation().")
 
-    rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
-    rel <- x$data$spatial_relations[[rel_name]]
-    rel_model <- x$data$spatial_relations_model[[rel_name]] %||% .pa_prepare_relation_model(x$data$spatial_relations[[rel_name]])
-    x$data$spatial_relations_model[[rel_name]] <- rel_model
+    rel_name  <- as.character(oargs$relation_name %||% "boundary")[1]
+    rel       <- x$data$spatial_relations[[rel_name]]
+    if (is.null(rel)) .pa_abort("Missing spatial relation: ", rel_name)
 
-
-    res <- rcpp_set_objective_min_fragmentation(
-      op,
-      pu_data = x$data$pu,
-      relation_data = rel_model,
-      weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
-    )
-
-    x$data$model_registry$objective$cpp <- res
-    objective_id <- "min_fragmentation"
-    modelsense   <- "min"
-
-  } else if (identical(mtype, "minimizeActionFragmentation")) {
-
-    if (!exists("rcpp_set_objective_min_fragmentation_actions_by_action", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_min_fragmentation_actions_by_action() in the package.")
-    }
-
-    rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
-    rel <- x$data$spatial_relations[[rel_name]]
-    rel_model <- .pa_prepare_relation_model(rel)
-
+    rel_model <- x$data$spatial_relations_model[[rel_name]] %||% .pa_prepare_relation_model(rel)
     x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
     x$data$spatial_relations_model[[rel_name]] <- rel_model
 
-    aw_vec <- .pa_action_weights_vector(
-      actions_df = x$data$actions,
-      action_weights = oargs$action_weights %||% NULL,
-      subset_actions = oargs$actions_to_use %||% oargs$actions %||% NULL
+    # IMPORTANT: prepare of aux vars (idempotent)
+    if (exists("rcpp_prepare_fragmentation_pu", mode = "function")) {
+      rcpp_prepare_fragmentation_pu(op, rel_model)
+    }
+
+    res <- rcpp_add_objective_min_fragmentation(
+      op,
+      relation_data = rel_model,
+      weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
+      # weight = 1.0   # si tu firma la tiene, añádelo
     )
 
-    subset_actions <- oargs$actions_to_use %||% oargs$actions %||% NULL
+    objective_id <- "min_fragmentation"
 
+  } else if (identical(mtype, "minimizeActionFragmentation")) {
+
+    if (!exists("rcpp_add_objective_min_fragmentation_actions_by_action", mode = "function")) {
+      .pa_abort("Missing rcpp_add_objective_min_fragmentation_actions_by_action().")
+    }
+
+    rel_name  <- as.character(oargs$relation_name %||% "boundary")[1]
+    rel       <- x$data$spatial_relations[[rel_name]]
+    if (is.null(rel)) .pa_abort("Missing spatial relation: ", rel_name)
+
+    rel_model <- .pa_prepare_relation_model(rel)
+    x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
+    x$data$spatial_relations_model[[rel_name]] <- rel_model
+
+    subset_actions <- oargs$actions_to_use %||% oargs$actions %||% NULL
     aw_vec <- .pa_action_weights_vector(
       actions_df = x$data$actions,
       action_weights = oargs$action_weights %||% NULL,
       subset_actions = subset_actions
     )
 
-    res <- rcpp_set_objective_min_fragmentation_actions_by_action(
+    res <- rcpp_add_objective_min_fragmentation_actions_by_action(
       op,
       dist_actions_data = x$data$dist_actions_model,
       relation_data = rel_model,
-      actions_to_use = NULL,          # <- clave: evitar mismatch
-      action_weights = aw_vec,        # <- largo n_actions, ya incluye ceros fuera del subset
+      actions_to_use = NULL,
+      action_weights = aw_vec,
       weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
+      # weight = 1.0   # si existe
     )
 
     objective_id <- "min_action_fragmentation"
-    modelsense   <- "min"
-    x$data$model_registry$objective$cpp <- res
-
 
   } else if (identical(mtype, "minimizeInterventionFragmentation")) {
 
-    if (!exists("rcpp_set_objective_min_fragmentation_interventions", mode = "function")) {
-      .pa_abort("Missing rcpp_set_objective_min_fragmentation_interventions() in the package.")
+    if (!exists("rcpp_add_objective_min_fragmentation_interventions", mode = "function")) {
+      .pa_abort("Missing rcpp_add_objective_min_fragmentation_interventions().")
     }
 
-    rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
-    rel <- x$data$spatial_relations[[rel_name]]
-    rel_model <- .pa_prepare_relation_model(rel)
+    rel_name  <- as.character(oargs$relation_name %||% "boundary")[1]
+    rel       <- x$data$spatial_relations[[rel_name]]
+    if (is.null(rel)) .pa_abort("Missing spatial relation: ", rel_name)
 
+    rel_model <- .pa_prepare_relation_model(rel)
     x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
     x$data$spatial_relations_model[[rel_name]] <- rel_model
 
-    res <- rcpp_set_objective_min_fragmentation_interventions(
+    res <- rcpp_add_objective_min_fragmentation_interventions(
       op,
       dist_actions_data = x$data$dist_actions_model,
       relation_data = rel_model,
       weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
+      # weight = 1.0   # si existe
     )
 
     objective_id <- "min_intervention_fragmentation"
-    modelsense   <- "min"
-    x$data$model_registry$objective$cpp <- res
-
 
   } else {
-    .pa_abort("Unknown model_type in x$data$model_args$model_type: ", mtype)
+    .pa_abort("Unknown model_type: ", mtype)
   }
 
   x$data$model_args$modelsense   <- modelsense
   x$data$model_args$objective_id <- objective_id
 
-  # future: store objective handle/id returned by C++ if you implement it
-  x$data$model_registry$objective <- list(
-    type = mtype,
-    id = objective_id
-  )
+  x$data$model_registry$objective <- list(type = mtype, id = objective_id)
+  x$data$model_registry$objective$cpp <- res
 
   x
 }
+
 
 .pa_build_model_apply_constraints <- function(x) {
 

@@ -9,16 +9,15 @@ bool rcpp_prepare_objective_max_profit(
     SEXP x,
     Rcpp::DataFrame dist_actions_data,
     Rcpp::DataFrame dist_profit_data,
-    std::string profit_col = "profit"
+    std::string profit_col = "profit",
+    std::string block_name = "objective_max_profit",
+    std::string tag = ""
 ) {
   Rcpp::XPtr<OptimizationProblem> op = Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
 
-  // must have variables
   if (op->_obj.empty()) {
     Rcpp::stop("Model has zero variables. Call rcpp_add_base_variables() first.");
   }
-
-  // must have x vars
   if (op->_n_x <= 0) {
     Rcpp::stop("Prepare max_profit: op->_n_x <= 0 (no action variables).");
   }
@@ -26,7 +25,6 @@ bool rcpp_prepare_objective_max_profit(
     Rcpp::stop("Prepare max_profit: op->_x_offset not initialized.");
   }
 
-  // minimal checks (same as add/set)
   for (auto nm : {"internal_pu", "internal_action", "internal_row"}) {
     if (!dist_actions_data.containsElementNamed(nm)) {
       Rcpp::stop(std::string("dist_actions_data must contain column '") + nm + "'.");
@@ -41,6 +39,9 @@ bool rcpp_prepare_objective_max_profit(
     Rcpp::stop("dist_profit_data must contain profit column '" + profit_col + "'.");
   }
 
-  // Nothing to prepare structurally (no aux vars, no constraints).
+  // no-op
+  (void)block_name;
+  (void)tag;
+
   return true;
 }

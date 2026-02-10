@@ -2345,14 +2345,17 @@ available_to_solve <- function(package = ""){
 # helper: ensure model built and model_list snapshot available
 .pa_ensure_model_snapshot <- function(x) {
   stopifnot(inherits(x, "Data"))
-  if (is.null(x$data$model_ptr) || !isTRUE(x$data$has_model)) {
+
+  if (is.null(x$data$model_ptr)) {
     x <- .pa_build_model(x)
   }
-  if (is.null(x$data$model_list)) {
+  if (is.null(x$data$model_list) || isTRUE(x$data$meta$model_dirty)) {
     x <- .pa_refresh_model_snapshot(x)
+    x$data$meta$model_dirty <- FALSE
   }
   x
 }
+
 
 # helper: add 1 linear constraint sum(coeff_j * x_j) (sense) rhs
 # NOTE: replace this with YOUR real C++ bridge that appends rows/triplets/rhs/sense.
@@ -2828,7 +2831,7 @@ available_to_solve <- function(package = ""){
   # =========================
   # BOUNDARY: validate + normalize
   # =========================
-  assertthat::assert_that(inherits(boundary, c("NULL", "data.frame")))
+  assertthat::assert_that(is.null(boundary) || inherits(boundary, "data.frame"))
   if (inherits(boundary, "data.frame")) {
     assertthat::assert_that(
       assertthat::has_name(boundary, "id1"),

@@ -5,25 +5,24 @@
 #include <cmath>     // std::isfinite
 
 // [[Rcpp::export]]
-void rcpp_reset_objective(SEXP x, std::string modelsense = "min") {
+Rcpp::List rcpp_reset_objective(SEXP x, std::string modelsense = "", bool clear_blocks = true) {
   Rcpp::XPtr<OptimizationProblem> op = Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
 
-  if (modelsense != "min" && modelsense != "max") {
-    Rcpp::stop("modelsense must be 'min' or 'max'.");
+  if (!modelsense.empty()) {
+    if (modelsense != "min" && modelsense != "max") Rcpp::stop("modelsense must be 'min' or 'max'.");
+    op->_modelsense = modelsense;
   }
 
-  if (op->ncol_used() == 0) {
-    Rcpp::stop("Model has zero variables. Build base variables first.");
-  }
-
-  op->_modelsense = modelsense;
-
-  // Opción A (simple): resetea todo el vector
   std::fill(op->_obj.begin(), op->_obj.end(), 0.0);
 
-  // Opción B (más eficiente si _obj es enorme):
-  // std::fill(op->_obj.begin(), op->_obj.begin() + op->ncol_used(), 0.0);
+  if (clear_blocks) {
+    // si tienes algo tipo op->clear_objective_blocks();
+    // o deja esto en no-op si aún no lo implementas.
+  }
+
+  return Rcpp::List::create(Rcpp::Named("ok") = true);
 }
+
 
 // [[Rcpp::export]]
 void rcpp_add_to_objective(SEXP x,

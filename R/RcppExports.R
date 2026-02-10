@@ -113,8 +113,8 @@ rcpp_objective_min_set <- function(x, pu_data, threats_data, dist_threats_data, 
     .Call(`_mosap_rcpp_objective_min_set`, x, pu_data, threats_data, dist_threats_data, boundary_data, blm, curve, block_name, tag)
 }
 
-rcpp_reset_objective <- function(x, modelsense = "min") {
-    invisible(.Call(`_mosap_rcpp_reset_objective`, x, modelsense))
+rcpp_reset_objective <- function(x, modelsense = "", clear_blocks = TRUE) {
+    .Call(`_mosap_rcpp_reset_objective`, x, modelsense, clear_blocks)
 }
 
 rcpp_add_to_objective <- function(x, ind, val) {
@@ -137,8 +137,12 @@ rcpp_prepare_objective_max_benefit <- function(x, dist_actions_data, dist_benefi
     .Call(`_mosap_rcpp_prepare_objective_max_benefit`, x, dist_actions_data, dist_benefit_data, benefit_col, block_name, tag)
 }
 
-rcpp_prepare_objective_max_profit <- function(x, dist_actions_data, dist_profit_data, profit_col = "profit") {
-    .Call(`_mosap_rcpp_prepare_objective_max_profit`, x, dist_actions_data, dist_profit_data, profit_col)
+rcpp_prepare_objective_max_profit <- function(x, dist_actions_data, dist_profit_data, profit_col = "profit", block_name = "objective_max_profit", tag = "") {
+    .Call(`_mosap_rcpp_prepare_objective_max_profit`, x, dist_actions_data, dist_profit_data, profit_col, block_name, tag)
+}
+
+rcpp_prepare_objective_min_cost <- function(x, pu_data, dist_actions_data, include_pu_cost = TRUE, include_action_cost = TRUE, block_name = "objective_min_cost", tag = "") {
+    .Call(`_mosap_rcpp_prepare_objective_min_cost`, x, pu_data, dist_actions_data, include_pu_cost, include_action_cost, block_name, tag)
 }
 
 rcpp_set_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit", block_name = "objective_max_benefit", tag = "") {
