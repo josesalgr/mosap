@@ -415,8 +415,8 @@ add_objective_min_action_fragmentation <- function(
     x,
     relation_name = "boundary",
     weight_multiplier = 1,
-    action_weights = NULL,  # named numeric or data.frame(action, weight)
-    actions = NULL,         # optional subset of actions (ids)
+    action_weights = NULL,
+    actions = NULL,
     alias = NULL
 ) {
   stopifnot(inherits(x, "Data"))
@@ -429,12 +429,10 @@ add_objective_min_action_fragmentation <- function(
     actions = actions
   )
 
-  # single-objective (legacy) behavior
   x$data$model_args$model_type <- "minimizeActionFragmentation"
   x$data$model_args$objective_id <- "min_action_fragmentation"
   x$data$model_args$objective_args <- args
 
-  # atomic registration (MO)
   x <- .pa_register_objective(
     x = x,
     alias = alias,
@@ -446,6 +444,7 @@ add_objective_min_action_fragmentation <- function(
 
   x
 }
+
 
 #' @title Add objective: minimize intervention fragmentation
 #'

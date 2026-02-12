@@ -773,7 +773,7 @@ add_spatial_knn <- function(x,
 add_spatial_distance <- function(x,
                                  coords = NULL,
                                  dmax,
-                                 name = "default",
+                                 name = "distance",
                                  weight_fn = c("constant", "inverse", "inverse_sq"),
                                  eps = 1e-9) {
 

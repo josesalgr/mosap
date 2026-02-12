@@ -964,15 +964,18 @@
       subset_actions = subset_actions
     )
 
+    actions_to_use <- subset_actions
+    if (!is.null(actions_to_use)) actions_to_use <- as.integer(actions_to_use)
+
     res <- rcpp_add_objective_min_fragmentation_actions_by_action(
       op,
       dist_actions_data = x$data$dist_actions_model,
-      relation_data = rel_model,
-      actions_to_use = NULL,
-      action_weights = aw_vec,
+      relation_data     = rel_model,
+      actions_to_use    = actions_to_use,
+      action_weights    = aw_vec,
       weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
-      # weight = 1.0   # si existe
     )
+
 
     objective_id <- "min_action_fragmentation"
 
