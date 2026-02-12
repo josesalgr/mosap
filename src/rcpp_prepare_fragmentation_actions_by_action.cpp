@@ -232,10 +232,12 @@ Rcpp::List rcpp_prepare_fragmentation_actions_by_action(
   );
 
   // add AND constraints (3 per (edge, action)) when both x exist
+  // NEW: if missing x, FIX b = 0 via b <= 0 constraint
   const std::size_t cblock = op->beginConstraintBlock(block_name + "::constraints", full_tag);
 
   int n_constraints_added = 0;
   int pairs_missing_x = 0;
+  int b_fixed_zero = 0;
 
   // deterministic index: b_index = e*nA + kk
   for (int e = 0; e < k_edges; ++e) {
@@ -251,6 +253,13 @@ Rcpp::List rcpp_prepare_fragmentation_actions_by_action(
       auto itj = xcol.find(key2(j, act));
       if (iti == xcol.end() || itj == xcol.end()) {
         ++pairs_missing_x;
+
+        // FIX: b must be 0 if it cannot represent AND(x_i, x_j)
+        // since lb(b)=0, adding b <= 0 forces b=0.
+        op->addRow({ bcol }, { 1.0 }, "<=", 0.0, "b_fix0_missing_x");
+        ++n_constraints_added;
+        ++b_fixed_zero;
+
         continue;
       }
 
@@ -284,6 +293,7 @@ Rcpp::List rcpp_prepare_fragmentation_actions_by_action(
     Rcpp::Named("n_actions_used") = nA,
     Rcpp::Named("mA") = mA,
     Rcpp::Named("pairs_missing_x") = pairs_missing_x,
+    Rcpp::Named("b_fixed_zero") = b_fixed_zero,
     Rcpp::Named("n_constraints_added") = n_constraints_added,
     Rcpp::Named("tag") = full_tag
   );

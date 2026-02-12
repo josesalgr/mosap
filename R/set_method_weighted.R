@@ -185,7 +185,7 @@ set_method_weighted <- function(x,
   weights <- as.numeric(weights)
 
   if (any(!is.finite(weights))) stop("`weights` must be finite.", call. = FALSE)
-  if (any(weights < 0)) stop("`weights` must be non-negative.", call. = FALSE)
+  #if (any(weights < 0)) stop("`weights` must be non-negative.", call. = FALSE)
 
   # ---- normalize flag
   if (!is.logical(normalize) || length(normalize) != 1L || is.na(normalize)) {
