@@ -3503,7 +3503,7 @@ available_to_solve <- function(package = ""){
     return(x)
   }
 
-  # helper: relation model (reuse the same logic as set_objective)
+  # helper: relation model (same as objective path)
   .pa_prepare_relation_model <- function(rel) {
     rel <- rel[, c(
       "internal_pu1","internal_pu2","weight",
@@ -3517,35 +3517,68 @@ available_to_solve <- function(package = ""){
     rel
   }
 
-  # fragmentations need a relation
-  rel_name <- as.character(oargs$relation_name %||% "boundary")[1]
+  # choose relation_name:
+  # - prefer explicit needs$relation_name if present (useful for MO superset)
+  # - else objective_args$relation_name
+  # - else "boundary"
+  rel_name <- as.character(needs$relation_name %||% oargs$relation_name %||% "boundary")[1]
+
   rels <- x$data$spatial_relations
   if (is.null(rels) || is.null(rels[[rel_name]])) {
     .pa_abort("prepare_needs: missing spatial relation '", rel_name, "'.")
   }
 
-  rel_model <- x$data$spatial_relations_model %||% list()
-  if (is.null(rel_model[[rel_name]])) {
-    rel_model[[rel_name]] <- .pa_prepare_relation_model(rels[[rel_name]])
-    x$data$spatial_relations_model <- rel_model
+  # build / reuse model-ready relation table
+  x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
+  if (is.null(x$data$spatial_relations_model[[rel_name]])) {
+    x$data$spatial_relations_model[[rel_name]] <- .pa_prepare_relation_model(rels[[rel_name]])
   }
   rel_model <- x$data$spatial_relations_model[[rel_name]]
+
+  # registry containers
+  x$data$model_registry <- x$data$model_registry %||% list()
+  x$data$model_registry$vars <- x$data$model_registry$vars %||% list()
 
   # ---- PU fragmentation prepare
   if (isTRUE(needs$y_pu)) {
     if (!exists("rcpp_prepare_fragmentation_pu", mode = "function")) {
       .pa_abort("Missing rcpp_prepare_fragmentation_pu() in the package.")
     }
-    res <- rcpp_prepare_fragmentation_pu(op, rel_model)
+    # if your C++ signature is (op, relation_data)
+    res <- rcpp_prepare_fragmentation_pu(
+      x = op,
+      relation_data = rel_model
+    )
     x$data$model_registry$vars$y_pu <- res
   }
 
-  # ---- Action fragmentation prepare (future hook)
+  # ---- Action fragmentation prepare
   if (isTRUE(needs$y_action)) {
     if (!exists("rcpp_prepare_fragmentation_actions_by_action", mode = "function")) {
       .pa_abort("Missing rcpp_prepare_fragmentation_actions_by_action() in the package.")
     }
-    res <- rcpp_prepare_fragmentation_actions_by_action(op, rel_model)
+
+    # requires model-ready dist_actions
+    if (is.null(x$data$dist_actions_model) || !inherits(x$data$dist_actions_model, "data.frame")) {
+      .pa_abort("prepare_needs: y_action requires x$data$dist_actions_model (model-ready).")
+    }
+    if (nrow(x$data$dist_actions_model) == 0) {
+      .pa_abort("prepare_needs: y_action requires action variables, but dist_actions_model has 0 rows.")
+    }
+
+    # optional subset of actions (internal_action ids, 1-based) from needs or objective args
+    actions_to_use <- needs$actions_to_use %||% oargs$actions_to_use %||% oargs$actions %||% NULL
+    if (!is.null(actions_to_use)) actions_to_use <- as.integer(actions_to_use)
+
+    res <- rcpp_prepare_fragmentation_actions_by_action(
+      x = op,
+      dist_actions_data = x$data$dist_actions_model,
+      relation_data     = rel_model,
+      actions_to_use    = actions_to_use,
+      block_name        = "fragmentation_actions_by_action",
+      tag               = ""
+    )
+
     x$data$model_registry$vars$y_action <- res
   }
 
@@ -3554,7 +3587,14 @@ available_to_solve <- function(package = ""){
     if (!exists("rcpp_prepare_fragmentation_interventions", mode = "function")) {
       .pa_abort("Missing rcpp_prepare_fragmentation_interventions() in the package.")
     }
-    res <- rcpp_prepare_fragmentation_interventions(op, rel_model)
+
+    # if your interventions prepare also needs dist_actions_data in the future,
+    # you can mirror the same pattern as y_action above.
+
+    res <- rcpp_prepare_fragmentation_interventions(
+      x = op,
+      relation_data = rel_model
+    )
     x$data$model_registry$vars$y_intervention <- res
   }
 
