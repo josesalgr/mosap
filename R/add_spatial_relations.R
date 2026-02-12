@@ -532,6 +532,9 @@ add_spatial_boundary <- function(x,
 }
 
 
+
+
+
 #' @title Add rook adjacency from sf polygons
 #'
 #' @description

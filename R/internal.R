@@ -3447,46 +3447,43 @@ available_to_solve <- function(package = ""){
   args  <- x$data$model_args %||% list()
   mtype <- args$model_type %||% "minimizeCosts"
 
-  needs <- args$needs %||% list()
+  raw_needs <- args$needs %||% list()
 
-  # defaults: asegura booleanos
+  # base defaults: z ALWAYS TRUE (design decision)
+  needs <- list(
+    z = TRUE,
+    y_pu = FALSE,
+    y_action = FALSE,
+    y_intervention = FALSE,
+    u_intervention = FALSE
+  )
+
+  # allow user override for y_* (and optionally z if you want)
+  if (!is.null(raw_needs$y_pu))           needs$y_pu <- isTRUE(raw_needs$y_pu)
+  if (!is.null(raw_needs$y_action))       needs$y_action <- isTRUE(raw_needs$y_action)
+  if (!is.null(raw_needs$y_intervention)) needs$y_intervention <- isTRUE(raw_needs$y_intervention)
+  if (!is.null(raw_needs$u_intervention)) needs$u_intervention <- isTRUE(raw_needs$u_intervention)
+
+  # infer y_* only if not provided
+  if (is.null(raw_needs$y_pu))           needs$y_pu <- identical(mtype, "minimizeFragmentation")
+  if (is.null(raw_needs$y_action))       needs$y_action <- identical(mtype, "minimizeActionFragmentation")
+  if (is.null(raw_needs$y_intervention)) needs$y_intervention <- identical(mtype, "minimizeInterventionFragmentation")
+  if (is.null(raw_needs$u_intervention)) needs$u_intervention <- FALSE
+
+  # clean booleans
   needs$z              <- isTRUE(needs$z)
   needs$y_pu           <- isTRUE(needs$y_pu)
   needs$y_action       <- isTRUE(needs$y_action)
   needs$y_intervention <- isTRUE(needs$y_intervention)
   needs$u_intervention <- isTRUE(needs$u_intervention)
 
-  # infer only if not explicitly specified (NULL in model_args)
-  raw_needs <- args$needs %||% list()
-
-  if (is.null(raw_needs$z)) {
-    needs$z <- identical(mtype, "maximizeRepresentation")
-  }
-  if (is.null(raw_needs$y_pu)) {
-    needs$y_pu <- identical(mtype, "minimizeFragmentation")
-  }
-  if (is.null(raw_needs$y_action)) {
-    needs$y_action <- identical(mtype, "minimizeActionFragmentation")
-  }
-  if (is.null(raw_needs$y_intervention)) {
-    needs$y_intervention <- identical(mtype, "minimizeInterventionFragmentation")
-  }
-  if (is.null(raw_needs$u_intervention)) {
-    needs$u_intervention <- FALSE
-  }
-
-
-  t <- x$data$targets
-  if (is.data.frame(t) && nrow(t) && "type" %in% names(t)) {
-    tt <- unique(as.character(t$type))
-    if (any(tt %in% c("conservation", "mixed_total"))) {
-      x$data$model_args$needs$z <- TRUE
-    }
-  }
-
   x$data$model_args$needs <- needs
   x
 }
+
+
+
+
 
 
 .pa_build_model_prepare_needs_cpp <- function(x) {
