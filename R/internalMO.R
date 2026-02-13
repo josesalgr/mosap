@@ -717,7 +717,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   )
 
   pproto(
-    NULL, MOResult,
+    NULL, MOProblem,
     runs = runs,
     solutions = solutions,
     meta = list(
@@ -727,45 +727,84 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   )
 }
 
-# ---------------------------------------------------------
-# Internal: solve a single run using prioriactions as engine
-# ---------------------------------------------------------
-.pamo_solve_one <- function(x, spec) {
+.pamo_solve_epsilon_constraint <- function(x, ...) {
 
-  if (!inherits(x, "MOProblem")) stop(".pamo_solve_one expects MOProblem.", call. = FALSE)
-  if (!inherits(x$base, "Data")) stop("MOProblem$base must be a Data.", call. = FALSE)
+  primary     <- x$method$primary
+  aliases     <- x$method$aliases
+  constrained <- x$method$constrained
+  run_df      <- x$method$runs
 
-  base <- .pamo_clone_base(x$base)
+  if (is.null(run_df) || !inherits(run_df, "data.frame") || nrow(run_df) == 0) {
+    stop("epsilon_constraint: x$method$runs is missing/empty.", call. = FALSE)
+  }
+  if (!("run_id" %in% names(run_df))) stop("epsilon_constraint: runs must include run_id.", call. = FALSE)
 
-  if (identical(spec$type, "weighted")) {
+  solutions <- vector("list", nrow(run_df))
+  obj_vals  <- matrix(NA_real_, nrow(run_df), length(aliases))
+  colnames(obj_vals) <- paste0("obj_", aliases)
 
-    aliases <- as.character(spec$aliases)
-    weights <- as.numeric(spec$weights)
-    normalize <- isTRUE(spec$normalize)
+  status  <- character(nrow(run_df))
+  runtime <- numeric(nrow(run_df))
+  gap     <- numeric(nrow(run_df))
 
-    # 1) retrieve objective specs from prioriactions registry by alias
-    specs <- .pamo_get_objective_specs(x, aliases)
+  for (r in seq_len(nrow(run_df))) {
 
-    # 2) map specs -> IR
-    ir_list <- lapply(specs, function(sp) .pamo_objective_to_ir(base, sp))
+    eps_r <- as.list(run_df[r, constrained, drop = FALSE])  # alias -> scalar
 
-    # 3) apply weighted objective (build superset + objvecs + runtime update)
-    base <- .pamo_apply_weighted_objective(
-      base = base,
-      ir_list = ir_list,
-      weights = weights,
-      normalize = normalize
+    one <- .pamo_solve_one(
+      x = x,
+      spec = list(
+        type = "epsilon_constraint",
+        primary = primary,
+        eps = eps_r
+      )
     )
 
-  } else {
-    stop("Unsupported spec$type in .pamo_solve_one: ", spec$type, call. = FALSE)
+    solutions[[r]] <- one$solution
+    status[r]  <- one$status
+    runtime[r] <- one$runtime
+    gap[r]     <- one$gap
+
+    obj_vals[r, ] <- rep(NA_real_, length(aliases))
   }
 
-  # run single-objective solve using prioriactions
-  out <- solve(base)
+  runs <- cbind(
+    run_df,
+    data.frame(status = status, runtime = runtime, gap = gap, stringsAsFactors = FALSE),
+    as.data.frame(obj_vals, stringsAsFactors = FALSE)
+  )
 
-  .pamo_extract_solution(out)
+  pproto(
+    NULL, MOProblem,
+    runs = runs,
+    solutions = solutions,
+    meta = list(method = x$method, call = match.call())
+  )
 }
+
+.pamo_apply_single_objective <- function(base, ir, sense = c("min","max")) {
+  stopifnot(inherits(base, "Data"))
+  sense <- match.arg(sense)
+
+  if (is.null(base$data$model_ptr)) stop("Model not built (model_ptr is NULL).", call. = FALSE)
+
+  v <- .pamo_objvec_from_ir(base, ir)
+
+  # motor siempre MIN
+  if (identical(sense, "max")) v <- -v
+
+  base$data$runtime_updates <- list(
+    obj = as.numeric(v),
+    modelsense = "min"
+  )
+
+  base$data$meta$model_dirty <- FALSE
+  base$data$has_model <- TRUE
+
+  base
+}
+
+
 
 # ---------------------------------------------------------
 # Internal: extract (minimal) results from prioriactions Solution
@@ -1103,7 +1142,7 @@ add_objective <- function(x, objective) {
   )
 
   pproto(
-    NULL, MOResult,
+    NULL, MOProblem,
     runs = runs,
     solutions = solutions,
     meta = list(
@@ -1129,13 +1168,9 @@ add_objective <- function(x, objective) {
     weights <- as.numeric(spec$weights)
     normalize <- isTRUE(spec$normalize)
 
-    # 1) retrieve objective specs from prioriactions registry by alias
     specs <- .pamo_get_objective_specs(x, aliases)
-
-    # 2) map specs -> IR
     ir_list <- lapply(specs, function(sp) .pamo_objective_to_ir(base, sp))
 
-    # 3) apply weighted objective (build superset + objvecs + runtime update)
     base <- .pamo_apply_weighted_objective(
       base = base,
       ir_list = ir_list,
@@ -1143,14 +1178,96 @@ add_objective <- function(x, objective) {
       normalize = normalize
     )
 
+  } else if (identical(spec$type, "epsilon_constraint")) {
+
+    primary    <- as.character(spec$primary)[1]
+    eps_list   <- spec$eps %||% list()
+    sec_aliases <- names(eps_list)
+
+    if (is.na(primary) || !nzchar(primary)) stop("epsilon_constraint: primary is invalid.", call. = FALSE)
+    if (length(sec_aliases) == 0) stop("epsilon_constraint: eps list is empty.", call. = FALSE)
+
+    # ---- build IRs for (primary + constrained) so we can build ONE superset
+    all_aliases <- unique(c(primary, sec_aliases))
+    specs_all <- .pamo_get_objective_specs(x, all_aliases)
+    ir_all <- lapply(specs_all, function(sp) .pamo_objective_to_ir(base, sp))
+
+    # ---- 0) build superset once (includes prepares)
+    base <- .pamo_prepare_superset_model(base, ir_all)
+
+    # ---- 1) add epsilon constraints for secondaries
+    for (a in sec_aliases) {
+      sp_sec <- specs_all[[a]]
+      ir_sec <- ir_all[[a]]
+
+      eps_val <- as.numeric(eps_list[[a]])[1]
+      if (!is.finite(eps_val)) stop("epsilon_constraint: eps for '", a, "' must be finite.", call. = FALSE)
+
+      base <- .pamo_apply_epsilon_constraint(
+        base = base,
+        ir = ir_sec,
+        eps = eps_val,
+        sense = as.character(sp_sec$sense %||% "min")[1],
+        name = paste0("eps_", a),
+        block_name = "epsilon_constraint"
+      )
+    }
+
+    # ---- 2) set primary objective (as runtime update, like weighted)
+    sp_primary <- specs_all[[primary]]
+    ir_primary <- ir_all[[primary]]
+
+    base <- .pamo_apply_single_objective(
+      base = base,
+      ir = ir_primary,
+      sense = as.character(sp_primary$sense %||% "min")[1]
+    )
+
   } else {
     stop("Unsupported spec$type in .pamo_solve_one: ", spec$type, call. = FALSE)
   }
 
-  # run single-objective solve using prioriactions
   out <- solve(base)
-
   .pamo_extract_solution(out)
+}
+
+.pamo_apply_epsilon_constraint <- function(base, ir, eps, sense = c("min","max"),
+                                           name = "", block_name = "epsilon_constraint", tag = "") {
+  stopifnot(inherits(base, "Data"))
+  sense <- match.arg(sense)
+
+  if (is.null(base$data$model_ptr)) stop("Model not built (model_ptr is NULL).", call. = FALSE)
+
+  eps <- as.numeric(eps)[1]
+  if (!is.finite(eps)) stop("eps must be finite.", call. = FALSE)
+
+  v <- .pamo_objvec_from_ir(base, ir)
+  if (length(v) == 0) stop("epsilon objvec is empty.", call. = FALSE)
+
+  # canonical: <=
+  if (identical(sense, "max")) {
+    v <- -v
+    eps <- -eps
+  }
+
+  idx <- which(v != 0)
+  if (length(idx) == 0) stop("epsilon objvec has no non-zero coefficients.", call. = FALSE)
+
+  # add row: sum(v[j]*x[j]) <= eps
+  rcpp_add_linear_constraint(
+    base$data$model_ptr,
+    j0 = as.integer(idx - 1L),
+    x  = as.numeric(v[idx]),
+    sense = "<=",
+    rhs = as.numeric(eps),
+    name = as.character(name %||% ""),
+    block_name = block_name,
+    tag = tag
+  )
+
+  base$data$meta$model_dirty <- TRUE
+  base <- .pa_refresh_model_snapshot(base)
+  base
 }
 
 # ---------------------------------------------------------
@@ -1171,4 +1288,53 @@ add_objective <- function(x, objective) {
     gap = gap,
     objval = objval
   )
+}
+
+
+
+
+#' @keywords internal
+.mo_abort <- function(...) stop(paste0(...), call. = FALSE)
+
+#' @keywords internal
+.mo_get_solution_from <- function(x, run = 1L) {
+
+  # Case 1: already a Solution
+  if (inherits(x, "Solution")) return(x)
+
+  # Case 2: MOProblem -> x$results$solutions
+  if (inherits(x, "MOProblem")) {
+    r <- x$results %||% NULL
+    if (is.null(r)) .mo_abort("MOProblem has no results (x$results is NULL).")
+    sols <- r$solutions %||% NULL
+    if (is.null(sols)) .mo_abort("MOProblem results has no solutions (x$results$solutions is NULL).")
+
+    run <- as.integer(run)[1]
+    if (!is.finite(run) || run < 1L) .mo_abort("run must be a positive integer (1-based).")
+    if (run > length(sols)) .mo_abort("run=", run, " out of range. There are only ", length(sols), " solutions.")
+    sol <- sols[[run]]
+    if (!inherits(sol, "Solution")) .mo_abort("x$results$solutions[[run]] is not a Solution.")
+    return(sol)
+  }
+
+  # Case 3: generic MOResults list-like (optional)
+  # Accept either list of Solution or object with $solutions
+  if (is.list(x) && !is.null(x$solutions)) {
+    sols <- x$solutions
+    run <- as.integer(run)[1]
+    if (!is.finite(run) || run < 1L) .mo_abort("run must be a positive integer (1-based).")
+    if (run > length(sols)) .mo_abort("run=", run, " out of range. There are only ", length(sols), " solutions.")
+    sol <- sols[[run]]
+    if (!inherits(sol, "Solution")) .mo_abort("x$solutions[[run]] is not a Solution.")
+    return(sol)
+  }
+
+  if (is.list(x) && length(x) > 0 && inherits(x[[1]], "Solution")) {
+    run <- as.integer(run)[1]
+    if (!is.finite(run) || run < 1L) .mo_abort("run must be a positive integer (1-based).")
+    if (run > length(x)) .mo_abort("run=", run, " out of range. There are only ", length(x), " solutions.")
+    return(x[[run]])
+  }
+
+  .mo_abort("Unsupported object. Expected Solution, MOProblem, or MOResults-like with $solutions.")
 }

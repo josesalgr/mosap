@@ -4,7 +4,7 @@
 \alias{get_actions}
 \title{Get action results from a Solution}
 \usage{
-get_actions(x, only_selected = FALSE)
+get_actions(x, only_selected = FALSE, run = 1L)
 }
 \arguments{
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}

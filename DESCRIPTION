@@ -18,6 +18,8 @@ Description: Description: Provides an exact multi-objective optimisation framewo
     <doi:10.1016/j.envsoft.2009.06.005>.
 Authors@R: c(person(c('Jose'), 'Salgado-Rojas',
              email='jose.salgroj@gmail.com', role = c('aut','cre')),
+             person(c('Matias'), 'Moreno-Faguett',
+             email='matias.moreno.faguett@gmail.com', role = c('aut','cre')),
              person(c('Nuria'), 'Aquilue',
              email='nuria.aquilue@ctfc.cat', role = c('aut')))
 Depends:
@@ -69,7 +71,6 @@ BugReports: https://github.com/josesalgr/mosap/issues
 VignetteBuilder: knitr
 Collate: 
     'internal.R'
-    'MOResult.R'
     'MOproblem-class.R'
     'RcppExports.R'
     'add_action_max_per_pu.R'
@@ -82,15 +83,16 @@ Collate:
     'add_targets.R'
     'build_model.R'
     'data-class.R'
+    'internalMO.R'
     'get_solution.R'
     'inputData.R'
     'inputDataSpatial.R'
-    'internalMO.R'
     'package.R'
     'plot.R'
     'presolve.R'
     'print.R'
     'problem.R'
+    'set_method_epsilon_constraint.R'
     'set_method_weighted.R'
     'set_solver.R'
     'show.R'

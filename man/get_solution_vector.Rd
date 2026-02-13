@@ -4,7 +4,7 @@
 \alias{get_solution_vector}
 \title{Get raw solution vector from a Solution}
 \usage{
-get_solution_vector(x)
+get_solution_vector(x, run = 1L)
 }
 \arguments{
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}

@@ -4,7 +4,7 @@
 \alias{get_targets}
 \title{Get target achievement table from a Solution}
 \usage{
-get_targets(x)
+get_targets(x, run = 1L)
 }
 \arguments{
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}

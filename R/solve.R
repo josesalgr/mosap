@@ -571,33 +571,40 @@ solve.Data <- function(x, ...) {
 
 #' @method solve MOProblem
 #' @export
+#' @method solve MOProblem
+#' @export
 solve.MOProblem <- function(x, ..., return = c("problem", "results")) {
 
-  if (!inherits(x, "MOProblem")) {
-    stop("solve.MOProblem expects a MOProblem.", call. = FALSE)
-  }
+  x <- .pamo_as_mo(x)
+  stopifnot(inherits(x, "MOProblem"))
 
   return <- match.arg(return)
 
   .pamo_validate_objectives(x)
 
   if (is.null(x$method) || identical(x$method$name, "none")) {
-    stop("No multi-objective method configured. Use set_method_weighted(), set_method_epsilon(), etc.", call. = FALSE)
+    stop("No multi-objective method configured. Use set_method_weighted(), set_method_epsilon_constraint(), etc.", call. = FALSE)
   }
 
   if (identical(x$method$name, "weighted")) {
-
     res <- .pamo_solve_weighted(x, ...)
-
-    # Persist *inside the returned object*
-    # (This is the key difference vs returning `res` directly.)
     x$results <- res
+    if (identical(return, "results")) return(res)
+    return(x)
+  }
 
+  if (identical(x$method$name, "epsilon_constraint")) {
+    res <- .pamo_solve_epsilon_constraint(x, ...)
+    x$results <- res
     if (identical(return, "results")) return(res)
     return(x)
   }
 
   stop("Unknown/unsupported method: '", x$method$name, "'.", call. = FALSE)
 }
+
+
+
+
 
 

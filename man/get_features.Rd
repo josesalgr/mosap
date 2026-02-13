@@ -4,7 +4,7 @@
 \alias{get_features}
 \title{Get feature achievement summary from a Solution}
 \usage{
-get_features(x)
+get_features(x, run = 1L)
 }
 \arguments{
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}

@@ -216,3 +216,11 @@ plot.Solution <- function(
   print(p)
   invisible(p)
 }
+
+
+
+#' @export
+plot.MOProblem <- function(x, run = 1L, ...) {
+  sol <- .mo_get_solution_from(x, run = run)
+  plot(sol, ...)
+}

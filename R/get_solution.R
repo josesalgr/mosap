@@ -1,3 +1,5 @@
+#' @include internalMO.R
+#'
 #' @title Get planning unit results from a Solution
 #'
 #' @description
@@ -27,9 +29,10 @@
 #' @export
 #'
 #' @seealso [get_actions()], [get_features()], [get_targets()], [get_solution_vector()]
-get_pu <- function(x, only_selected = FALSE) {
-  stopifnot(inherits(x, "Solution"))
-  pu <- x$data$tables$pu %||% NULL
+get_pu <- function(x, only_selected = FALSE, run = 1L) {
+  sol <- .mo_get_solution_from(x, run = run)
+
+  pu <- sol$data$tables$pu %||% NULL
   if (is.null(pu)) stop("No PU table found in solution (x$data$tables$pu is NULL).", call. = FALSE)
 
   if (isTRUE(only_selected)) {
@@ -68,9 +71,10 @@ get_pu <- function(x, only_selected = FALSE) {
 #' @export
 #'
 #' @seealso [get_pu()], [get_features()], [get_targets()], [get_solution_vector()]
-get_actions <- function(x, only_selected = FALSE) {
-  stopifnot(inherits(x, "Solution"))
-  a <- x$data$tables$actions %||% NULL
+get_actions <- function(x, only_selected = FALSE, run = 1L) {
+  sol <- .mo_get_solution_from(x, run = run)
+
+  a <- sol$data$tables$actions %||% NULL
   if (is.null(a)) stop("No actions table found in solution (x$data$tables$actions is NULL).", call. = FALSE)
 
   if (isTRUE(only_selected)) {
@@ -79,6 +83,7 @@ get_actions <- function(x, only_selected = FALSE) {
   }
   a
 }
+
 
 #' @title Get feature achievement summary from a Solution
 #'
@@ -110,12 +115,14 @@ get_actions <- function(x, only_selected = FALSE) {
 #' @export
 #'
 #' @seealso [get_pu()], [get_actions()], [get_targets()]
-get_features <- function(x) {
-  stopifnot(inherits(x, "Solution"))
-  f <- x$data$tables$features %||% NULL
+get_features <- function(x, run = 1L) {
+  sol <- .mo_get_solution_from(x, run = run)
+
+  f <- sol$data$tables$features %||% NULL
   if (is.null(f)) stop("No features table found in solution (x$data$tables$features is NULL).", call. = FALSE)
   f
 }
+
 
 
 #' @title Get target achievement table from a Solution
@@ -144,12 +151,12 @@ get_features <- function(x) {
 #' @export
 #'
 #' @seealso [get_pu()], [get_actions()], [get_features()]
-get_targets <- function(x) {
-  stopifnot(inherits(x, "Solution"))
-  t <- x$data$tables$targets %||% NULL
-  # targets are optional: return NULL silently if absent
-  t
+#' @export
+get_targets <- function(x, run = 1L) {
+  sol <- .mo_get_solution_from(x, run = run)
+  sol$data$tables$targets %||% NULL
 }
+
 
 
 #' @title Get raw solution vector from a Solution
@@ -178,9 +185,11 @@ get_targets <- function(x) {
 #' @export
 #'
 #' @seealso [get_pu()], [get_actions()], [get_features()], [get_targets()]
-get_solution_vector <- function(x) {
-  stopifnot(inherits(x, "Solution"))
-  v <- x$data$sol %||% NULL
+#' @export
+get_solution_vector <- function(x, run = 1L) {
+  sol <- .mo_get_solution_from(x, run = run)
+
+  v <- sol$data$sol %||% NULL
   if (is.null(v)) stop("No raw solution vector found (x$data$sol is NULL).", call. = FALSE)
   as.numeric(v)
 }

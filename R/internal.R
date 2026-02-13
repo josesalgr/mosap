@@ -2359,30 +2359,96 @@ available_to_solve <- function(package = ""){
 
 # helper: add 1 linear constraint sum(coeff_j * x_j) (sense) rhs
 # NOTE: replace this with YOUR real C++ bridge that appends rows/triplets/rhs/sense.
-.pa_add_linear_constraint <- function(x, var_index_0based, coeff, sense = c(">=", "<=", "=="), rhs, name = NULL) {
+.pa_add_linear_constraint <- function(
+    x,
+    var_index_0based,
+    coeff,
+    sense = c(">=", "<=", "=="),
+    rhs,
+    name = NULL,
+    block_name = "linear_constraint",
+    tag = "",
+    drop_zeros = TRUE,
+    merge_duplicates = TRUE,
+    refresh_snapshot = FALSE
+) {
   sense <- match.arg(sense)
+
   stopifnot(inherits(x, "Data"))
-  stopifnot(is.numeric(var_index_0based), is.numeric(coeff), length(var_index_0based) == length(coeff))
-  stopifnot(is.numeric(rhs), length(rhs) == 1)
+  if (is.null(x$data$model_ptr)) {
+    stop("Model pointer missing. Build model first.", call. = FALSE)
+  }
 
-  if (is.null(x$data$model_ptr)) stop("Model pointer missing. Build model first.", call. = FALSE)
+  # ---- validate inputs
+  if (!is.numeric(var_index_0based) || !is.numeric(coeff)) {
+    stop("var_index_0based and coeff must be numeric.", call. = FALSE)
+  }
+  if (length(var_index_0based) != length(coeff)) {
+    stop("Length mismatch: var_index_0based and coeff must have the same length.", call. = FALSE)
+  }
+  if (!is.numeric(rhs) || length(rhs) != 1L || !is.finite(rhs)) {
+    stop("rhs must be a single finite numeric value.", call. = FALSE)
+  }
 
-  # ---- HERE: call your Rcpp to append one row.
-  # You likely have something like:
-  # rcpp_add_constraint(model_ptr, i = row_ids, j = col_ids, x = values, sense, rhs, name)
-  #
-  # I'll write a generic placeholder:
-  rcpp_add_linear_constraint(
-    x$data$model_ptr,
-    j0 = as.integer(var_index_0based),
-    x  = as.numeric(coeff),
-    sense = sense,
-    rhs = as.numeric(rhs),
-    name = as.character(name %||% "")
+  j0 <- as.integer(var_index_0based)
+  a  <- as.numeric(coeff)
+
+  # ---- drop NA / non-finite / zero
+  keep <- !(is.na(j0) | is.na(a) | !is.finite(a))
+  if (isTRUE(drop_zeros)) keep <- keep & (a != 0)
+
+  j0 <- j0[keep]
+  a  <- a[keep]
+
+  if (length(j0) == 0L) {
+    stop("Linear constraint has no non-zero coefficients after filtering.", call. = FALSE)
+  }
+
+  # ---- optionally merge duplicates (important if you build vectors by rbind/cbind)
+  if (isTRUE(merge_duplicates) && length(j0) > 1L) {
+    o <- order(j0)
+    j0 <- j0[o]; a <- a[o]
+    # aggregate by j0
+    u <- unique(j0)
+    a2 <- numeric(length(u))
+    idx <- match(j0, u)
+    for (k in seq_along(a)) a2[idx[k]] <- a2[idx[k]] + a[k]
+    j0 <- u
+    a  <- a2
+    if (isTRUE(drop_zeros)) {
+      keep2 <- a != 0
+      j0 <- j0[keep2]
+      a  <- a[keep2]
+    }
+    if (length(j0) == 0L) {
+      stop("Linear constraint became empty after merging duplicates.", call. = FALSE)
+    }
+  }
+
+  name <- as.character(name %||% "")[1]
+  block_name <- as.character(block_name %||% "linear_constraint")[1]
+  tag <- as.character(tag %||% "")[1]
+
+  # ---- call C++
+  out <- rcpp_add_linear_constraint(
+    model_ptr  = x$data$model_ptr,
+    j0         = j0,
+    x          = a,
+    sense      = sense,
+    rhs        = as.numeric(rhs),
+    name       = name,
+    block_name = block_name,
+    tag        = tag
   )
 
-  # refresh snapshot (optional but useful for printing/sol extraction)
-  x <- .pa_refresh_model_snapshot(x)
+  if (isTRUE(refresh_snapshot)) {
+    x <- .pa_refresh_model_snapshot(x)
+  }
+
+  # store last-added info (optional, but handy for debugging)
+  x$data$model_registry <- x$data$model_registry %||% list()
+  x$data$model_registry$last_linear_constraint <- out
+
   x
 }
 

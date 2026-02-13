@@ -4,7 +4,7 @@
 \alias{get_pu}
 \title{Get planning unit results from a Solution}
 \usage{
-get_pu(x, only_selected = FALSE)
+get_pu(x, only_selected = FALSE, run = 1L)
 }
 \arguments{
 \item{x}{A \linkS4class{solution} object returned by \code{\link[=solve]{solve()}}.}
