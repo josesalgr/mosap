@@ -12,7 +12,6 @@
 #' @param keep_primary_eps Logical. If TRUE and eps contains primary, keep it (not typical).
 #' @return MOProblem with method configured.
 #' @export
-#' @export
 set_method_epsilon_constraint <- function(
     x,
     primary,

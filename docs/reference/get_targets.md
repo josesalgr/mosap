@@ -11,7 +11,7 @@ units.
 ## Usage
 
 ``` r
-get_targets(x)
+get_targets(x, run = 1L)
 ```
 
 ## Arguments

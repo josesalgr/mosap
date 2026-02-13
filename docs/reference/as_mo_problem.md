@@ -12,8 +12,9 @@ as_mo_problem(x)
 
 - x:
 
-  A `Data` object created by `prioriactions::inputData()` (or a
-  compatible object).
+  A `Data` object created by
+  [`prioriactions::inputData()`](https://prioriactions.github.io/prioriactions/reference/inputData.html)
+  (or a compatible object).
 
 ## Value
 

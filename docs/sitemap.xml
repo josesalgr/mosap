@@ -56,6 +56,7 @@
 <url><loc>https://josesalgr.github.io/mosap/reference/inputDataSpatial.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/mo-problem-class.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/mo-result-class.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/MOResult.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/mosap.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/optimizationProblem-class.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/pipe.html</loc></url>
@@ -67,6 +68,7 @@
 <url><loc>https://josesalgr.github.io/mosap/reference/prioriactions.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/problem.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/register_objective.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/set_method_epsilon_constraint.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/set_method_weighted.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/set_solver.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/show.html</loc></url>

@@ -144,6 +144,8 @@ Configure and solve multi-objective problems (e.g., weighted sum).
 
 - [`set_method_weighted()`](https://josesalgr.github.io/mosap/reference/set_method_weighted.md)
   : Set multi-objective method: weighted sum
+- [`set_method_epsilon_constraint()`](https://josesalgr.github.io/mosap/reference/set_method_epsilon_constraint.md)
+  : Configure epsilon-constraint multi-objective method
 - [`solve()`](https://josesalgr.github.io/mosap/reference/solve.md) :
   Solve optimization model
 

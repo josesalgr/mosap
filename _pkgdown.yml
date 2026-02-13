@@ -82,6 +82,7 @@ reference:
     desc: Configure and solve multi-objective problems (e.g., weighted sum).
     contents:
       - set_method_weighted
+      - set_method_epsilon_constraint
       - solve
 
   - title: Results and solution helpers

@@ -10,7 +10,7 @@ whether each feasible `(pu, action)` pair is selected in the solution.
 ## Usage
 
 ``` r
-get_actions(x, only_selected = FALSE)
+get_actions(x, only_selected = FALSE, run = 1L)
 ```
 
 ## Arguments

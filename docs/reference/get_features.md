@@ -10,7 +10,7 @@ baseline selection and by action effects, and their total.
 ## Usage
 
 ``` r
-get_features(x)
+get_features(x, run = 1L)
 ```
 
 ## Arguments

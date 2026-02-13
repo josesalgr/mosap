@@ -6,7 +6,7 @@ internal model variable order used by the optimizer backend.
 ## Usage
 
 ``` r
-get_solution_vector(x)
+get_solution_vector(x, run = 1L)
 ```
 
 ## Arguments

@@ -11,7 +11,7 @@ add_spatial_distance(
   x,
   coords = NULL,
   dmax,
-  name = "default",
+  name = "distance",
   weight_fn = c("constant", "inverse", "inverse_sq"),
   eps = 1e-09
 )

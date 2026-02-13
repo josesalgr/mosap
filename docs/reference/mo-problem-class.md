@@ -12,7 +12,8 @@ epsilon-constraint, AUGMECON, goal programming, interactive, etc.).
 
 Conceptually, an `MOProblem` wraps:
 
-1.  A base `Data` object (coming from `prioriactions::inputData()`),
+1.  A base `Data` object (coming from
+    [`prioriactions::inputData()`](https://prioriactions.github.io/prioriactions/reference/inputData.html)),
 
 2.  A registry of atomic objectives (each with alias, direction and
     builders),

@@ -10,7 +10,7 @@ whether each planning unit is selected in the solution.
 ## Usage
 
 ``` r
-get_pu(x, only_selected = FALSE)
+get_pu(x, only_selected = FALSE, run = 1L)
 ```
 
 ## Arguments
