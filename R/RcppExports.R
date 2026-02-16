@@ -57,6 +57,10 @@ rcpp_add_objective_max_benefit <- function(x, coef_x, weight = 1.0, weight_multi
     .Call(`_mosap_rcpp_add_objective_max_benefit`, x, coef_x, weight, weight_multiplier, block_name, tag)
 }
 
+rcpp_add_objective_max_net_profit <- function(x, pu_data, dist_actions_data, dist_profit_data, profit_col = "profit", include_pu_cost = TRUE, include_action_cost = TRUE, weight = 1.0, block_name = "objective_max_net_profit", tag = "") {
+    .Call(`_mosap_rcpp_add_objective_max_net_profit`, x, pu_data, dist_actions_data, dist_profit_data, profit_col, include_pu_cost, include_action_cost, weight, block_name, tag)
+}
+
 rcpp_add_objective_max_profit <- function(x, dist_actions_data, dist_profit_data, profit_col = "profit", weight = 1.0, block_name = "objective_max_profit", tag = "") {
     .Call(`_mosap_rcpp_add_objective_max_profit`, x, dist_actions_data, dist_profit_data, profit_col, weight, block_name, tag)
 }
@@ -135,6 +139,10 @@ rcpp_prepare_fragmentation_pu <- function(x, relation_data, block_name = "fragme
 
 rcpp_prepare_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit", block_name = "prepare_max_benefit", tag = "") {
     .Call(`_mosap_rcpp_prepare_objective_max_benefit`, x, dist_actions_data, dist_benefit_data, benefit_col, block_name, tag)
+}
+
+rcpp_prepare_objective_max_net_profit <- function(x, pu_data, dist_actions_data, dist_profit_data, profit_col = "profit", include_pu_cost = TRUE, include_action_cost = TRUE, block_name = "objective_max_net_profit", tag = "") {
+    .Call(`_mosap_rcpp_prepare_objective_max_net_profit`, x, pu_data, dist_actions_data, dist_profit_data, profit_col, include_pu_cost, include_action_cost, block_name, tag)
 }
 
 rcpp_prepare_objective_max_profit <- function(x, dist_actions_data, dist_profit_data, profit_col = "profit", block_name = "objective_max_profit", tag = "") {

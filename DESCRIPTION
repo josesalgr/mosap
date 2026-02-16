@@ -19,7 +19,7 @@ Description: Description: Provides an exact multi-objective optimisation framewo
 Authors@R: c(person(c('Jose'), 'Salgado-Rojas',
              email='jose.salgroj@gmail.com', role = c('aut','cre')),
              person(c('Matias'), 'Moreno-Faguett',
-             email='matias.moreno.faguett@gmail.com', role = c('aut','cre')),
+             email='matias.moreno.faguett@gmail.com', role = c('aut')),
              person(c('Nuria'), 'Aquilue',
              email='nuria.aquilue@ctfc.cat', role = c('aut')))
 Depends:

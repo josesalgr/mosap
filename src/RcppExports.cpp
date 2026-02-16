@@ -199,6 +199,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_add_objective_max_net_profit
+Rcpp::List rcpp_add_objective_max_net_profit(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_profit_data, std::string profit_col, bool include_pu_cost, bool include_action_cost, double weight, std::string block_name, std::string tag);
+RcppExport SEXP _mosap_rcpp_add_objective_max_net_profit(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_actions_dataSEXP, SEXP dist_profit_dataSEXP, SEXP profit_colSEXP, SEXP include_pu_costSEXP, SEXP include_action_costSEXP, SEXP weightSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type pu_data(pu_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_profit_data(dist_profit_dataSEXP);
+    Rcpp::traits::input_parameter< std::string >::type profit_col(profit_colSEXP);
+    Rcpp::traits::input_parameter< bool >::type include_pu_cost(include_pu_costSEXP);
+    Rcpp::traits::input_parameter< bool >::type include_action_cost(include_action_costSEXP);
+    Rcpp::traits::input_parameter< double >::type weight(weightSEXP);
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_add_objective_max_net_profit(x, pu_data, dist_actions_data, dist_profit_data, profit_col, include_pu_cost, include_action_cost, weight, block_name, tag));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_add_objective_max_profit
 Rcpp::List rcpp_add_objective_max_profit(SEXP x, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_profit_data, std::string profit_col, double weight, std::string block_name, std::string tag);
 RcppExport SEXP _mosap_rcpp_add_objective_max_profit(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP dist_profit_dataSEXP, SEXP profit_colSEXP, SEXP weightSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
@@ -521,6 +541,25 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
     Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
     rcpp_result_gen = Rcpp::wrap(rcpp_prepare_objective_max_benefit(x, dist_actions_data, dist_benefit_data, benefit_col, block_name, tag));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rcpp_prepare_objective_max_net_profit
+Rcpp::List rcpp_prepare_objective_max_net_profit(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_profit_data, std::string profit_col, bool include_pu_cost, bool include_action_cost, std::string block_name, std::string tag);
+RcppExport SEXP _mosap_rcpp_prepare_objective_max_net_profit(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_actions_dataSEXP, SEXP dist_profit_dataSEXP, SEXP profit_colSEXP, SEXP include_pu_costSEXP, SEXP include_action_costSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type pu_data(pu_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_profit_data(dist_profit_dataSEXP);
+    Rcpp::traits::input_parameter< std::string >::type profit_col(profit_colSEXP);
+    Rcpp::traits::input_parameter< bool >::type include_pu_cost(include_pu_costSEXP);
+    Rcpp::traits::input_parameter< bool >::type include_action_cost(include_action_costSEXP);
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_prepare_objective_max_net_profit(x, pu_data, dist_actions_data, dist_profit_data, profit_col, include_pu_cost, include_action_cost, block_name, tag));
     return rcpp_result_gen;
 END_RCPP
 }

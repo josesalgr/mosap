@@ -55,6 +55,8 @@ extern SEXP _mosap_rcpp_prepare_fragmentation_actions_by_action(SEXP, SEXP, SEXP
 extern SEXP _mosap_rcpp_prepare_objective_max_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_add_objective_max_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_prepare_objective_min_cost(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _mosap_rcpp_add_objective_max_net_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _mosap_rcpp_prepare_objective_max_net_profit(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
   {"_mosap_rcpp_new_optimization_problem", (DL_FUNC) &_mosap_rcpp_new_optimization_problem, 3},
@@ -101,6 +103,8 @@ static const R_CallMethodDef CallEntries[] = {
   {"_mosap_rcpp_prepare_objective_max_profit", (DL_FUNC) &_mosap_rcpp_prepare_objective_max_profit, 6},
   {"_mosap_rcpp_add_objective_max_profit", (DL_FUNC) &_mosap_rcpp_add_objective_max_profit, 7},
   {"_mosap_rcpp_prepare_objective_min_cost", (DL_FUNC) &_mosap_rcpp_prepare_objective_min_cost, 7},
+  {"_mosap_rcpp_add_objective_max_net_profit", (DL_FUNC) &_mosap_rcpp_add_objective_max_net_profit, 10},
+  {"_mosap_rcpp_prepare_objective_max_net_profit", (DL_FUNC) &_mosap_rcpp_prepare_objective_max_net_profit, 9},
   {NULL, NULL, 0}
 
 };
