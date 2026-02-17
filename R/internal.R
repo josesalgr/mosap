@@ -511,8 +511,28 @@ available_to_solve <- function(package = ""){
     stop("Unknown target types: ", paste(bad_type, collapse = ", "), call. = FALSE)
   }
 
-  if (is.null(x$data$targets)) {
+  # warn (do not stop) if mixed_total coexists with others (in incoming batch)
+  new_mix    <- unique(targets_df$feature[targets_df$type == "mixed_total"])
+  new_nonmix <- unique(targets_df$feature[targets_df$type %in% c("conservation","recovery")])
+  conflict_C <- intersect(new_mix, new_nonmix)
+  if (length(conflict_C) > 0) {
+    ex <- paste(head(sort(conflict_C), 8), collapse = ", ")
+    warning(
+      "Targets include 'mixed_total' together with 'conservation'/'recovery' for the same feature(s): ",
+      ex,
+      if (length(conflict_C) > 8) paste0(" ... (", length(conflict_C), " total)") else "",
+      ". Both will be stored and applied (stronger constraints).",
+      call. = FALSE
+    )
+  }
+
+  if (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0) {
     x$data$targets <- targets_df
+    # mark model dirty if already built
+    if (!is.null(x$data$model_ptr)) {
+      x$data$meta <- x$data$meta %||% list()
+      x$data$meta$model_dirty <- TRUE
+    }
     return(x)
   }
 
@@ -520,55 +540,51 @@ available_to_solve <- function(package = ""){
   old$feature <- as.integer(old$feature)
   old$type    <- as.character(old$type)
 
-  # ---- STRICT RULE: mixed_total cannot coexist with conservation/recovery for same feature
-  old_mix <- unique(old$feature[old$type == "mixed_total"])
-  new_mix <- unique(targets_df$feature[targets_df$type == "mixed_total"])
-
+  # warn (do not stop) if mixed_total conflicts with already stored targets
+  old_mix    <- unique(old$feature[old$type == "mixed_total"])
   old_nonmix <- unique(old$feature[old$type %in% c("conservation","recovery")])
-  new_nonmix <- unique(targets_df$feature[targets_df$type %in% c("conservation","recovery")])
 
-  # conflicts:
-  # (A) adding mixed where there is already conservation/recovery
-  conflict_A <- intersect(new_mix, old_nonmix)
-  # (B) adding conservation/recovery where there is already mixed
-  conflict_B <- intersect(new_nonmix, old_mix)
-  # (C) within the same incoming batch: mixed + (conservation/recovery) for same feature
-  conflict_C <- intersect(new_mix, new_nonmix)
-
+  conflict_A <- intersect(new_mix, old_nonmix)  # adding mixed where old has nonmix
+  conflict_B <- intersect(new_nonmix, old_mix)  # adding nonmix where old has mixed
   conflicts <- sort(unique(c(conflict_A, conflict_B, conflict_C)))
   if (length(conflicts) > 0) {
     ex <- paste(head(conflicts, 8), collapse = ", ")
-    stop(
-      "Incompatible targets detected. Features cannot have 'mixed_total' together with ",
-      "'conservation' and/or 'recovery'. Conflicting feature ids: ", ex,
+    warning(
+      "Targets mix 'mixed_total' with 'conservation'/'recovery' for feature(s): ",
+      ex,
       if (length(conflicts) > 8) paste0(" ... (", length(conflicts), " total)") else "",
+      ". Both will be stored and applied (stronger constraints).",
       call. = FALSE
     )
   }
 
-  # key: feature + type (your existing overwrite behavior)
+  # key: feature + type
   key_old <- paste0(old$feature, "||", old$type)
   key_new <- paste0(targets_df$feature, "||", targets_df$type)
-
   overlap <- intersect(key_old, key_new)
+
   if (length(overlap) > 0) {
-    if (!isTRUE(overwrite)) {
-      k <- overlap[1]
-      stop(
-        "Targets already exist for some (feature,type) pairs. Example key: ", k,
-        ". Use overwrite=TRUE to replace.",
+    if (isTRUE(overwrite)) {
+      # replace old rows for those keys
+      keep <- !(key_old %in% overlap)
+      old <- old[keep, , drop = FALSE]
+    } else {
+      # append and warn
+      ex <- overlap[1]
+      warning(
+        "Targets already exist for some (feature,type) pairs (e.g., ", ex, "). ",
+        "Appending additional rows (they will be aggregated at apply time). ",
+        "Use overwrite=TRUE to replace instead.",
         call. = FALSE
       )
     }
-    keep <- !(key_old %in% overlap)
-    old <- old[keep, , drop = FALSE]
   }
 
   x$data$targets <- rbind(old, targets_df)
 
-  # If model already exists, apply targets immediately and refresh snapshot
+  # If model already exists, mark dirty (targets need to be applied)
   if (!is.null(x$data$model_ptr)) {
-    if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
+    x$data$meta <- x$data$meta %||% list()
     x$data$meta$model_dirty <- TRUE
   }
 
@@ -676,7 +692,8 @@ available_to_solve <- function(package = ""){
 
 
 .pa_apply_targets_if_present <- function(x,
-                                         allow_multiple_rows_per_feature = FALSE) {
+                                         allow_multiple_rows_per_feature = TRUE,
+                                         zero_tol = 1e-12) {
 
   stopifnot(inherits(x, "Data"))
 
@@ -703,50 +720,69 @@ available_to_solve <- function(package = ""){
     stop("Unknown target types in x$data$targets: ", paste(bad_type, collapse = ", "), call. = FALSE)
   }
 
-  # ---- STRICT RULE (mixed_total exclusivo)
+  # warn if mixed_total coexists with others for same feature (but allow)
   feats_mix    <- sort(unique(t$feature[t$type == "mixed_total"]))
   feats_nonmix <- sort(unique(t$feature[t$type %in% c("conservation","recovery")]))
   conflict <- intersect(feats_mix, feats_nonmix)
   if (length(conflict) > 0) {
     ex <- paste(head(conflict, 8), collapse = ", ")
-    stop(
-      "Incompatible targets: features cannot have 'mixed_total' together with 'conservation'/'recovery'. ",
+    warning(
+      "Applying targets: some features have 'mixed_total' together with 'conservation'/'recovery' (stronger constraints). ",
       "Conflicts: ", ex,
+      if (length(conflict) > 8) paste0(" ... (", length(conflict), " total)") else "",
       call. = FALSE
     )
   }
 
-  if (!allow_multiple_rows_per_feature) {
-    dup <- t[duplicated(t[, c("feature", "type")]), c("feature", "type"), drop = FALSE]
-    if (nrow(dup) > 0) {
+  # detect duplicates (feature,type)
+  dup_keys <- duplicated(t[, c("feature", "type")]) | duplicated(t[, c("feature", "type")], fromLast = TRUE)
+  if (any(dup_keys)) {
+    if (!isTRUE(allow_multiple_rows_per_feature)) {
       stop(
         "Multiple target rows found for the same (feature, type). ",
-        "Set allow_multiple_rows_per_feature=TRUE or collapse them before storing.",
+        "Set allow_multiple_rows_per_feature=TRUE to aggregate them at apply time.",
         call. = FALSE
       )
+    } else {
+      warning(
+        "Multiple target rows found for the same (feature,type). They will be aggregated by SUM before applying.",
+        call. = FALSE
+      )
+      t <- stats::aggregate(target_value ~ feature + type, data = t, FUN = sum)
     }
   }
 
-  if (allow_multiple_rows_per_feature) {
-    t <- stats::aggregate(target_value ~ feature + type, data = t, FUN = sum)
+  # drop/skip near-zero ge targets (redundant; reduces noise)
+  # (we do NOT drop negative targets; those are suspicious but let them fail elsewhere)
+  idx_zero <- is.finite(t$target_value) & abs(t$target_value) <= zero_tol
+  if (any(idx_zero)) {
+    z <- t[idx_zero, , drop = FALSE]
+    warning(
+      "Skipping ", nrow(z), " target(s) with target_value ~ 0 (|rhs| <= ", format(zero_tol), "). ",
+      "They are redundant and can obscure infeasibility diagnostics.",
+      call. = FALSE
+    )
+    t <- t[!idx_zero, , drop = FALSE]
+  }
+
+  # if after skipping nothing remains, just record and exit
+  if (nrow(t) == 0) {
+    x$data$model_args$targets_applied <- TRUE
+    x$data$model_args$targets_counts <- list(conservation = 0L, recovery = 0L, mixed_total = 0L)
+    return(invisible(x))
   }
 
   op <- x$data$model_ptr
 
   .mk_targets_df <- function(features, values, colname) {
-    df <- data.frame(
-      internal_id = as.integer(features),
-      stringsAsFactors = FALSE
-    )
+    df <- data.frame(internal_id = as.integer(features), stringsAsFactors = FALSE)
     df[[colname]] <- as.numeric(values)
     df
   }
 
-  # split by type
+  # split by type (after filtering)
   tc <- t[t$type == "conservation", c("feature", "target_value"), drop = FALSE]
   tr <- t[t$type == "recovery",      c("feature", "target_value"), drop = FALSE]
-
-  # para mixed_total necesitamos potencialmente más columnas
   tm_all <- t[t$type == "mixed_total", , drop = FALSE]
 
   # Read exponent config (legacy soft objective)
@@ -761,10 +797,41 @@ available_to_solve <- function(package = ""){
   has_effects <- !is.null(x$data$dist_effects_model) && inherits(x$data$dist_effects_model, "data.frame") &&
     nrow(x$data$dist_effects_model) > 0
 
+  # -----------------------------
+  # helper: feasibility sanity checks
+  # -----------------------------
+  .check_feature_present_in_df <- function(features, df, feature_col, what, rhs) {
+    features <- as.integer(features)
+    rhs <- as.numeric(rhs)
+    if (length(features) == 0) return(invisible(TRUE))
+
+    present <- unique(as.integer(df[[feature_col]]))
+    miss <- features[!features %in% present]
+    if (length(miss) > 0) {
+      ex <- paste(head(sort(unique(miss)), 8), collapse = ", ")
+      stop(
+        "Infeasible targets detected: some features in ", what, " targets have no contributions in the model tables.\n",
+        "Missing feature ids: ", ex,
+        if (length(unique(miss)) > 8) paste0(" ... (", length(unique(miss)), " total)") else "",
+        "\nTip: this typically happens when a feature has no baseline rows (dist_features) ",
+        "and/or no effect rows (dist_effects/dist_benefit) but a positive target was set.",
+        call. = FALSE
+      )
+    }
+    invisible(TRUE)
+  }
+
   # ------------------------------------------------------------
   # conservation
   # ------------------------------------------------------------
   if (nrow(tc) > 0) {
+
+    # sanity: conservation uses dist_features (baseline)
+    if (is.null(x$data$dist_features) || nrow(x$data$dist_features) == 0) {
+      stop("Conservation targets present but dist_features is missing/empty.", call. = FALSE)
+    }
+    .check_feature_present_in_df(tc$feature, x$data$dist_features, "feature",
+                                 what = "conservation", rhs = tc$target_value)
 
     if (exists("rcpp_add_exclude_conservation_when_actions", mode = "function") && has_actions && has_effects) {
 
@@ -803,6 +870,13 @@ available_to_solve <- function(package = ""){
       stop("Recovery targets present but no benefit column available in dist_effects.", call. = FALSE)
     }
 
+    # sanity: recovery relies on dist_benefit (and actions mapping)
+    if (!("feature" %in% names(dbm))) {
+      stop("dist_benefit_data (from effects) must contain a 'feature' column for validation.", call. = FALSE)
+    }
+    .check_feature_present_in_df(tr$feature, dbm, "feature",
+                                 what = "recovery", rhs = tr$target_value)
+
     if (is.finite(benefit_exponent) && benefit_exponent > 1 + 1e-12) {
       if (!exists("rcpp_add_target_recovery_power", mode = "function")) {
         stop(
@@ -836,14 +910,14 @@ available_to_solve <- function(package = ""){
   }
 
   # ------------------------------------------------------------
-  # mixed_total  (ahora acepta absolute y relative_baseline)
+  # mixed_total
   # ------------------------------------------------------------
   if (nrow(tm_all) > 0) {
     if (!exists("rcpp_add_target_mixed_total", mode = "function")) {
       stop("Missing rcpp_add_target_mixed_total() in the package.", call. = FALSE)
     }
 
-    # Si viene como relativo al baseline, traducir a target_value absoluto aquí
+    # relative_baseline -> absolute conversion if available
     if ("target_unit" %in% names(tm_all) && "target_raw" %in% names(tm_all)) {
       tu <- as.character(tm_all$target_unit)
       idx_rel <- !is.na(tu) & tu == "relative_baseline"
@@ -864,14 +938,25 @@ available_to_solve <- function(package = ""){
 
     tm <- tm_all[, c("feature", "target_value"), drop = FALSE]
 
-    # aquí eliges delta en vez de benefit
     dbm <- .get_dist_effects_model(x, mode = "delta")
     if (is.null(dbm) || nrow(dbm) == 0) {
       stop("Mixed targets present but no effects available.", call. = FALSE)
     }
 
-    # IMPORTANTE: tu C++ actual espera columna "benefit".
-    # Opción A (rápida): renombrar effect -> benefit para reutilizar C++ sin tocarlo
+    # sanity: mixed_total uses BOTH dist_features (baseline) + effects (delta)
+    if (is.null(x$data$dist_features) || nrow(x$data$dist_features) == 0) {
+      stop("Mixed_total targets present but dist_features is missing/empty.", call. = FALSE)
+    }
+    .check_feature_present_in_df(tm$feature, x$data$dist_features, "feature",
+                                 what = "mixed_total (baseline part)", rhs = tm$target_value)
+
+    if (!("feature" %in% names(dbm))) {
+      stop("dist_effects_model (delta) must contain a 'feature' column for validation.", call. = FALSE)
+    }
+    .check_feature_present_in_df(tm$feature, dbm, "feature",
+                                 what = "mixed_total (effects part)", rhs = tm$target_value)
+
+    # reuse C++ expecting 'benefit'
     dbm$benefit <- dbm$effect
 
     rcpp_add_target_mixed_total(
@@ -884,7 +969,6 @@ available_to_solve <- function(package = ""){
     )
   }
 
-
   x$data$model_args$targets_applied <- TRUE
   x$data$model_args$targets_counts <- list(
     conservation = nrow(tc),
@@ -894,6 +978,7 @@ available_to_solve <- function(package = ""){
 
   invisible(x)
 }
+
 
 
 
