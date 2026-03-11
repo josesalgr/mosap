@@ -141,6 +141,8 @@
   # ------------------------------------------------------------
   x <- .pa_build_model_prepare_tables(x)
 
+  x <- .pa_build_model_validate_locked_in_action_feasibility(x)
+
   # ------------------------------------------------------------
   # early validation: objective dependencies
   # ------------------------------------------------------------
@@ -633,6 +635,50 @@
   x
 }
 
+.pa_build_model_validate_locked_in_action_feasibility <- function(x) {
+
+  stopifnot(inherits(x, "Data"))
+
+  pu <- x$data$pu
+  da <- x$data$dist_actions_model
+
+  if (is.null(pu) || !inherits(pu, "data.frame") || nrow(pu) == 0) {
+    return(x)
+  }
+
+  if (!("locked_in" %in% names(pu)) || !any(pu$locked_in, na.rm = TRUE)) {
+    return(x)
+  }
+
+  locked_in_pu <- as.integer(pu$internal_id[isTRUE(pu$locked_in) | (!is.na(pu$locked_in) & pu$locked_in)])
+
+  if (length(locked_in_pu) == 0) return(x)
+
+  feasible_pu <- integer(0)
+  if (!is.null(da) && inherits(da, "data.frame") && nrow(da) > 0 && "internal_pu" %in% names(da)) {
+    feasible_pu <- unique(as.integer(da$internal_pu))
+  }
+
+  bad <- setdiff(locked_in_pu, feasible_pu)
+
+  if (length(bad) > 0) {
+    bad_ext <- pu$id[match(bad, pu$internal_id)]
+    stop(
+      "Some locked-in planning units have no feasible actions, but the model requires w_i = 1 ",
+      "to imply at least one action.\n",
+      "Affected PU ids: ", paste(utils::head(bad_ext, 20), collapse = ", "),
+      if (length(bad_ext) > 20) paste0(" ... (", length(bad_ext), " total)") else "",
+      "\nFix this by either:\n",
+      "- adding at least one feasible action to those units,\n",
+      "- removing locked_in from those units, or\n",
+      "- making 'Conservation' an explicit feasible action there.",
+      call. = FALSE
+    )
+  }
+
+  x
+}
+
 .pa_build_model_build_cpp_core <- function(x) {
 
   message("BUILD_CPP_CORE: rebuilding model_ptr (new op)")
@@ -672,11 +718,22 @@
 
   # structural constraints
   if (!is.null(x$data$dist_actions_model) && nrow(x$data$dist_actions_model) > 0) {
+
+    if (!exists("rcpp_add_linking_x_le_w", mode = "function")) {
+      .pa_abort("Missing rcpp_add_linking_x_le_w() in the package.")
+    }
     res_locks <- rcpp_add_linking_x_le_w(op, x$data$dist_actions_model)
     x$data$model_registry$cons$x_le_w <- res_locks
+
+    # NEW: w_i <= sum_a x_ia
+    if (!exists("rcpp_add_linking_w_le_sum_x", mode = "function")) {
+      .pa_abort("Missing rcpp_add_linking_w_le_sum_x() in the package.")
+    }
+    res_locks <- rcpp_add_linking_w_le_sum_x(op, x$data$dist_actions_model)
+    x$data$model_registry$cons$w_le_sum_x <- res_locks
   }
 
-  # ---- NEW: only add z <= w if z exists
+  # only add z <= w if z exists
   if (isTRUE(need_z) && exists("rcpp_add_linking_z_le_w", mode = "function")) {
     res_locks <- rcpp_add_linking_z_le_w(op, x$data$dist_features)
     x$data$model_registry$cons$z_le_w <- res_locks

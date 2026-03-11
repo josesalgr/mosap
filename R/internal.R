@@ -499,81 +499,63 @@ available_to_solve <- function(package = ""){
 .pa_store_targets <- function(x, targets_df, overwrite = FALSE) {
   stopifnot(inherits(x, "Data"))
   stopifnot(inherits(targets_df, "data.frame"))
-  stopifnot(all(c("feature","type","target_value") %in% names(targets_df)))
+  stopifnot(all(c("feature", "type", "target_value") %in% names(targets_df)))
 
-  # normalize minimal fields (defensive)
+  # normalize minimal fields
   targets_df$feature <- as.integer(targets_df$feature)
-  targets_df$type    <- as.character(targets_df$type)
+  targets_df$type <- as.character(targets_df$type)
+  targets_df$target_value <- as.numeric(targets_df$target_value)
 
-  valid_types <- c("conservation", "recovery", "mixed_total")
+  # ensure subset column exists
+  if (!("subset" %in% names(targets_df))) {
+    targets_df$subset <- NA_character_
+  }
+  targets_df$subset <- as.character(targets_df$subset)
+
+  # valid target types in the new API
+  valid_types <- c("actions")
   bad_type <- setdiff(unique(targets_df$type), valid_types)
   if (length(bad_type) > 0) {
     stop("Unknown target types: ", paste(bad_type, collapse = ", "), call. = FALSE)
   }
 
-  # warn (do not stop) if mixed_total coexists with others (in incoming batch)
-  new_mix    <- unique(targets_df$feature[targets_df$type == "mixed_total"])
-  new_nonmix <- unique(targets_df$feature[targets_df$type %in% c("conservation","recovery")])
-  conflict_C <- intersect(new_mix, new_nonmix)
-  if (length(conflict_C) > 0) {
-    ex <- paste(head(sort(conflict_C), 8), collapse = ", ")
-    warning(
-      "Targets include 'mixed_total' together with 'conservation'/'recovery' for the same feature(s): ",
-      ex,
-      if (length(conflict_C) > 8) paste0(" ... (", length(conflict_C), " total)") else "",
-      ". Both will be stored and applied (stronger constraints).",
-      call. = FALSE
-    )
-  }
-
+  # initialize if empty
   if (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0) {
     x$data$targets <- targets_df
-    # mark model dirty if already built
+
     if (!is.null(x$data$model_ptr)) {
       x$data$meta <- x$data$meta %||% list()
       x$data$meta$model_dirty <- TRUE
     }
+
     return(x)
   }
 
   old <- x$data$targets
   old$feature <- as.integer(old$feature)
-  old$type    <- as.character(old$type)
+  old$type <- as.character(old$type)
+  old$target_value <- as.numeric(old$target_value)
 
-  # warn (do not stop) if mixed_total conflicts with already stored targets
-  old_mix    <- unique(old$feature[old$type == "mixed_total"])
-  old_nonmix <- unique(old$feature[old$type %in% c("conservation","recovery")])
-
-  conflict_A <- intersect(new_mix, old_nonmix)  # adding mixed where old has nonmix
-  conflict_B <- intersect(new_nonmix, old_mix)  # adding nonmix where old has mixed
-  conflicts <- sort(unique(c(conflict_A, conflict_B, conflict_C)))
-  if (length(conflicts) > 0) {
-    ex <- paste(head(conflicts, 8), collapse = ", ")
-    warning(
-      "Targets mix 'mixed_total' with 'conservation'/'recovery' for feature(s): ",
-      ex,
-      if (length(conflicts) > 8) paste0(" ... (", length(conflicts), " total)") else "",
-      ". Both will be stored and applied (stronger constraints).",
-      call. = FALSE
-    )
+  if (!("subset" %in% names(old))) {
+    old$subset <- NA_character_
   }
+  old$subset <- as.character(old$subset)
 
-  # key: feature + type
-  key_old <- paste0(old$feature, "||", old$type)
-  key_new <- paste0(targets_df$feature, "||", targets_df$type)
+  # key: feature + type + subset
+  key_old <- paste0(old$feature, "||", old$type, "||", old$subset)
+  key_new <- paste0(targets_df$feature, "||", targets_df$type, "||", targets_df$subset)
+
   overlap <- intersect(key_old, key_new)
 
   if (length(overlap) > 0) {
     if (isTRUE(overwrite)) {
-      # replace old rows for those keys
       keep <- !(key_old %in% overlap)
       old <- old[keep, , drop = FALSE]
     } else {
-      # append and warn
       ex <- overlap[1]
       warning(
-        "Targets already exist for some (feature,type) pairs (e.g., ", ex, "). ",
-        "Appending additional rows (they will be aggregated at apply time). ",
+        "Targets already exist for some (feature, type, subset) combinations ",
+        "(e.g., ", ex, "). Appending additional rows; they will be aggregated at apply time. ",
         "Use overwrite=TRUE to replace instead.",
         call. = FALSE
       )
@@ -582,7 +564,6 @@ available_to_solve <- function(package = ""){
 
   x$data$targets <- rbind(old, targets_df)
 
-  # If model already exists, mark dirty (targets need to be applied)
   if (!is.null(x$data$model_ptr)) {
     x$data$meta <- x$data$meta %||% list()
     x$data$meta$model_dirty <- TRUE
@@ -650,42 +631,103 @@ available_to_solve <- function(package = ""){
 # helper: get model-ready benefit table from dist_effects
 .get_dist_benefit_model_from_effects <- function(x, benefit_col = "benefit") {
   de <- x$data$dist_effects_model %||% x$data$dist_effects
-  if (is.null(de) || nrow(de) == 0) return(NULL)
-  if (!benefit_col %in% names(de)) {
+
+  if (is.null(de) || !inherits(de, "data.frame") || nrow(de) == 0) {
+    return(NULL)
+  }
+
+  benefit_col <- as.character(benefit_col)[1]
+  if (is.na(benefit_col) || !nzchar(benefit_col)) {
+    stop("`benefit_col` must be a non-empty string.", call. = FALSE)
+  }
+
+  if (!(benefit_col %in% names(de))) {
     stop("dist_effects is missing column '", benefit_col, "'.", call. = FALSE)
   }
+
   out <- de
-  # ensure the expected column exists for old C++: 'benefit'
-  if (!("benefit" %in% names(out))) out$benefit <- as.numeric(out[[benefit_col]])
-  else out$benefit <- as.numeric(out$benefit)
+
+  if ("feature" %in% names(out))          out$feature <- as.integer(out$feature)
+  if ("internal_pu" %in% names(out))      out$internal_pu <- as.integer(out$internal_pu)
+  if ("internal_action" %in% names(out))  out$internal_action <- as.integer(out$internal_action)
+  if ("internal_feature" %in% names(out)) out$internal_feature <- as.integer(out$internal_feature)
+
+  out$benefit <- as.numeric(out[[benefit_col]])
+
+  if (anyNA(out$benefit) || any(!is.finite(out$benefit))) {
+    stop(
+      "Column '", benefit_col, "' in dist_effects contains NA or non-finite values.",
+      call. = FALSE
+    )
+  }
+
   out
 }
 
 .get_dist_effects_model <- function(x, mode = c("benefit", "loss", "delta")) {
   mode <- match.arg(mode)
+
   de <- x$data$dist_effects_model %||% x$data$dist_effects
-  if (is.null(de) || nrow(de) == 0) return(NULL)
+  if (is.null(de) || !inherits(de, "data.frame") || nrow(de) == 0) {
+    return(NULL)
+  }
 
-  # asegurar columnas base
-  if (!("benefit" %in% names(de))) de$benefit <- 0
-  if (!("loss" %in% names(de)))    de$loss <- 0
+  out <- de
 
-  de$benefit <- as.numeric(de$benefit)
-  de$loss    <- as.numeric(de$loss)
+  if ("feature" %in% names(out))          out$feature <- as.integer(out$feature)
+  if ("internal_pu" %in% names(out))      out$internal_pu <- as.integer(out$internal_pu)
+  if ("internal_action" %in% names(out))  out$internal_action <- as.integer(out$internal_action)
+  if ("internal_feature" %in% names(out)) out$internal_feature <- as.integer(out$internal_feature)
 
   if (mode == "benefit") {
-    out <- de
+    if (!("benefit" %in% names(out))) {
+      stop("dist_effects is missing column 'benefit'.", call. = FALSE)
+    }
+
+    out$benefit <- as.numeric(out$benefit)
+    if (anyNA(out$benefit) || any(!is.finite(out$benefit))) {
+      stop("dist_effects$benefit contains NA or non-finite values.", call. = FALSE)
+    }
+
     out$effect <- out$benefit
     return(out)
   }
+
   if (mode == "loss") {
-    out <- de
+    if (!("loss" %in% names(out))) {
+      stop("dist_effects is missing column 'loss'.", call. = FALSE)
+    }
+
+    out$loss <- as.numeric(out$loss)
+    if (anyNA(out$loss) || any(!is.finite(out$loss))) {
+      stop("dist_effects$loss contains NA or non-finite values.", call. = FALSE)
+    }
+
     out$effect <- out$loss
     return(out)
   }
 
-  # delta firmado
-  out <- de
+  # mode == "delta"
+  if (!("benefit" %in% names(out)) && !("loss" %in% names(out))) {
+    stop(
+      "dist_effects must contain at least one of 'benefit' or 'loss' to compute delta.",
+      call. = FALSE
+    )
+  }
+
+  if (!("benefit" %in% names(out))) out$benefit <- 0
+  if (!("loss" %in% names(out)))    out$loss <- 0
+
+  out$benefit <- as.numeric(out$benefit)
+  out$loss    <- as.numeric(out$loss)
+
+  if (anyNA(out$benefit) || any(!is.finite(out$benefit))) {
+    stop("dist_effects$benefit contains NA or non-finite values.", call. = FALSE)
+  }
+  if (anyNA(out$loss) || any(!is.finite(out$loss))) {
+    stop("dist_effects$loss contains NA or non-finite values.", call. = FALSE)
+  }
+
   out$effect <- out$benefit - out$loss
   out
 }
@@ -711,49 +753,63 @@ available_to_solve <- function(package = ""){
     stop("x$data$targets is missing required columns: ", paste(miss, collapse = ", "), call. = FALSE)
   }
 
+  if (!("subset" %in% names(t))) {
+    t$subset <- NA_character_
+  }
+
   t$feature <- as.integer(t$feature)
   t$type <- as.character(t$type)
+  t$subset <- as.character(t$subset)
   t$target_value <- as.numeric(t$target_value)
 
-  bad_type <- setdiff(unique(t$type), c("conservation", "recovery", "mixed_total"))
+  bad_type <- setdiff(unique(t$type), c("actions"))
   if (length(bad_type) > 0) {
     stop("Unknown target types in x$data$targets: ", paste(bad_type, collapse = ", "), call. = FALSE)
   }
 
-  # warn if mixed_total coexists with others for same feature (but allow)
-  feats_mix    <- sort(unique(t$feature[t$type == "mixed_total"]))
-  feats_nonmix <- sort(unique(t$feature[t$type %in% c("conservation","recovery")]))
-  conflict <- intersect(feats_mix, feats_nonmix)
-  if (length(conflict) > 0) {
-    ex <- paste(head(conflict, 8), collapse = ", ")
-    warning(
-      "Applying targets: some features have 'mixed_total' together with 'conservation'/'recovery' (stronger constraints). ",
-      "Conflicts: ", ex,
-      if (length(conflict) > 8) paste0(" ... (", length(conflict), " total)") else "",
-      call. = FALSE
-    )
-  }
+  # detect duplicates (feature, type, subset)
+  dup_keys <- duplicated(t[, c("feature", "type", "subset")]) |
+    duplicated(t[, c("feature", "type", "subset")], fromLast = TRUE)
 
-  # detect duplicates (feature,type)
-  dup_keys <- duplicated(t[, c("feature", "type")]) | duplicated(t[, c("feature", "type")], fromLast = TRUE)
   if (any(dup_keys)) {
     if (!isTRUE(allow_multiple_rows_per_feature)) {
       stop(
-        "Multiple target rows found for the same (feature, type). ",
+        "Multiple target rows found for the same (feature, type, subset). ",
         "Set allow_multiple_rows_per_feature=TRUE to aggregate them at apply time.",
         call. = FALSE
       )
     } else {
       warning(
-        "Multiple target rows found for the same (feature,type). They will be aggregated by SUM before applying.",
+        "Multiple target rows found for the same (feature, type, subset). ",
+        "They will be aggregated by SUM before applying.",
         call. = FALSE
       )
-      t <- stats::aggregate(target_value ~ feature + type, data = t, FUN = sum)
+
+      keep_cols <- intersect(
+        c("target_unit", "target_raw", "basis_total", "label", "created_at"),
+        names(t)
+      )
+
+      agg_num <- stats::aggregate(
+        target_value ~ feature + type + subset,
+        data = t,
+        FUN = sum
+      )
+
+      if (length(keep_cols) > 0) {
+        meta <- t[!duplicated(t[, c("feature", "type", "subset")]),
+                  c("feature", "type", "subset", keep_cols),
+                  drop = FALSE]
+        t <- merge(agg_num, meta,
+                   by = c("feature", "type", "subset"),
+                   all.x = TRUE, sort = FALSE)
+      } else {
+        t <- agg_num
+      }
     }
   }
 
-  # drop/skip near-zero ge targets (redundant; reduces noise)
-  # (we do NOT drop negative targets; those are suspicious but let them fail elsewhere)
+  # drop near-zero targets
   idx_zero <- is.finite(t$target_value) & abs(t$target_value) <= zero_tol
   if (any(idx_zero)) {
     z <- t[idx_zero, , drop = FALSE]
@@ -765,10 +821,9 @@ available_to_solve <- function(package = ""){
     t <- t[!idx_zero, , drop = FALSE]
   }
 
-  # if after skipping nothing remains, just record and exit
   if (nrow(t) == 0) {
     x$data$model_args$targets_applied <- TRUE
-    x$data$model_args$targets_counts <- list(conservation = 0L, recovery = 0L, mixed_total = 0L)
+    x$data$model_args$targets_counts <- list(actions = 0L)
     return(invisible(x))
   }
 
@@ -780,201 +835,88 @@ available_to_solve <- function(package = ""){
     df
   }
 
-  # split by type (after filtering)
-  tc <- t[t$type == "conservation", c("feature", "target_value"), drop = FALSE]
-  tr <- t[t$type == "recovery",      c("feature", "target_value"), drop = FALSE]
-  tm_all <- t[t$type == "mixed_total", , drop = FALSE]
-
-  # Read exponent config (legacy soft objective)
-  args <- x$data$model_args %||% list()
-  benefit_exponent <- as.numeric(args$benefit_exponent %||% 1)
-  curve_segments   <- as.integer(args$curve_segments %||% 3L)
-
-  # helper flags
-  has_actions <- !is.null(x$data$dist_actions_model) && inherits(x$data$dist_actions_model, "data.frame") &&
-    nrow(x$data$dist_actions_model) > 0
-
-  has_effects <- !is.null(x$data$dist_effects_model) && inherits(x$data$dist_effects_model, "data.frame") &&
-    nrow(x$data$dist_effects_model) > 0
-
-  # -----------------------------
-  # helper: feasibility sanity checks
-  # -----------------------------
-  .check_feature_present_in_df <- function(features, df, feature_col, what, rhs) {
+  .check_feature_present_in_df <- function(features, df, feature_col, what) {
     features <- as.integer(features)
-    rhs <- as.numeric(rhs)
     if (length(features) == 0) return(invisible(TRUE))
 
     present <- unique(as.integer(df[[feature_col]]))
     miss <- features[!features %in% present]
+
     if (length(miss) > 0) {
       ex <- paste(head(sort(unique(miss)), 8), collapse = ", ")
       stop(
         "Infeasible targets detected: some features in ", what, " targets have no contributions in the model tables.\n",
         "Missing feature ids: ", ex,
         if (length(unique(miss)) > 8) paste0(" ... (", length(unique(miss)), " total)") else "",
-        "\nTip: this typically happens when a feature has no baseline rows (dist_features) ",
-        "and/or no effect rows (dist_effects/dist_benefit) but a positive target was set.",
         call. = FALSE
       )
     }
+
     invisible(TRUE)
   }
 
-  # ------------------------------------------------------------
-  # conservation
-  # ------------------------------------------------------------
-  if (nrow(tc) > 0) {
-
-    # sanity: conservation uses dist_features (baseline)
-    if (is.null(x$data$dist_features) || nrow(x$data$dist_features) == 0) {
-      stop("Conservation targets present but dist_features is missing/empty.", call. = FALSE)
-    }
-    .check_feature_present_in_df(tc$feature, x$data$dist_features, "feature",
-                                 what = "conservation", rhs = tc$target_value)
-
-    if (exists("rcpp_add_exclude_conservation_when_actions", mode = "function") && has_actions && has_effects) {
-
-      dbm_for_excl <- .get_dist_benefit_model_from_effects(x, benefit_col = "benefit")
-
-      if (!is.null(dbm_for_excl) && nrow(dbm_for_excl) > 0) {
-        rcpp_add_exclude_conservation_when_actions(
-          op,
-          dist_features_data = x$data$dist_features,
-          dist_actions_data  = x$data$dist_actions_model,
-          dist_effects_data  = dbm_for_excl,
-          benefit_col_sexp   = "benefit",
-          tol                = 1e-12
-        )
-      }
+  .filter_effects_by_subset <- function(de, subset_string) {
+    if (is.na(subset_string) || !nzchar(subset_string)) {
+      return(de)
     }
 
-    if (!exists("rcpp_add_target_conservation", mode = "function")) {
-      stop("Missing rcpp_add_target_conservation() in the package.", call. = FALSE)
-    }
-    rcpp_add_target_conservation(
-      op,
-      features_data      = .mk_targets_df(tc$feature, tc$target_value, "target_conservation"),
-      dist_features_data = x$data$dist_features,
-      target_col         = "target_conservation"
-    )
+    subset_vals <- strsplit(subset_string, "\\|")[[1]]
+    subset_vals <- unique(subset_vals[nzchar(subset_vals)])
+
+    matched <- .pa_resolve_action_subset(x, subset_vals)
+    keep_internal <- as.integer(matched$internal_id)
+
+    de[de$internal_action %in% keep_internal, , drop = FALSE]
   }
 
-  # ------------------------------------------------------------
-  # recovery
-  # ------------------------------------------------------------
-  if (nrow(tr) > 0) {
+  # split by subset, because each subset becomes a different target block
+  split_key <- ifelse(is.na(t$subset) | !nzchar(t$subset), "__ALL__", t$subset)
+  t_split <- split(t, split_key, drop = TRUE)
+
+  n_applied <- 0L
+
+  for (nm in names(t_split)) {
+    tt <- t_split[[nm]]
+    subset_string <- tt$subset[1]
 
     dbm <- .get_dist_benefit_model_from_effects(x, benefit_col = "benefit")
     if (is.null(dbm) || nrow(dbm) == 0) {
-      stop("Recovery targets present but no benefit column available in dist_effects.", call. = FALSE)
+      stop("Targets present but no benefit column available in dist_effects.", call. = FALSE)
     }
 
-    # sanity: recovery relies on dist_benefit (and actions mapping)
-    if (!("feature" %in% names(dbm))) {
-      stop("dist_benefit_data (from effects) must contain a 'feature' column for validation.", call. = FALSE)
-    }
-    .check_feature_present_in_df(tr$feature, dbm, "feature",
-                                 what = "recovery", rhs = tr$target_value)
+    dbm_sub <- .filter_effects_by_subset(dbm, subset_string)
 
-    if (is.finite(benefit_exponent) && benefit_exponent > 1 + 1e-12) {
-      if (!exists("rcpp_add_target_recovery_power", mode = "function")) {
-        stop(
-          "benefit_exponent > 1 requested, but rcpp_add_target_recovery_power() is missing in the package.",
-          call. = FALSE
-        )
-      }
-
-      rcpp_add_target_recovery_power(
-        op,
-        features_data     = .mk_targets_df(tr$feature, tr$target_value, "target_recovery"),
-        dist_actions_data = x$data$dist_actions_model,
-        dist_benefit_data = dbm,
-        exponent          = benefit_exponent,
-        segments          = curve_segments,
-        target_col_sexp   = "target_recovery"
-      )
-
-    } else {
-      if (!exists("rcpp_add_target_recovery", mode = "function")) {
-        stop("Missing rcpp_add_target_recovery() in the package.", call. = FALSE)
-      }
-      rcpp_add_target_recovery(
-        op,
-        features_data     = .mk_targets_df(tr$feature, tr$target_value, "target_recovery"),
-        dist_actions_data = x$data$dist_actions_model,
-        dist_benefit_data = dbm,
-        target_col        = "target_recovery"
+    if (nrow(dbm_sub) == 0) {
+      subset_lab <- if (is.na(subset_string) || !nzchar(subset_string)) "ALL actions" else subset_string
+      stop(
+        "Targets for subset '", subset_lab, "' cannot be applied because no matching effect rows remain after filtering.",
+        call. = FALSE
       )
     }
-  }
 
-  # ------------------------------------------------------------
-  # mixed_total
-  # ------------------------------------------------------------
-  if (nrow(tm_all) > 0) {
-    if (!exists("rcpp_add_target_mixed_total", mode = "function")) {
-      stop("Missing rcpp_add_target_mixed_total() in the package.", call. = FALSE)
+    if (!("feature" %in% names(dbm_sub))) {
+      stop("dist_benefit_data must contain a 'feature' column for validation.", call. = FALSE)
     }
 
-    # relative_baseline -> absolute conversion if available
-    if ("target_unit" %in% names(tm_all) && "target_raw" %in% names(tm_all)) {
-      tu <- as.character(tm_all$target_unit)
-      idx_rel <- !is.na(tu) & tu == "relative_baseline"
+    .check_feature_present_in_df(tt$feature, dbm_sub, "feature", what = "actions")
 
-      if (any(idx_rel)) {
-        rel <- as.numeric(tm_all$target_raw[idx_rel])
-        if (any(rel < 0 | rel > 1, na.rm = TRUE)) {
-          stop("Relative mixed_total targets must be between 0 and 1.", call. = FALSE)
-        }
-
-        basis <- .pa_feature_totals(x) # named by feature id (baseline totals)
-        basis_v <- basis[as.character(tm_all$feature[idx_rel])]
-        basis_v[is.na(basis_v)] <- 0
-
-        tm_all$target_value[idx_rel] <- rel * as.numeric(basis_v)
-      }
+    if (!exists("rcpp_add_target_recovery", mode = "function")) {
+      stop("Missing rcpp_add_target_recovery() in the package.", call. = FALSE)
     }
 
-    tm <- tm_all[, c("feature", "target_value"), drop = FALSE]
-
-    dbm <- .get_dist_effects_model(x, mode = "delta")
-    if (is.null(dbm) || nrow(dbm) == 0) {
-      stop("Mixed targets present but no effects available.", call. = FALSE)
-    }
-
-    # sanity: mixed_total uses BOTH dist_features (baseline) + effects (delta)
-    if (is.null(x$data$dist_features) || nrow(x$data$dist_features) == 0) {
-      stop("Mixed_total targets present but dist_features is missing/empty.", call. = FALSE)
-    }
-    .check_feature_present_in_df(tm$feature, x$data$dist_features, "feature",
-                                 what = "mixed_total (baseline part)", rhs = tm$target_value)
-
-    if (!("feature" %in% names(dbm))) {
-      stop("dist_effects_model (delta) must contain a 'feature' column for validation.", call. = FALSE)
-    }
-    .check_feature_present_in_df(tm$feature, dbm, "feature",
-                                 what = "mixed_total (effects part)", rhs = tm$target_value)
-
-    # reuse C++ expecting 'benefit'
-    dbm$benefit <- dbm$effect
-
-    rcpp_add_target_mixed_total(
-      x = op,
-      features_data      = .mk_targets_df(tm$feature, tm$target_value, "target_mixed_total"),
-      dist_features_data = x$data$dist_features,
-      dist_benefit_data  = dbm,
-      dist_actions_data  = x$data$dist_actions_model,
-      target_col_sexp    = "target_mixed_total"
+    rcpp_add_target_recovery(
+      op,
+      features_data     = .mk_targets_df(tt$feature, tt$target_value, "target_actions"),
+      dist_actions_data = x$data$dist_actions_model,
+      dist_benefit_data = dbm_sub,
+      target_col        = "target_actions"
     )
+
+    n_applied <- n_applied + nrow(tt)
   }
 
   x$data$model_args$targets_applied <- TRUE
-  x$data$model_args$targets_counts <- list(
-    conservation = nrow(tc),
-    recovery     = nrow(tr),
-    mixed_total  = nrow(tm_all)
-  )
+  x$data$model_args$targets_counts <- list(actions = n_applied)
 
   invisible(x)
 }
@@ -1623,7 +1565,7 @@ available_to_solve <- function(package = ""){
 
   # targets checks (basic)
   if (inherits(t, "data.frame") && nrow(t) > 0 && "type" %in% names(t)) {
-    bad <- setdiff(sort(unique(as.character(t$type))), c("conservation", "recovery", "mixed_total"))
+    bad <- setdiff(sort(unique(as.character(t$type))), c("conservation", "recovery", "mixed"))
     if (length(bad) > 0) {
       checks <- c(checks, paste0("targets$type: {.red invalid} -> ", paste(bad, collapse = ", ")))
     }
@@ -2043,7 +1985,7 @@ available_to_solve <- function(package = ""){
 # ------------------------------------------------------------------------------
 # Legacy adapter: convert features$target_* to x$data$targets (model-ready format)
 # - required cols: feature (INTERNAL feature id), type, target_value
-# - type ∈ {conservation, recovery, mixed_total}
+# - type ∈ {conservation, recovery, mixed}
 # ------------------------------------------------------------------------------
 
 .pa_targets_from_features_legacy <- function(x, overwrite = FALSE, warn = TRUE) {
@@ -2160,7 +2102,6 @@ available_to_solve <- function(package = ""){
   x_off <- as.integer(ml$x_offset %||% 0L)
   z_off <- as.integer(ml$z_offset %||% 0L)
 
-  # --- safe slice helper
   slice_safe <- function(v, start1, end1) {
     if (length(v) == 0) return(numeric(0))
     if (is.na(start1) || is.na(end1) || start1 > end1) return(numeric(0))
@@ -2169,7 +2110,7 @@ available_to_solve <- function(package = ""){
     v[start1:end1]
   }
 
-  # --- slices (offsets 0-based; R 1-based)
+  # --- slices
   w  <- if (n_pu > 0L) slice_safe(sol, w_off + 1L, w_off + n_pu) else numeric(0)
   xv <- if (n_x  > 0L) slice_safe(sol, x_off + 1L, x_off + n_x ) else numeric(0)
   zv <- if (n_z  > 0L) slice_safe(sol, z_off + 1L, z_off + n_z ) else numeric(0)
@@ -2215,7 +2156,6 @@ available_to_solve <- function(package = ""){
       da_out$selected <- as.integer(xv > threshold)
     }
 
-    # uniqueness check for mapping keys used later
     if (all(c("internal_pu", "internal_action") %in% names(da_out))) {
       key_da <- paste0(da_out$internal_pu, ":", da_out$internal_action)
       if (anyDuplicated(key_da)) {
@@ -2229,18 +2169,18 @@ available_to_solve <- function(package = ""){
   }
 
   # -------------------------
-  # 3) Features achieved (baseline + recovery + total)
+  # 3) Features achieved
   # -------------------------
-  df <- df_df
   feats <- x$data$features
+  de <- x$data$dist_effects_model %||% x$data$dist_effects
 
-  # baseline from z
+  # optional baseline from z (kept for reporting only)
   base_by_feat <- data.frame(internal_feature = integer(0), baseline_contrib = numeric(0))
-  if (!is.null(df) && inherits(df, "data.frame") && nrow(df) > 0 &&
-      length(zv) == nrow(df) &&
-      all(c("internal_feature", "amount") %in% names(df))) {
+  if (!is.null(df_df) && inherits(df_df, "data.frame") && nrow(df_df) > 0 &&
+      length(zv) == nrow(df_df) &&
+      all(c("internal_feature", "amount") %in% names(df_df))) {
 
-    df2 <- df
+    df2 <- df_df
     df2$z <- zv
     df2$baseline_contrib <- as.numeric(df2$amount) * as.numeric(df2$z)
 
@@ -2249,21 +2189,19 @@ available_to_solve <- function(package = ""){
       data = df2,
       FUN = sum
     )
-  } else if (!is.null(df) && inherits(df, "data.frame") && nrow(df) > 0 && length(zv) != nrow(df)) {
+  } else if (!is.null(df_df) && inherits(df_df, "data.frame") && nrow(df_df) > 0 && length(zv) != nrow(df_df)) {
     warning(
-      "Mismatch: nrow(dist_features) = ", nrow(df),
+      "Mismatch: nrow(dist_features) = ", nrow(df_df),
       " but length(z slice) = ", length(zv),
       ". baseline_contrib set to 0.",
       call. = FALSE
     )
   }
 
-  # recovery from effects/benefit-loss (respect objective column if configured)
+  # choose effect column
   args  <- x$data$model_args %||% list()
   oid   <- args$objective_id %||% NA_character_
   oargs <- args$objective_args %||% list()
-
-  de <- x$data$dist_effects_model %||% x$data$dist_effects
 
   value_col <- if (identical(oid, "min_loss")) {
     as.character(oargs$loss_col %||% "loss")[1]
@@ -2271,14 +2209,14 @@ available_to_solve <- function(package = ""){
     as.character(oargs$benefit_col %||% "benefit")[1]
   }
 
-  rec_by_feat <- data.frame(internal_feature = integer(0), recovery_contrib = numeric(0))
-
+  # map x rows
+  de_with_x <- NULL
   if (!is.null(de) && inherits(de, "data.frame") && nrow(de) > 0 &&
       length(xv) > 0 &&
-      all(c("internal_pu","internal_action","internal_feature") %in% names(de)) &&
       value_col %in% names(de) &&
+      all(c("internal_pu", "internal_action", "internal_feature") %in% names(de)) &&
       inherits(da_out, "data.frame") && nrow(da_out) > 0 &&
-      all(c("internal_pu","internal_action") %in% names(da_out))) {
+      all(c("internal_pu", "internal_action") %in% names(da_out))) {
 
     key_da <- paste0(da_out$internal_pu, ":", da_out$internal_action)
     map <- stats::setNames(seq_len(nrow(da_out)), key_da)
@@ -2297,7 +2235,6 @@ available_to_solve <- function(package = ""){
       xrow <- xrow[ok]
     }
 
-    # IMPORTANT: guard if xrow indexes exceed xv
     ok2 <- xrow >= 1L & xrow <= length(xv)
     if (!all(ok2)) {
       warning(
@@ -2309,16 +2246,23 @@ available_to_solve <- function(package = ""){
       xrow <- xrow[ok2]
     }
 
-    rec_contrib <- as.numeric(de[[value_col]]) * as.numeric(xv[xrow])
+    de_with_x <- de
+    de_with_x$x_value <- as.numeric(xv[xrow])
+    de_with_x$effect_value <- as.numeric(de_with_x[[value_col]])
+    de_with_x$selected_contrib <- de_with_x$effect_value * de_with_x$x_value
+  }
 
+  # total achieved across all actions
+  rec_by_feat <- data.frame(internal_feature = integer(0), recovery_contrib = numeric(0))
+  if (!is.null(de_with_x) && nrow(de_with_x) > 0) {
     tmp <- data.frame(
-      internal_feature = as.integer(de$internal_feature),
-      recovery_contrib = rec_contrib
+      internal_feature = as.integer(de_with_x$internal_feature),
+      recovery_contrib = as.numeric(de_with_x$selected_contrib)
     )
     rec_by_feat <- stats::aggregate(recovery_contrib ~ internal_feature, data = tmp, FUN = sum)
   }
 
-  # merge feature summary
+  # main feature table
   if (is.null(feats) || !inherits(feats, "data.frame") || nrow(feats) == 0) {
     feat_tbl <- data.frame()
   } else {
@@ -2336,13 +2280,13 @@ available_to_solve <- function(package = ""){
   }
 
   # -------------------------
-  # 4) Targets summary (si existen)
+  # 4) Targets summary
   # -------------------------
   tgt <- x$data$targets
   tgt_out <- NULL
 
   if (inherits(tgt, "data.frame") && nrow(tgt) > 0 &&
-      all(c("feature","type","target_value") %in% names(tgt)) &&
+      all(c("feature", "type", "target_value") %in% names(tgt)) &&
       inherits(feat_tbl, "data.frame") && nrow(feat_tbl) > 0) {
 
     tgt2 <- tgt
@@ -2350,18 +2294,58 @@ available_to_solve <- function(package = ""){
     tgt2$type <- as.character(tgt2$type)
     tgt2$target_value <- as.numeric(tgt2$target_value)
 
-    achieved <- feat_tbl[, c("internal_feature","baseline_contrib","recovery_contrib","total")]
-    names(achieved)[1] <- "feature"
+    if (!("subset" %in% names(tgt2))) {
+      tgt2$subset <- NA_character_
+    }
+    tgt2$subset <- as.character(tgt2$subset)
 
-    tgt_out <- dplyr::left_join(tgt2, achieved, by = "feature")
+    # default achieved = NA
+    tgt2$achieved <- NA_real_
 
-    tgt_out$achieved <- dplyr::case_when(
-      tgt_out$type == "conservation" ~ tgt_out$baseline_contrib,
-      tgt_out$type == "recovery"     ~ tgt_out$recovery_contrib,
-      tgt_out$type == "mixed_total"  ~ tgt_out$total,
-      TRUE ~ NA_real_
-    )
-    tgt_out$gap <- tgt_out$achieved - tgt_out$target_value
+    # helper to compute achieved by subset
+    .achieved_for_subset <- function(feature_ids, subset_string) {
+      if (is.null(de_with_x) || nrow(de_with_x) == 0) {
+        return(stats::setNames(rep(0, length(feature_ids)), feature_ids))
+      }
+
+      dd <- de_with_x
+
+      if (!is.na(subset_string) && nzchar(subset_string)) {
+        matched <- .pa_resolve_action_subset(x, strsplit(subset_string, "\\|")[[1]])
+        keep_actions <- as.integer(matched$internal_id)
+        dd <- dd[dd$internal_action %in% keep_actions, , drop = FALSE]
+      }
+
+      if (nrow(dd) == 0) {
+        return(stats::setNames(rep(0, length(feature_ids)), feature_ids))
+      }
+
+      tmp <- data.frame(
+        feature = as.integer(dd$internal_feature),
+        achieved = as.numeric(dd$selected_contrib)
+      )
+      agg <- stats::aggregate(achieved ~ feature, data = tmp, FUN = sum)
+
+      out <- stats::setNames(rep(0, length(feature_ids)), feature_ids)
+      hit <- match(feature_ids, agg$feature)
+      ok <- !is.na(hit)
+      out[ok] <- agg$achieved[hit[ok]]
+      out
+    }
+
+    split_key <- ifelse(is.na(tgt2$subset) | !nzchar(tgt2$subset), "__ALL__", tgt2$subset)
+    idx_split <- split(seq_len(nrow(tgt2)), split_key)
+
+    for (nm in names(idx_split)) {
+      ii <- idx_split[[nm]]
+      subset_string <- tgt2$subset[ii][1]
+      feats_i <- tgt2$feature[ii]
+      achieved_i <- .achieved_for_subset(feats_i, subset_string)
+      tgt2$achieved[ii] <- as.numeric(achieved_i[as.character(feats_i)])
+    }
+
+    tgt2$gap <- tgt2$achieved - tgt2$target_value
+    tgt_out <- tgt2
   }
 
   list(
@@ -2372,7 +2356,6 @@ available_to_solve <- function(package = ""){
   )
 }
 
-
 # -------------------------------------------------------------------------
 # Internal helpers AREAS
 # -------------------------------------------------------------------------
@@ -2381,46 +2364,147 @@ available_to_solve <- function(package = ""){
   area_unit <- match.arg(area_unit)
 
   pu <- x$data$pu
-  stopifnot(!is.null(pu), inherits(pu, "data.frame"))
-
-  # choose column
-  if (is.null(area_col)) {
-    cand <- c("area", "Area", "AREA", "area_m2", "area_ha", "area_km2")
-    area_col <- cand[cand %in% names(pu)][1]
+  if (is.null(pu) || !inherits(pu, "data.frame")) {
+    stop("x$data$pu is missing or is not a data.frame.", call. = FALSE)
   }
-  if (is.na(area_col) || is.null(area_col)) {
-    # try sf geometry if present
-    if (!is.null(x$data$pu_sf) && inherits(x$data$pu_sf, "sf")) {
-      a <- as.numeric(sf::st_area(x$data$pu_sf))
-      # st_area is in m2 usually (units)
-      area <- a
-    } else if ("geometry" %in% names(pu) && inherits(pu$geometry, "sfc")) {
-      a <- as.numeric(sf::st_area(sf::st_as_sf(pu)$geometry))
-      area <- a
-    } else {
-      stop("No area column found. Provide area_col or store PU geometry (x$data$pu_sf).", call. = FALSE)
+
+  n_pu <- nrow(pu)
+  if (n_pu <= 0L) {
+    stop("x$data$pu has zero rows; cannot retrieve planning unit areas.", call. = FALSE)
+  }
+
+  area <- NULL
+  area_source <- NULL
+  area_col_used <- NULL
+
+  # ---------------------------------------------------------
+  # 1) explicit area_col
+  # ---------------------------------------------------------
+  if (!is.null(area_col)) {
+    area_col <- as.character(area_col)[1]
+    if (is.na(area_col) || !nzchar(area_col)) {
+      stop("area_col must be a non-empty string or NULL.", call. = FALSE)
     }
-  } else {
-    area <- as.numeric(pu[[area_col]])
+
+    # 1a) from x$data$pu
+    if (area_col %in% names(pu)) {
+      area <- as.numeric(pu[[area_col]])
+      area_source <- "pu"
+      area_col_used <- area_col
+
+      # 1b) from x$data$pu_sf
+    } else if (!is.null(x$data$pu_sf) && inherits(x$data$pu_sf, "sf") &&
+               area_col %in% names(x$data$pu_sf)) {
+      area <- as.numeric(x$data$pu_sf[[area_col]])
+      area_source <- "pu_sf"
+      area_col_used <- area_col
+
+    } else {
+      stop(
+        "area_col '", area_col, "' was not found in x$data$pu",
+        if (!is.null(x$data$pu_sf) && inherits(x$data$pu_sf, "sf")) " or x$data$pu_sf." else ".",
+        " Provide a valid area column or spatial information.",
+        call. = FALSE
+      )
+    }
   }
 
-  if (any(!is.finite(area))) stop("Area contains non-finite values.", call. = FALSE)
+  # ---------------------------------------------------------
+  # 2) automatic lookup if area_col is NULL
+  # ---------------------------------------------------------
+  if (is.null(area)) {
+    cand <- c("area", "Area", "AREA", "surf", "surface", "area_m2", "area_ha", "area_km2")
+    hit_pu <- cand[cand %in% names(pu)][1]
 
-  # convert units if needed (assume column is in m2 unless name hints)
-  nm <- tolower(area_col %||% "")
-  if (grepl("ha", nm)) {
-    # already ha
-    area_m2 <- area * 10000
-  } else if (grepl("km2", nm)) {
-    area_m2 <- area * 1e6
-  } else {
-    area_m2 <- area
+    if (!is.na(hit_pu) && length(hit_pu) == 1L) {
+      area <- as.numeric(pu[[hit_pu]])
+      area_source <- "pu"
+      area_col_used <- hit_pu
+    }
+  }
+
+  if (is.null(area) && !is.null(x$data$pu_sf) && inherits(x$data$pu_sf, "sf")) {
+    cand <- c("area", "Area", "AREA", "surf", "surface", "area_m2", "area_ha", "area_km2")
+    hit_sf <- cand[cand %in% names(x$data$pu_sf)][1]
+
+    if (!is.na(hit_sf) && length(hit_sf) == 1L) {
+      area <- as.numeric(x$data$pu_sf[[hit_sf]])
+      area_source <- "pu_sf"
+      area_col_used <- hit_sf
+    }
+  }
+
+  # ---------------------------------------------------------
+  # 3) derive from geometry if possible
+  # ---------------------------------------------------------
+  if (is.null(area)) {
+    if (!is.null(x$data$pu_sf) && inherits(x$data$pu_sf, "sf")) {
+      area <- as.numeric(sf::st_area(x$data$pu_sf))
+      area_source <- "geometry_sf"
+      area_col_used <- NA_character_
+
+      # future raster branch could go here
+      # else if (...) {
+      #   area <- ...
+      #   area_source <- "geometry_raster"
+      # }
+
+    } else {
+      stop(
+        "Could not retrieve planning unit area.\n",
+        "No usable area column was found in x$data$pu, and no spatial geometry is available ",
+        "to derive area internally.\n",
+        "Provide `area_col` explicitly or build the Data object with spatial information.",
+        call. = FALSE
+      )
+    }
+  }
+
+  # ---------------------------------------------------------
+  # 4) validate length and values
+  # ---------------------------------------------------------
+  if (length(area) != n_pu) {
+    stop(
+      "Area vector length (", length(area), ") != n_pu (", n_pu, "). ",
+      "Area source: ", area_source,
+      if (!is.null(area_col_used) && !is.na(area_col_used)) paste0(" [column='", area_col_used, "']") else "",
+      ".",
+      call. = FALSE
+    )
+  }
+
+  if (anyNA(area) || any(!is.finite(area))) {
+    stop("Area vector contains NA or non-finite values.", call. = FALSE)
+  }
+
+  if (any(area < 0)) {
+    stop("Area vector contains negative values.", call. = FALSE)
+  }
+
+  # ---------------------------------------------------------
+  # 5) convert to requested output units
+  # assume raw geometry/st_area is m2
+  # if column name suggests ha/km2, convert accordingly
+  # ---------------------------------------------------------
+  area_m2 <- area
+
+  if (!is.null(area_col_used) && !is.na(area_col_used)) {
+    nm <- tolower(area_col_used)
+
+    if (grepl("km2", nm, fixed = TRUE)) {
+      area_m2 <- area * 1e6
+    } else if (grepl("ha", nm, fixed = TRUE)) {
+      area_m2 <- area * 1e4
+    } else {
+      # assume already in m2 for generic names like area/surf/surface
+      area_m2 <- area
+    }
   }
 
   out <- switch(
     area_unit,
     m2  = area_m2,
-    ha  = area_m2 / 10000,
+    ha  = area_m2 / 1e4,
     km2 = area_m2 / 1e6
   )
 
@@ -3779,4 +3863,89 @@ available_to_solve <- function(package = ""){
   }
 
   y
+}
+
+
+
+.pa_log_add <- function(x, key, value) {
+  stopifnot(inherits(x, "Data"))
+
+  key <- as.character(key)[1]
+  if (is.na(key) || !nzchar(key)) {
+    stop("`key` must be a non-empty string.", call. = FALSE)
+  }
+
+  value <- as.numeric(value)[1]
+  if (!is.finite(value)) {
+    stop("`value` must be a finite numeric scalar.", call. = FALSE)
+  }
+
+  if (is.null(x$data$build_log) || !is.list(x$data$build_log)) {
+    x$data$build_log <- list()
+  }
+
+  old <- x$data$build_log[[key]] %||% 0
+  x$data$build_log[[key]] <- old + value
+
+  x
+}
+
+
+
+.pa_resolve_action_subset <- function(x, subset = NULL) {
+  stopifnot(inherits(x, "Data"))
+
+  acts <- x$data$actions
+  if (is.null(acts) || !inherits(acts, "data.frame") || nrow(acts) == 0) {
+    stop("No actions available in x$data$actions.", call. = FALSE)
+  }
+  if (!all(c("id", "internal_id") %in% names(acts))) {
+    stop("x$data$actions must contain columns 'id' and 'internal_id'.", call. = FALSE)
+  }
+
+  # NULL = all actions
+  if (is.null(subset)) {
+    out <- acts[, c("id", "internal_id"), drop = FALSE]
+    if ("action_set" %in% names(acts)) out$action_set <- acts$action_set
+    return(out)
+  }
+
+  subset <- as.character(subset)
+  subset <- unique(subset[!is.na(subset) & nzchar(subset)])
+  if (length(subset) == 0) {
+    stop("subset must contain at least one non-empty value, or be NULL.", call. = FALSE)
+  }
+
+  hit_id <- acts$id %in% subset
+  hit_set <- rep(FALSE, nrow(acts))
+  if ("action_set" %in% names(acts)) {
+    hit_set <- acts$action_set %in% subset
+  }
+
+  keep <- hit_id | hit_set
+
+  if (!any(keep)) {
+    stop(
+      "subset did not match any action ids",
+      if ("action_set" %in% names(acts)) " or action_set values" else "",
+      ".",
+      call. = FALSE
+    )
+  }
+
+  out <- acts[keep, c("id", "internal_id"), drop = FALSE]
+  if ("action_set" %in% names(acts)) out$action_set <- acts$action_set[keep]
+  rownames(out) <- NULL
+  out
+}
+
+.pa_subset_to_string <- function(subset) {
+  if (is.null(subset)) return(NA_character_)
+
+  subset <- as.character(subset)
+  subset <- unique(subset[!is.na(subset) & nzchar(subset)])
+
+  if (length(subset) == 0) return(NA_character_)
+
+  paste(sort(subset), collapse = "|")
 }

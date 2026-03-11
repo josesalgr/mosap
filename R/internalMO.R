@@ -392,12 +392,14 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
 .pamo_clone_base <- function(base) {
   stopifnot(inherits(base, "Data"))
-  b <- base
+
+  b <- pproto(NULL, base)
   b$data <- .pamo_deepcopy_data(base$data)
 
-  # drop any previously built model pointer/state
   b$data$model_ptr <- NULL
   b$data$has_model <- FALSE
+  b$data$model_list <- NULL
+  b$data$model_index <- NULL
 
   if (is.null(b$data$meta) || !is.list(b$data$meta)) b$data$meta <- list()
   b$data$meta$model_dirty <- TRUE

@@ -8,10 +8,8 @@
   x,
   what = c("pu", "actions"),
   only_selected = FALSE,
-  action = NULL,
+  subset = NULL,
   ...,
-  include_conservation = TRUE,
-  conservation_label = "conservation",
   base_alpha = 0.1,
   selected_alpha = 0.9,
   base_fill = "grey60",
@@ -31,21 +29,14 @@ in \code{x$Data$data$pu_sf} (preferred) or \code{x$data$pu_sf}.}
 \item{only_selected}{Logical. Only used when \code{what = "pu"}. If \code{TRUE}, throw an
 error when no selected PUs exist. If \code{FALSE}, the map is still drawn with the base layer.}
 
-\item{action}{Optional character scalar. Only used when \code{what = "actions"}.
-If provided, filter the plot to a single action label.}
+\item{subset}{Optional character vector. Only used when \code{what = "actions"}.
+Filters actions to a subset of action ids, \code{action_set} values, or both.}
 
 \item{...}{Additional arguments (reserved for future extensions).}
 
-\item{include_conservation}{Logical. Only used when \code{what = "actions"}.
-If \code{TRUE}, selected PUs that have no selected action are added to the map with
-label \code{conservation_label}.}
-
-\item{conservation_label}{Character scalar. Label used for selected PUs with no selected action
-when \code{include_conservation = TRUE}.}
-
 \item{base_alpha}{Numeric in \eqn{[0,1]}. Alpha used for the base PU layer.}
 
-\item{selected_alpha}{Numeric in \eqn{[0,1]}. Alpha used for highlighted (selected) geometries.}
+\item{selected_alpha}{Numeric in \eqn{[0,1]}. Alpha used for highlighted geometries.}
 
 \item{base_fill}{Fill color for the base PU layer.}
 
@@ -53,12 +44,10 @@ when \code{include_conservation = TRUE}.}
 
 \item{selected_color}{Border color for highlighted geometries. Use \code{NA} for no border.}
 
-\item{fill_values}{Optional named character vector of colors. Names must match the labels shown
-in the legend (i.e., values of the \code{action} field used in the plot, including
-\code{conservation_label} if enabled). If provided, overrides \pkg{viridis}.}
+\item{fill_values}{Optional named character vector of colors. Names must match the plotted
+labels in the legend.}
 
-\item{fill_na}{Color used for missing values in the manual scale (only relevant when
-\code{fill_values} is provided).}
+\item{fill_na}{Color used for missing values in the manual scale.}
 
 \item{use_viridis}{Logical. If \code{TRUE} and \code{fill_values} is \code{NULL}, use a
 discrete \pkg{viridis} palette when \pkg{viridis} is installed.}
@@ -72,28 +61,32 @@ Plot a solution using planning unit (PU) geometries when available.
 The method supports two views controlled by \code{what}:
 \itemize{
 \item \code{"pu"}: highlights selected planning units.
-\item \code{"actions"}: highlights selected actions within planning units. Optionally,
-selected PUs with no selected action can be labelled as \dQuote{conservation}.
+\item \code{"actions"}: highlights selected actions within planning units.
 }
 
 For \code{what = "actions"}, the function aggregates selected actions per PU into a
 single label by concatenating unique action names using \code{"+"}
 (e.g., \code{"harvest+sustainable"}). If many actions can co-occur in the same PU,
-the number of distinct labels can grow quickly; in such cases, consider filtering a
-single action via \code{action = "..."}, or ensure at most one action per PU.
+the number of distinct labels can grow quickly; in such cases, consider filtering
+using \code{subset}, or ensure at most one action per PU.
 }
 \details{
 This plotting method requires PU geometry stored as an \code{sf} object in either
 \code{x$Data$data$pu_sf} or \code{x$data$pu_sf}. The geometry must contain an \code{id}
 column matching planning unit identifiers.
 
+For \code{what = "actions"}, the optional \code{subset} argument can be used to restrict
+the plotted actions. Values in \code{subset} may match:
+\itemize{
+\item action ids in \code{x$Data$data$actions$id}, and/or
+\item action-group labels in \code{x$Data$data$actions$action_set} when available.
+}
+
 Colors for \code{what = "actions"} are controlled by either:
 \itemize{
-\item \code{fill_values}: a named vector mapping action labels to colors; or
-\itemize{
+\item \code{fill_values}: a named vector mapping plotted labels to colors; or
 \item a discrete \pkg{viridis} palette if \code{fill_values} is \code{NULL},
 \code{use_viridis = TRUE}, and the \pkg{viridis} package is installed.
-}
 }
 }
 \examples{
@@ -101,15 +94,17 @@ Colors for \code{what = "actions"} are controlled by either:
 # Plot selected planning units
 plot(sol, what = "pu")
 
-# Plot selected actions
+# Plot all selected actions
 plot(sol, what = "actions")
 
-# Plot a single action only
-plot(sol, what = "actions", action = "harvest")
+# Plot only one action
+plot(sol, what = "actions", subset = "harvest")
 
-# Manual colors for actions (and conservation)
-cols <- c(harvest = "#E41A1C", sustainable = "#4DAF4A", conservation = "#377EB8")
-plot(sol, what = "actions", fill_values = cols, conservation_label = "conservation")
+# Plot one action group
+plot(sol, what = "actions", subset = "restoration")
+
+# Plot a mix of action ids and groups
+plot(sol, what = "actions", subset = c("harvest", "restoration"))
 }
 
 }

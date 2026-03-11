@@ -1,6 +1,6 @@
 Package: mosap
 Type: Package
-Version: 1.0.1
+Version: 1.0.2
 Title: Integrated Multi-Objective Spatial Action Planning            
 Description: Description: Provides an exact multi-objective optimisation framework for integrated
     spatial action planning using mixed-integer programming (MIP). The package

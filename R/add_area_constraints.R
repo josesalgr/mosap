@@ -47,6 +47,7 @@ add_area_min_constraint <- function(x,
   stopifnot(inherits(x, "Data"))
   assertthat::assert_that(assertthat::is.number(area_min), is.finite(area_min), area_min >= 0)
 
+  x <- .pa_clone_data(x)
   x <- .pa_ensure_model_snapshot(x)
 
   ml <- x$data$model_list

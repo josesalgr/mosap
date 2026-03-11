@@ -18,6 +18,14 @@
 #' }
 #'
 #' @details
+#' \strong{Action catalogue.}
+#' The \code{actions} table must contain an \code{id} column with unique action identifiers.
+#' Additional columns are preserved and stored in \code{x$data$actions}. This makes it possible
+#' to attach metadata to actions, such as categories or grouping variables. In particular,
+#' users may optionally provide a column named \code{action_set} to define action groups
+#' (e.g. \code{"conservation"}, \code{"recovery"}, \code{"production"}), which can later be
+#' used to filter subsets of actions in targets, objectives, or reporting.
+#'
 #' \strong{Accepted formats for \code{include} and \code{exclude}:}
 #' \itemize{
 #'   \item \code{NULL}: no restriction (only valid for \code{include} when
@@ -53,6 +61,8 @@
 #' @param actions A \code{data.frame} defining the action catalogue. Must contain a unique
 #'   \code{id} column (action identifiers). For backwards compatibility, a column named
 #'   \code{action} is also accepted and will be renamed to \code{id}. Additional columns are kept.
+#'   Optionally, users may include an \code{action_set} column to define action groups for
+#'   downstream filtering.
 #' @param include Optional feasibility specification. If provided, only these \code{(pu, action)}
 #'   pairs are feasible. Accepts \code{NULL}, a \code{data.frame}, or a named list (see Details).
 #' @param exclude Optional infeasibility specification. Removed from the feasible set defined by
@@ -115,6 +125,13 @@
 #' # 6) Lock status for specific pairs
 #' st <- data.frame(pu = c(1, 10), action = c("harvest", "restoration"), status = c(3L, 2L))
 #' p <- add_actions(p, actions = actions_df, status = st)
+#'
+#' # 7) Add optional action groups
+#' actions_df <- data.frame(
+#'   id = c("conservation", "restoration", "production"),
+#'   action_set = c("conservation", "recovery", "production")
+#' )
+#' p <- add_actions(p, actions = actions_df, cost = 1)
 #' }
 #'
 #' @seealso \code{\link{inputData}}, \code{\link{inputDataSpatial}}
@@ -320,6 +337,15 @@ add_actions <- function(
   assertthat::assert_that(assertthat::has_name(actions, "id"), assertthat::noNA(actions$id))
   actions$id <- as.character(actions$id)
   if (anyDuplicated(actions$id) != 0) stop("actions$id must be unique.", call. = FALSE)
+
+  # optional grouping column for downstream target/objective filtering
+  if ("action_set" %in% names(actions)) {
+    actions$action_set <- as.character(actions$action_set)
+
+    if (anyNA(actions$action_set) || any(!nzchar(actions$action_set))) {
+      stop("actions$action_set cannot contain NA or empty strings.", call. = FALSE)
+    }
+  }
 
   # optional: keep columns, but standardize ordering and internal id
   if (isTRUE(sort_actions)) {
