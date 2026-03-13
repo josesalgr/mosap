@@ -73,6 +73,7 @@ Collate:
     'internal.R'
     'MOproblem-class.R'
     'RcppExports.R'
+    'SolutionMO.R'
     'add_action_max_per_pu.R'
     'add_actions.R'
     'add_area_constraints.R'

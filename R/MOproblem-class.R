@@ -53,46 +53,35 @@ NULL
 MOProblem <- pproto(
   "MOProblem",
 
-  data = NULL,
-  objectives = list(),
-  method = NULL,
+  base = NULL,
+  method = list(name = "none"),
   results = NULL,
   meta = list(),
 
   print = function(self) {
+    cls_base <- if (is.null(self$base)) "NULL" else class(self$base)[1]
 
-    # basic summary without requiring cli
-    cls_data <- if (is.null(self$data)) "NULL" else class(self$data)[1]
-    n_obj <- length(self$objectives)
-    obj_alias <- names(self$objectives)
-    meth <- if (is.null(self$method)) "(none)" else self$method$name %||% "(unnamed)"
+    specs <- self$base$data$objectives %||% list()
+    obj_alias <- names(specs)
+    n_obj <- length(specs)
+
+    meth <- self$method$name %||% "(none)"
 
     msg <- paste0(
-      "A prioriactionsMO object (MOProblem)\n",
-      "  base data:     ", cls_data, "\n",
-      "  objectives:    ", n_obj, if (n_obj > 0) paste0(" (", paste(obj_alias, collapse = ", "), ")") else "", "\n",
+      "A mosap multi-objective problem (MOProblem)\n",
+      "  base data:     ", cls_base, "\n",
+      "  objectives:    ", n_obj,
+      if (n_obj > 0) paste0(" (", paste(obj_alias, collapse = ", "), ")") else "",
+      "\n",
       "  method:        ", meth, "\n",
-      "  results:       ", if (is.null(self$results)) "(none)" else "(available)"
+      "  results:       ", if (is.null(self$results)) "(none)" else class(self$results)[1]
     )
     message(msg)
     invisible(TRUE)
   },
 
   show = function(self) self$print(),
-  repr = function(self) "MOProblem object",
-
-  getData = function(self) self$data,
-
-  listObjectives = function(self) {
-    if (length(self$objectives) == 0) return(character(0))
-    names(self$objectives)
-  },
-
-  getObjective = function(self, alias) {
-    stopifnot(is.character(alias), length(alias) == 1L)
-    if (!alias %in% names(self$objectives)) return(NULL)
-    self$objectives[[alias]]
-  }
+  repr = function(self) "MOProblem object"
 )
 
 
@@ -113,9 +102,8 @@ as_mo_problem <- function(x) {
 
   pproto(
     NULL, MOProblem,
-    data = x,
-    objectives = list(),
-    method = NULL,
+    base = x,
+    method = list(name = "none"),
     results = NULL,
     meta = list(created = Sys.time())
   )

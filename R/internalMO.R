@@ -716,30 +716,52 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 # Internal: solve weighted
 # ---------------------------------------------------------
 .pamo_solve_weighted <- function(x, ...) {
-  aliases <- x$method$params$aliases
-  w <- x$method$params$weights
+  stopifnot(inherits(x, "MOProblem"))
+
+  aliases   <- x$method$params$aliases
+  w         <- x$method$params$weights
   normalize <- isTRUE(x$method$params$normalize)
+
+  if (is.null(aliases) || length(aliases) == 0L) {
+    stop("Weighted method: missing aliases.", call. = FALSE)
+  }
 
   if (is.null(w)) {
     stop("Weighted method: missing weights. Provide them in set_method_weighted().", call. = FALSE)
   }
 
-  # build a single run specification (later: grid of weights)
-  run_df <- data.frame(run_id = 1L, stringsAsFactors = FALSE)
-  for (i in seq_along(aliases)) {
-    run_df[[paste0("w_", aliases[i])]] <- w[i]
+  if (length(w) != length(aliases)) {
+    stop(
+      "Weighted method: length(weights) must match length(aliases).\n",
+      "length(weights) = ", length(w), ", length(aliases) = ", length(aliases), ".",
+      call. = FALSE
+    )
   }
 
-  solutions <- vector("list", nrow(run_df))
-  obj_vals  <- matrix(NA_real_, nrow(run_df), length(aliases))
-  colnames(obj_vals) <- paste0("obj_", aliases)
+  # ---- design: one row per run, only design parameters
+  design_df <- data.frame(run_id = 1L, stringsAsFactors = FALSE)
+  for (i in seq_along(aliases)) {
+    design_df[[paste0("weight_", aliases[i])]] <- as.numeric(w[i])
+  }
 
-  status <- character(nrow(run_df))
-  runtime <- numeric(nrow(run_df))
-  gap <- numeric(nrow(run_df))
+  n_runs <- nrow(design_df)
 
-  for (r in seq_len(nrow(run_df))) {
-    w_r <- as.numeric(run_df[r, paste0("w_", aliases), drop = TRUE])
+  solutions <- vector("list", n_runs)
+
+  value_mat <- matrix(NA_real_, n_runs, length(aliases))
+  colnames(value_mat) <- paste0("value_", aliases)
+
+  status  <- character(n_runs)
+  runtime <- numeric(n_runs)
+  gap     <- numeric(n_runs)
+
+  # pass-through solver controls
+  dots <- list(...)
+  gap_limit  <- dots$gap_limit %||% NULL
+  time_limit <- dots$time_limit %||% NULL
+
+  for (r in seq_len(n_runs)) {
+    w_r <- as.numeric(design_df[r, paste0("weight_", aliases), drop = TRUE])
 
     one <- .pamo_solve_one(
       x = x,
@@ -747,38 +769,69 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
         type = "weighted",
         aliases = aliases,
         weights = w_r,
-        normalize = normalize
+        normalize = normalize,
+        gap_limit = gap_limit,
+        time_limit = time_limit
       )
     )
 
     solutions[[r]] <- one$solution
-    status[r] <- one$status
-    runtime[r] <- one$runtime
-    gap[r] <- one$gap
+    status[r]  <- as.character(one$status %||% NA_character_)
+    runtime[r] <- as.numeric(one$runtime %||% NA_real_)
+    gap[r]     <- as.numeric(one$gap %||% NA_real_)
 
-    # TODO: objective evaluation (optional, later)
-    # For now, keep NA_real_ (doesn't break, keeps schema stable)
-    obj_vals[r, ] <- rep(NA_real_, length(aliases))
+    # evaluate all registered aliases on the obtained solution
+    alias_values <- setNames(
+      vapply(
+        aliases,
+        function(a) .pamo_eval_alias_on_solution(x, one$solution, a),
+        numeric(1)
+      ),
+      aliases
+    )
+
+    value_mat[r, ] <- unname(as.numeric(alias_values))
+
+    # store metadata inside each individual Solution
+    if (!is.null(solutions[[r]]) && !is.null(solutions[[r]]$data)) {
+      solutions[[r]]$data$alias_values <- alias_values
+      solutions[[r]]$data$run_id <- design_df$run_id[r]
+      solutions[[r]]$data$method_name <- "weighted"
+      solutions[[r]]$data$weights <- stats::setNames(as.numeric(w_r), aliases)
+    }
   }
 
+  # ---- runs: one row per run, only outputs / summaries
+  runs <- data.frame(
+    run_id = design_df$run_id,
+    status = status,
+    runtime = runtime,
+    gap = gap,
+    stringsAsFactors = FALSE
+  )
+
   runs <- cbind(
-    run_df,
-    data.frame(status = status, runtime = runtime, gap = gap, stringsAsFactors = FALSE),
-    as.data.frame(obj_vals, stringsAsFactors = FALSE)
+    runs,
+    as.data.frame(value_mat, stringsAsFactors = FALSE)
   )
 
   pproto(
-    NULL, MOProblem,
+    NULL, SolutionMO,
+    method = x$method,
+    design = design_df,
     runs = runs,
     solutions = solutions,
+    extras = list(),
     meta = list(
-      method = x$method,
       call = match.call()
     )
   )
 }
 
+
 .pamo_solve_epsilon_constraint <- function(x, ...) {
+
+  stopifnot(inherits(x, "MOProblem"))
 
   method <- x$method %||% NULL
   if (is.null(method) || !is.list(method)) {
@@ -803,13 +856,18 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
     stop("epsilon_constraint: unknown mode '", mode, "'.", call. = FALSE)
   }
 
+  # pass-through solver controls
+  dots <- list(...)
+  gap_limit  <- dots$gap_limit %||% NULL
+  time_limit <- dots$time_limit %||% NULL
+
   # ---------------------------------------------------------
-  # Build or recover epsilon runs
+  # Build or recover epsilon design
   # ---------------------------------------------------------
   if (identical(mode, "manual")) {
-    run_df <- method$runs
+    design_df <- method$runs
 
-    if (is.null(run_df) || !inherits(run_df, "data.frame") || nrow(run_df) == 0L) {
+    if (is.null(design_df) || !inherits(design_df, "data.frame") || nrow(design_df) == 0L) {
       stop("epsilon_constraint (manual): x$method$runs is missing/empty.", call. = FALSE)
     }
 
@@ -821,28 +879,30 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
       )
     }
 
-    run_df <- method$runs %||% NULL
-    if (is.null(run_df)) {
-      run_df <- .pamo_build_auto_epsilon_runs(x)
+    design_df <- method$runs %||% NULL
+    if (is.null(design_df)) {
+      design_df <- .pamo_build_auto_epsilon_runs(x)
     }
 
-    if (is.null(run_df) || !inherits(run_df, "data.frame") || nrow(run_df) == 0L) {
+    if (is.null(design_df) || !inherits(design_df, "data.frame") || nrow(design_df) == 0L) {
       stop("epsilon_constraint (auto): generated epsilon runs are empty.", call. = FALSE)
     }
 
-    # keep the generated grid in the method object for reporting/debugging
-    x$method$runs <- run_df
+    # keep the generated design in the method object for reporting/debugging
+    x$method$runs <- design_df
   }
 
   # common validation
-  if (!("run_id" %in% names(run_df))) {
-    run_df$run_id <- seq_len(nrow(run_df))
+  if (!("run_id" %in% names(design_df))) {
+    design_df$run_id <- seq_len(nrow(design_df))
   }
 
-  miss_cols <- setdiff(constrained, names(run_df))
+  # We expect epsilon columns to be named eps_<alias>
+  eps_cols <- paste0("eps_", constrained)
+  miss_cols <- setdiff(eps_cols, names(design_df))
   if (length(miss_cols) > 0L) {
     stop(
-      "epsilon_constraint: run grid is missing constrained objective columns: ",
+      "epsilon_constraint: design is missing epsilon columns: ",
       paste(miss_cols, collapse = ", "),
       call. = FALSE
     )
@@ -851,53 +911,99 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   # ---------------------------------------------------------
   # Solve runs
   # ---------------------------------------------------------
-  solutions <- vector("list", nrow(run_df))
-  obj_vals  <- matrix(NA_real_, nrow(run_df), length(aliases))
-  colnames(obj_vals) <- paste0("obj_", aliases)
+  n_runs <- nrow(design_df)
 
-  status  <- character(nrow(run_df))
-  runtime <- numeric(nrow(run_df))
-  gap     <- numeric(nrow(run_df))
+  solutions <- vector("list", n_runs)
 
-  for (r in seq_len(nrow(run_df))) {
+  value_mat <- matrix(NA_real_, n_runs, length(aliases))
+  colnames(value_mat) <- paste0("value_", aliases)
 
-    eps_r <- as.list(run_df[r, constrained, drop = FALSE])
+  status  <- character(n_runs)
+  runtime <- numeric(n_runs)
+  gap     <- numeric(n_runs)
+
+  for (r in seq_len(n_runs)) {
+
+    eps_r <- as.list(design_df[r, eps_cols, drop = FALSE])
+    names(eps_r) <- constrained
 
     one <- .pamo_solve_one(
       x = x,
       spec = list(
         type = "epsilon_constraint",
         primary = primary,
-        eps = eps_r
+        eps = eps_r,
+        gap_limit = gap_limit,
+        time_limit = time_limit
       )
     )
 
     solutions[[r]] <- one$solution
-    status[r]  <- one$status
-    runtime[r] <- one$runtime
-    gap[r]     <- one$gap
+    status[r]  <- as.character(one$status %||% NA_character_)
+    runtime[r] <- as.numeric(one$runtime %||% NA_real_)
+    gap[r]     <- as.numeric(one$gap %||% NA_real_)
 
-    # placeholder for later objective evaluation
-    obj_vals[r, ] <- rep(NA_real_, length(aliases))
+    alias_values <- setNames(
+      vapply(
+        aliases,
+        function(a) .pamo_eval_alias_on_solution(x, one$solution, a),
+        numeric(1)
+      ),
+      aliases
+    )
+
+    value_mat[r, ] <- unname(as.numeric(alias_values))
+
+    # store metadata inside each individual Solution
+    if (!is.null(solutions[[r]]) && !is.null(solutions[[r]]$data)) {
+      solutions[[r]]$data$alias_values <- alias_values
+      solutions[[r]]$data$run_id <- design_df$run_id[r]
+      solutions[[r]]$data$method_name <- "epsilon_constraint"
+      solutions[[r]]$data$primary_alias <- primary
+      solutions[[r]]$data$eps <- stats::setNames(
+        as.numeric(design_df[r, eps_cols, drop = TRUE]),
+        constrained
+      )
+    }
   }
 
-  runs <- cbind(
-    run_df,
-    data.frame(
-      status = status,
-      runtime = runtime,
-      gap = gap,
-      stringsAsFactors = FALSE
-    ),
-    as.data.frame(obj_vals, stringsAsFactors = FALSE)
+  # ---------------------------------------------------------
+  # Runs summary: outputs only
+  # ---------------------------------------------------------
+  runs <- data.frame(
+    run_id = design_df$run_id,
+    status = status,
+    runtime = runtime,
+    gap = gap,
+    stringsAsFactors = FALSE
   )
 
+  runs <- cbind(
+    runs,
+    as.data.frame(value_mat, stringsAsFactors = FALSE)
+  )
+
+  # ---------------------------------------------------------
+  # Extras: method-specific metadata
+  # ---------------------------------------------------------
+  extras <- list()
+
+  # keep the epsilon design/grid here
+  extras$epsilon_grid <- design_df
+
+  # keep any precomputed auto-mode metadata if available
+  if (!is.null(method$meta)) {
+    extras$method_meta <- method$meta
+  }
+
   pproto(
-    NULL, MOProblem,
+    NULL, SolutionMO,
+    method = x$method,
+    design = design_df,
     runs = runs,
     solutions = solutions,
+    extras = extras,
     meta = list(
-      method = x$method,
       call = match.call()
     )
   )
@@ -989,38 +1095,23 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
     stop("Auto epsilon mode produced an empty epsilon grid.", call. = FALSE)
   }
 
-  run_df <- data.frame(
+  eps_col <- paste0("eps_", secondary)
+
+  design_df <- data.frame(
     run_id = seq_along(eps_vals),
     stringsAsFactors = FALSE
   )
-  run_df[[secondary]] <- as.numeric(eps_vals)
+  design_df[[eps_col]] <- as.numeric(eps_vals)
 
-  attr(run_df, "extremes") <- ext
-  run_df
+  attr(design_df, "extremes") <- ext
+  attr(design_df, "primary_alias") <- primary
+  attr(design_df, "secondary_alias") <- secondary
+  attr(design_df, "include_extremes") <- include_extremes
+  attr(design_df, "n_points_requested") <- n_points
+
+  design_df
 }
 
-
-.pamo_apply_single_objective <- function(base, ir, sense = c("min","max")) {
-  stopifnot(inherits(base, "Data"))
-  sense <- match.arg(sense)
-
-  if (is.null(base$data$model_ptr)) stop("Model not built (model_ptr is NULL).", call. = FALSE)
-
-  v <- .pamo_objvec_from_ir(base, ir)
-
-  # motor siempre MIN
-  if (identical(sense, "max")) v <- -v
-
-  base$data$runtime_updates <- list(
-    obj = as.numeric(v),
-    modelsense = "min"
-  )
-
-  base$data$meta$model_dirty <- FALSE
-  base$data$has_model <- TRUE
-
-  base
-}
 
 
 
@@ -2422,3 +2513,44 @@ add_objective <- function(x, objective) {
     relation_name = if (length(rel_names) == 1L) rel_names[1] else NULL
   )
 }
+
+
+.pamo_apply_single_objective <- function(base, ir, sense = c("min", "max")) {
+  stopifnot(inherits(base, "Data"))
+  sense <- match.arg(sense)
+
+  if (is.null(base$data$model_ptr)) {
+    stop("Model not built (model_ptr is NULL).", call. = FALSE)
+  }
+
+  v <- .pamo_objvec_from_ir(base, ir)
+
+  # El motor trabaja siempre en minimización
+  if (identical(sense, "max")) {
+    v <- -as.numeric(v)
+  } else {
+    v <- as.numeric(v)
+  }
+
+  # Si existe un setter C++ del objetivo, úsalo
+  if (exists("rcpp_model_set_objective_vector", mode = "function")) {
+    rcpp_model_set_objective_vector(
+      x = base$data$model_ptr,
+      obj = v,
+      model_sense = "min"
+    )
+  } else {
+    # fallback temporal: deja la actualización pendiente
+    base$data$runtime_updates <- list(
+      obj = v,
+      modelsense = "min"
+    )
+  }
+
+  base$data$meta <- base$data$meta %||% list()
+  base$data$meta$model_dirty <- FALSE
+  base$data$has_model <- TRUE
+
+  base
+}
+

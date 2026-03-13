@@ -568,9 +568,6 @@ solve.Data <- function(x, ...) {
 
 
 
-
-#' @method solve MOProblem
-#' @export
 #' @method solve MOProblem
 #' @export
 solve.MOProblem <- function(x, ..., return = c("problem", "results")) {
@@ -582,26 +579,40 @@ solve.MOProblem <- function(x, ..., return = c("problem", "results")) {
 
   .pamo_validate_objectives(x)
 
-  if (is.null(x$method) || identical(x$method$name, "none")) {
-    stop("No multi-objective method configured. Use set_method_weighted(), set_method_epsilon_constraint(), etc.", call. = FALSE)
+  if (is.null(x$method) || !is.list(x$method) || identical(x$method$name %||% "none", "none")) {
+    stop("No multi-objective method configured. Use set_method_*().", call. = FALSE)
   }
 
-  if (identical(x$method$name, "weighted")) {
+  method_name <- as.character(x$method$name %||% NA_character_)[1]
+  if (is.na(method_name) || !nzchar(method_name)) {
+    stop("Invalid multi-objective method configuration: missing method name.", call. = FALSE)
+  }
+
+  if (identical(method_name, "weighted")) {
     res <- .pamo_solve_weighted(x, ...)
-    x$results <- res
-    if (identical(return, "results")) return(res)
-    return(x)
-  }
-
-  if (identical(x$method$name, "epsilon_constraint")) {
+  } else if (identical(method_name, "epsilon_constraint")) {
     res <- .pamo_solve_epsilon_constraint(x, ...)
-    x$results <- res
-    if (identical(return, "results")) return(res)
-    return(x)
+  } else {
+    stop("Unknown/unsupported method: '", method_name, "'.", call. = FALSE)
   }
 
-  stop("Unknown/unsupported method: '", x$method$name, "'.", call. = FALSE)
+  if (!inherits(res, "SolutionMO")) {
+    stop(
+      "Internal error: multi-objective solve did not return a SolutionMO object.\n",
+      "Returned class: ", paste(class(res), collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  x$results <- res
+
+  if (identical(return, "results")) {
+    return(res)
+  }
+
+  x
 }
+
 
 
 
