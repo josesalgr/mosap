@@ -2320,7 +2320,6 @@ add_objective <- function(x, objective) {
   .pamo_eval_alias_on_solution(x, solution, alias)
 }
 
-
 .pamo_eval_alias_on_solution <- function(x, solution, alias) {
   stopifnot(inherits(x, "MOProblem"))
 
@@ -2339,28 +2338,18 @@ add_objective <- function(x, objective) {
   # lo evaluamos directamente desde w sin reconstruir auxiliares y_pu.
   if (length(terms) == 1L && identical(terms[[1]]$type %||% "", "boundary_cut")) {
     val <- .pamo_eval_boundary_cut_on_solution(x, solution, terms[[1]])
-
-    sense <- as.character(spec$sense %||% "min")[1]
-    if (identical(sense, "max")) return(-as.numeric(val))
     return(as.numeric(val))
   }
 
   if (length(terms) == 1L && identical(terms[[1]]$type %||% "", "intervention_impact")) {
     val <- .pamo_eval_intervention_impact_on_solution(x, solution, terms[[1]])
-
-    sense <- as.character(spec$sense %||% "min")[1]
-    if (identical(sense, "max")) return(-as.numeric(val))
     return(as.numeric(val))
   }
 
   # if (length(terms) == 1L && identical(terms[[1]]$type %||% "", "action_boundary_cut")) {
   #   val <- .pamo_eval_action_boundary_cut_on_solution(x, solution, terms[[1]])
-  #
-  #   sense <- as.character(spec$sense %||% "min")[1]
-  #   if (identical(sense, "max")) return(-as.numeric(val))
   #   return(as.numeric(val))
   # }
-
 
   # resto de objetivos: evaluación por objvec
   base_eval <- .pamo_prepare_superset_model(x$base, list(ir))
@@ -2379,22 +2368,13 @@ add_objective <- function(x, objective) {
     )
   }
 
-  # Fase 1:
-  # permitir evaluar objetivos 'base' (cost, benefit, representation, etc.)
-  # sobre soluciones de un superset que incluyen auxiliares adicionales.
-  # En ese caso el objetivo vive en el prefijo del vector solución.
+  # permitir evaluar objetivos 'base' sobre soluciones de un superset
   sol_use <- as.numeric(sol_vec[seq_len(n_obj)])
 
   val_engine <- sum(as.numeric(obj_vec) * sol_use, na.rm = TRUE)
 
-  sense <- as.character(spec$sense %||% "min")[1]
-  if (identical(sense, "max")) {
-    return(-as.numeric(val_engine))
-  }
-
   as.numeric(val_engine)
 }
-
 
 .pamo_add_alias_upper_bound_constraint <- function(base_eval, x, alias, rhs, tol = 0, name = NULL) {
   stopifnot(inherits(base_eval, "Data"))
@@ -2796,10 +2776,15 @@ add_objective <- function(x, objective) {
   }
 
   # ------------------------------------------------------------
-  # PU fragmentation: at most one relation_name in phase 1
+  # Spatial fragmentation terms: at most one relation_name in phase 1
   # ------------------------------------------------------------
+  spatial_terms <- Filter(
+    function(t) t$type %in% c("boundary_cut", "action_boundary_cut", "intervention_boundary_cut"),
+    all_terms
+  )
+
   rel_names <- unique(vapply(
-    Filter(function(t) identical(t$type, "boundary_cut"), all_terms),
+    spatial_terms,
     function(t) as.character(t$relation_name %||% "boundary")[1],
     character(1)
   ))
@@ -2808,7 +2793,7 @@ add_objective <- function(x, objective) {
 
   if (length(rel_names) > 1L) {
     stop(
-      "Phase 1 superset supports only one relation_name across PU fragmentation objectives.\n",
+      "Phase 1 superset supports only one relation_name across fragmentation objectives.\n",
       "Found: ", paste(rel_names, collapse = ", "),
       call. = FALSE
     )

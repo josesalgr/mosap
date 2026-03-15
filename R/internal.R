@@ -3808,6 +3808,7 @@ available_to_solve <- function(package = ""){
 
   args  <- x$data$model_args %||% list()
   mtype <- args$model_type %||% "minimizeCosts"
+  oargs <- args$objective_args %||% list()
   raw_needs <- args$needs %||% list()
 
   needs <- .pa_needs_default()
@@ -3839,7 +3840,26 @@ available_to_solve <- function(package = ""){
     needs$u_intervention <- identical(mtype, "minimizeInterventionImpact")
   }
 
-  # preserva metadatos extra útiles para MO, como relation_name
+  # propagación explícita de metadatos estructurales necesarios
+  if (isTRUE(needs$y_pu) || isTRUE(needs$y_action) || isTRUE(needs$y_intervention)) {
+    if (is.null(raw_needs$relation_name)) {
+      needs$relation_name <- as.character(oargs$relation_name %||% "boundary")[1]
+    }
+  }
+
+  if (isTRUE(needs$y_action)) {
+    if (is.null(raw_needs$actions_to_use)) {
+      needs$actions_to_use <- oargs$actions_to_use %||% oargs$actions %||% NULL
+    }
+  }
+
+  if (isTRUE(needs$u_intervention)) {
+    if (is.null(raw_needs$u_intervention_actions)) {
+      needs$u_intervention_actions <- oargs$actions %||% NULL
+    }
+  }
+
+  # preserva metadatos extra útiles para MO
   extra_fields <- setdiff(names(raw_needs), names(needs))
   if (length(extra_fields) > 0L) {
     for (nm in extra_fields) {
@@ -3856,7 +3876,6 @@ available_to_solve <- function(package = ""){
   x$data$model_args$needs <- needs
   x
 }
-
 
 
 
@@ -3947,8 +3966,13 @@ available_to_solve <- function(package = ""){
       .pa_abort("prepare_needs: y_action requires action variables, but dist_actions_model has 0 rows.")
     }
 
-    actions_to_use <- needs$actions_to_use %||% oargs$actions_to_use %||% oargs$actions %||% NULL
-    if (!is.null(actions_to_use)) actions_to_use <- as.integer(actions_to_use)
+    actions_to_use_raw <- needs$actions_to_use %||% oargs$actions_to_use %||% oargs$actions %||% NULL
+
+    actions_to_use <- NULL
+    if (!is.null(actions_to_use_raw)) {
+      act_subset <- .pa_resolve_action_subset(x, subset = actions_to_use_raw)
+      actions_to_use <- as.integer(act_subset$internal_id)
+    }
 
     res <- rcpp_prepare_objective_min_fragmentation_actions(
       x = op,

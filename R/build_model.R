@@ -985,32 +985,6 @@
 
     objective_id <- "max_representation"
 
-  } else if (identical(mtype, "minimizeFragmentation")) {
-
-    if (!exists("rcpp_add_objective_min_fragmentation", mode = "function")) .pa_abort("Missing rcpp_add_objective_min_fragmentation().")
-
-    rel_name  <- as.character(oargs$relation_name %||% "boundary")[1]
-    rel       <- x$data$spatial_relations[[rel_name]]
-    if (is.null(rel)) .pa_abort("Missing spatial relation: ", rel_name)
-
-    rel_model <- x$data$spatial_relations_model[[rel_name]] %||% .pa_prepare_relation_model(rel)
-    x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
-    x$data$spatial_relations_model[[rel_name]] <- rel_model
-
-    # IMPORTANT: prepare of aux vars (idempotent)
-    if (exists("rcpp_prepare_objective_min_fragmentation", mode = "function")) {
-      rcpp_prepare_objective_min_fragmentation(op, rel_model)
-    }
-
-    res <- rcpp_add_objective_min_fragmentation(
-      op,
-      relation_data = rel_model,
-      weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
-      # weight = 1.0   # si tu firma la tiene, añádelo
-    )
-
-    objective_id <- "min_fragmentation"
-
   } else if (identical(mtype, "minimizeActionFragmentation")) {
 
     if (!exists("rcpp_add_objective_min_fragmentation_actions", mode = "function")) {
@@ -1025,15 +999,21 @@
     x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
     x$data$spatial_relations_model[[rel_name]] <- rel_model
 
-    subset_actions <- oargs$actions_to_use %||% oargs$actions %||% NULL
+    subset_actions_raw <- oargs$actions_to_use %||% oargs$actions %||% NULL
+
+    act_subset <- NULL
+    actions_to_use <- NULL
+    if (!is.null(subset_actions_raw)) {
+      act_subset <- .pa_resolve_action_subset(x, subset = subset_actions_raw)
+      actions_to_use <- as.integer(act_subset$internal_id)
+    }
+
     aw_vec <- .pa_action_weights_vector(
       actions_df = x$data$actions,
       action_weights = oargs$action_weights %||% NULL,
-      subset_actions = subset_actions
+      subset_actions = actions_to_use,
+      default_weight = 1
     )
-
-    actions_to_use <- subset_actions
-    if (!is.null(actions_to_use)) actions_to_use <- as.integer(actions_to_use)
 
     res <- rcpp_add_objective_min_fragmentation_actions(
       op,
@@ -1043,7 +1023,6 @@
       action_weights    = aw_vec,
       weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
     )
-
 
     objective_id <- "min_action_fragmentation"
 
