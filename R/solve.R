@@ -23,45 +23,45 @@ solve.Data <- function(x, ...) {
   # ---- gather stored solve args (defaults + stored)
   dots <- list(...)
 
-  legacy_keys <- c(
-    "solver", "gap_limit", "time_limit", "solution_limit", "cores", "verbose",
-    "name_output_file", "output_file", "solver_params"
-  )
+  # legacy_keys <- c(
+  #   "solver", "gap_limit", "time_limit", "solution_limit", "cores", "verbose",
+  #   "name_output_file", "output_file", "solver_params"
+  # )
 
-  unknown <- setdiff(names(dots), legacy_keys)
-  if (length(unknown) > 0) {
-    stop("Unknown argument(s) in solve(): ", paste(unknown, collapse = ", "), call. = FALSE)
-  }
+  # unknown <- setdiff(names(dots), legacy_keys)
+  # if (length(unknown) > 0) {
+  #   stop("Unknown argument(s) in solve(): ", paste(unknown, collapse = ", "), call. = FALSE)
+  # }
 
-  used_legacy_args <- length(intersect(names(dots), legacy_keys)) > 0
+  # used_legacy_args <- length(intersect(names(dots), legacy_keys)) > 0
 
   # consideramos “ya configurado” si solve_args existe y tiene al menos un campo no nulo
   has_stored_args <- !is.null(x$data$solve_args) &&
     length(x$data$solve_args) > 0 &&
     any(!vapply(x$data$solve_args, is.null, logical(1)))
 
-  if (used_legacy_args && has_stored_args) {
-    stop(
-      "Solver options were provided twice: you already configured them via add_*_solver()/set_solver(), ",
-      "and you also passed parameters to solve(). ",
-      "Please remove arguments from solve() and keep only add_*_solver()/set_solver().",
-      call. = FALSE
-    )
-  }
+  # if (used_legacy_args && has_stored_args) {
+  #   stop(
+  #     "Solver options were provided twice: you already configured them via add_*_solver()/set_solver(), ",
+  #     "and you also passed parameters to solve(). ",
+  #     "Please remove arguments from solve() and keep only add_*_solver()/set_solver().",
+  #     call. = FALSE
+  #   )
+  # }
 
-  # si NO hay configuración previa, aceptamos legacy args pero avisamos deprecación
-  if (used_legacy_args && requireNamespace("lifecycle", quietly = TRUE)) {
-    lifecycle::deprecate_warn(
-      when = "1.0.1",
-      what = "solve()",
-      with = "set_solver()",
-      details = paste(
-        "Legacy argument detected in the solve() function.",
-        "New workflow example:",
-        "inputData(...) %>% add_actions(...) %>% add_effects(...) %>% set_solver() %>% solve()"
-      )
-    )
-  }
+  # # si NO hay configuración previa, aceptamos legacy args pero avisamos deprecación
+  # if (used_legacy_args && requireNamespace("lifecycle", quietly = TRUE)) {
+  #   lifecycle::deprecate_warn(
+  #     when = "1.0.1",
+  #     what = "solve()",
+  #     with = "set_solver()",
+  #     details = paste(
+  #       "Legacy argument detected in the solve() function.",
+  #       "New workflow example:",
+  #       "inputData(...) %>% add_actions(...) %>% add_effects(...) %>% set_solver() %>% solve()"
+  #     )
+  #   )
+  # }
 
   sa <- do.call(.pa_get_solve_args, c(list(x = x), dots))
 
@@ -111,137 +111,137 @@ solve.Data <- function(x, ...) {
     }
   }
 
-  # ------------------------------------------------------------
-  # Legacy + problem() preflight checks/adapters
-  # ------------------------------------------------------------
-  input_format <- x$data$meta$input_format %||% "new"
-  has_model_now <- !is.null(x$data$model_ptr) && isTRUE(x$data$has_model)
+  # # ------------------------------------------------------------
+  # # Legacy + problem() preflight checks/adapters
+  # # ------------------------------------------------------------
+  # input_format <- x$data$meta$input_format %||% "new"
+  # has_model_now <- !is.null(x$data$model_ptr) && isTRUE(x$data$has_model)
+  #
+  # if (identical(input_format, "legacy") && has_model_now) {
+  #
+  #   # If the user ran problem() too early (before actions were created),
+  #   # we cannot fix it here (would require adding variables). Force rebuild.
+  #   has_threats_data <- !is.null(x$data$dist_threats) && inherits(x$data$dist_threats, "data.frame") &&
+  #     nrow(x$data$dist_threats) > 0
+  #
+  #   # problem() stores model-ready tables; if they're missing, user likely modified after build
+  #   dist_actions_in_model <- x$data$dist_actions_model
+  #   dist_actions_has_rows <- !is.null(dist_actions_in_model) && inherits(dist_actions_in_model, "data.frame") &&
+  #     nrow(dist_actions_in_model) > 0
+  #
+  #   if (has_threats_data && !dist_actions_has_rows) {
+  #     stop(
+  #       "Legacy input detected and a model has already been built via problem(), ",
+  #       "but no actions are present in the built model.\n",
+  #       "This cannot be fixed inside solve() because actions require variables.\n",
+  #       "Fix: build actions BEFORE problem(), e.g.\n",
+  #       "  inputData(..., threats=..., dist_threats=...) %>% add_actions() %>% problem() %>% add_*_solver() %>% solve()\n",
+  #       "or simply avoid calling problem() until after actions/targets are configured.",
+  #       call. = FALSE
+  #     )
+  #   }
+  #
+  #   # If targets were not configured but legacy features have target_* columns,
+  #   # we CAN derive targets and apply them to the existing model (adds constraints).
+  #   mt <- x$data$model_args$model_type %||% NA_character_
+  #
+  #   need_targets <- identical(mt, "minimizeCosts") &&
+  #     (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0)
+  #
+  #   has_legacy_targets_in_features <- !is.null(x$data$features) &&
+  #     inherits(x$data$features, "data.frame") &&
+  #     ("target_recovery" %in% names(x$data$features) || "target_conservation" %in% names(x$data$features))
+  #
+  #   if (need_targets && has_legacy_targets_in_features) {
+  #     if (!exists(".pa_targets_from_features_legacy", mode = "function")) {
+  #       stop(
+  #         "model_type='minimizeCosts' requires targets. Legacy targets exist in features, ",
+  #         "but .pa_targets_from_features_legacy() is not implemented.",
+  #         call. = FALSE
+  #       )
+  #     }
+  #     x <- .pa_targets_from_features_legacy(x)
+  #
+  #     if (exists(".pa_apply_targets_if_present", mode = "function")) {
+  #       x <- .pa_apply_targets_if_present(x, allow_multiple_rows_per_feature = TRUE)
+  #     } else {
+  #       stop("Internal error: .pa_apply_targets_if_present() not found.", call. = FALSE)
+  #     }
+  #   }
+  #
+  #   # Objective-specific checks (legacy + problem)
+  #   if (identical(mt, "maximizeBenefits")) {
+  #     if (is.null(x$data$dist_benefit) || !inherits(x$data$dist_benefit, "data.frame") || nrow(x$data$dist_benefit) == 0) {
+  #       stop(
+  #         "Legacy + problem(): model_type='maximizeBenefits' requires dist_benefit. ",
+  #         "Run add_benefits()/add_effects() (or equivalent) BEFORE problem().",
+  #         call. = FALSE
+  #       )
+  #     }
+  #   }
+  #
+  #   if (identical(mt, "minimizeCosts")) {
+  #     if (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0) {
+  #       stop(
+  #         "Legacy + problem(): model_type='minimizeCosts' requires targets. ",
+  #         "Use add_target_*() before problem(), or provide features$target_recovery so targets can be derived.",
+  #         call. = FALSE
+  #       )
+  #     }
+  #   }
+  # }
 
-  if (identical(input_format, "legacy") && has_model_now) {
-
-    # If the user ran problem() too early (before actions were created),
-    # we cannot fix it here (would require adding variables). Force rebuild.
-    has_threats_data <- !is.null(x$data$dist_threats) && inherits(x$data$dist_threats, "data.frame") &&
-      nrow(x$data$dist_threats) > 0
-
-    # problem() stores model-ready tables; if they're missing, user likely modified after build
-    dist_actions_in_model <- x$data$dist_actions_model
-    dist_actions_has_rows <- !is.null(dist_actions_in_model) && inherits(dist_actions_in_model, "data.frame") &&
-      nrow(dist_actions_in_model) > 0
-
-    if (has_threats_data && !dist_actions_has_rows) {
-      stop(
-        "Legacy input detected and a model has already been built via problem(), ",
-        "but no actions are present in the built model.\n",
-        "This cannot be fixed inside solve() because actions require variables.\n",
-        "Fix: build actions BEFORE problem(), e.g.\n",
-        "  inputData(..., threats=..., dist_threats=...) %>% add_actions() %>% problem() %>% add_*_solver() %>% solve()\n",
-        "or simply avoid calling problem() until after actions/targets are configured.",
-        call. = FALSE
-      )
-    }
-
-    # If targets were not configured but legacy features have target_* columns,
-    # we CAN derive targets and apply them to the existing model (adds constraints).
-    mt <- x$data$model_args$model_type %||% NA_character_
-
-    need_targets <- identical(mt, "minimizeCosts") &&
-      (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0)
-
-    has_legacy_targets_in_features <- !is.null(x$data$features) &&
-      inherits(x$data$features, "data.frame") &&
-      ("target_recovery" %in% names(x$data$features) || "target_conservation" %in% names(x$data$features))
-
-    if (need_targets && has_legacy_targets_in_features) {
-      if (!exists(".pa_targets_from_features_legacy", mode = "function")) {
-        stop(
-          "model_type='minimizeCosts' requires targets. Legacy targets exist in features, ",
-          "but .pa_targets_from_features_legacy() is not implemented.",
-          call. = FALSE
-        )
-      }
-      x <- .pa_targets_from_features_legacy(x)
-
-      if (exists(".pa_apply_targets_if_present", mode = "function")) {
-        x <- .pa_apply_targets_if_present(x, allow_multiple_rows_per_feature = TRUE)
-      } else {
-        stop("Internal error: .pa_apply_targets_if_present() not found.", call. = FALSE)
-      }
-    }
-
-    # Objective-specific checks (legacy + problem)
-    if (identical(mt, "maximizeBenefits")) {
-      if (is.null(x$data$dist_benefit) || !inherits(x$data$dist_benefit, "data.frame") || nrow(x$data$dist_benefit) == 0) {
-        stop(
-          "Legacy + problem(): model_type='maximizeBenefits' requires dist_benefit. ",
-          "Run add_benefits()/add_effects() (or equivalent) BEFORE problem().",
-          call. = FALSE
-        )
-      }
-    }
-
-    if (identical(mt, "minimizeCosts")) {
-      if (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0) {
-        stop(
-          "Legacy + problem(): model_type='minimizeCosts' requires targets. ",
-          "Use add_target_*() before problem(), or provide features$target_recovery so targets can be derived.",
-          call. = FALSE
-        )
-      }
-    }
-  }
-
-  used_problem <- isTRUE(x$data$meta$used_problem) ||
-    (!is.null(x$data$model_args$configured_by) && identical(x$data$model_args$configured_by, "problem()")) ||
-    (!is.null(x$data$model_spec$configured_by) && identical(x$data$model_spec$configured_by, "problem()"))
-
-  # si hay model_spec pero no model_args, sincroniza (robusto)
-  has_spec <- !is.null(x$data$model_spec) && is.list(x$data$model_spec) && length(x$data$model_spec) > 0
-  has_args <- !is.null(x$data$model_args) && is.list(x$data$model_args) && length(x$data$model_args) > 0
-  if (has_spec && !has_args) x$data$model_args <- x$data$model_spec
-
-  if (used_problem) {
-
-    # 1) objective default (si por alguna razón quedó vacío)
-    if (is.null(x$data$model_args$model_type)) {
-      # problem() siempre debería setearlo, pero defensivo:
-      x$data$model_args$model_type <- "minimizeCosts"
-    }
-
-    # 2) si maximizeBenefits, asegúrate de que el usuario tenga beneficios/effects
-    if (identical(x$data$model_args$model_type, "maximizeBenefits")) {
-      # builder ya hará stop si falta dist_effects_model, pero aquí puedes mejorar mensaje:
-      has_effects <- !is.null(x$data$dist_effects) && inherits(x$data$dist_effects, "data.frame") && nrow(x$data$dist_effects) > 0
-      has_benefit <- has_effects && ("benefit" %in% names(x$data$dist_effects))
-      if (!has_benefit) {
-        stop(
-          "problem(model_type='maximizeBenefits') was used, but no benefits were provided.\n",
-          "Please run add_effects()/add_benefits() to create dist_effects with a 'benefit' column, ",
-          "or switch to problem(model_type='minimizeCosts').",
-          call. = FALSE
-        )
-      }
-    }
-
-    # 3) si minimizeCosts, targets: si no hay targets y es legacy, builder intentará adapter
-    # aquí solo damos warning si NO hay posibilidad de targets legacy.
-    if (identical(x$data$model_args$model_type, "minimizeCosts")) {
-      has_targets <- !is.null(x$data$targets) && inherits(x$data$targets, "data.frame") && nrow(x$data$targets) > 0
-      has_legacy_targets_in_features <- !is.null(x$data$features) &&
-        inherits(x$data$features, "data.frame") &&
-        (("target_recovery" %in% names(x$data$features)) || ("target_conservation" %in% names(x$data$features)))
-
-      if (!has_targets && !has_legacy_targets_in_features) {
-        # no detengas necesariamente (depende si tu min_cost requiere targets sí o sí),
-        # pero al menos guía al usuario:
-        warning(
-          "problem(model_type='minimizeCosts') was used but no targets were found.\n",
-          "Add targets with add_target_*() (new pipeline) or provide legacy target_* columns in features.",
-          call. = FALSE, immediate. = TRUE
-        )
-      }
-    }
-  }
+  # used_problem <- isTRUE(x$data$meta$used_problem) ||
+  #   (!is.null(x$data$model_args$configured_by) && identical(x$data$model_args$configured_by, "problem()")) ||
+  #   (!is.null(x$data$model_spec$configured_by) && identical(x$data$model_spec$configured_by, "problem()"))
+  #
+  # # si hay model_spec pero no model_args, sincroniza (robusto)
+  # has_spec <- !is.null(x$data$model_spec) && is.list(x$data$model_spec) && length(x$data$model_spec) > 0
+  # has_args <- !is.null(x$data$model_args) && is.list(x$data$model_args) && length(x$data$model_args) > 0
+  # if (has_spec && !has_args) x$data$model_args <- x$data$model_spec
+  #
+  # if (used_problem) {
+  #
+  #   # 1) objective default (si por alguna razón quedó vacío)
+  #   if (is.null(x$data$model_args$model_type)) {
+  #     # problem() siempre debería setearlo, pero defensivo:
+  #     x$data$model_args$model_type <- "minimizeCosts"
+  #   }
+  #
+  #   # 2) si maximizeBenefits, asegúrate de que el usuario tenga beneficios/effects
+  #   if (identical(x$data$model_args$model_type, "maximizeBenefits")) {
+  #     # builder ya hará stop si falta dist_effects_model, pero aquí puedes mejorar mensaje:
+  #     has_effects <- !is.null(x$data$dist_effects) && inherits(x$data$dist_effects, "data.frame") && nrow(x$data$dist_effects) > 0
+  #     has_benefit <- has_effects && ("benefit" %in% names(x$data$dist_effects))
+  #     if (!has_benefit) {
+  #       stop(
+  #         "problem(model_type='maximizeBenefits') was used, but no benefits were provided.\n",
+  #         "Please run add_effects()/add_benefits() to create dist_effects with a 'benefit' column, ",
+  #         "or switch to problem(model_type='minimizeCosts').",
+  #         call. = FALSE
+  #       )
+  #     }
+  #   }
+  #
+  #   # 3) si minimizeCosts, targets: si no hay targets y es legacy, builder intentará adapter
+  #   # aquí solo damos warning si NO hay posibilidad de targets legacy.
+  #   if (identical(x$data$model_args$model_type, "minimizeCosts")) {
+  #     has_targets <- !is.null(x$data$targets) && inherits(x$data$targets, "data.frame") && nrow(x$data$targets) > 0
+  #     has_legacy_targets_in_features <- !is.null(x$data$features) &&
+  #       inherits(x$data$features, "data.frame") &&
+  #       (("target_recovery" %in% names(x$data$features)) || ("target_conservation" %in% names(x$data$features)))
+  #
+  #     if (!has_targets && !has_legacy_targets_in_features) {
+  #       # no detengas necesariamente (depende si tu min_cost requiere targets sí o sí),
+  #       # pero al menos guía al usuario:
+  #       warning(
+  #         "problem(model_type='minimizeCosts') was used but no targets were found.\n",
+  #         "Add targets with add_target_*() (new pipeline) or provide legacy target_* columns in features.",
+  #         call. = FALSE, immediate. = TRUE
+  #       )
+  #     }
+  #   }
+  # }
 
   # ---- ensure model is built
   if (is.null(x$data$model_ptr) || !isTRUE(x$data$has_model) || isTRUE(x$data$meta$model_dirty)) {

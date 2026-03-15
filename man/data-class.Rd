@@ -8,7 +8,7 @@
 No return value (class definition).
 }
 \description{
-The \code{Data} class is the core container used by \pkg{prioriactions} to store the
+The \code{Data} class is the core container used by \pkg{mosap} to store the
 information required to define and solve a multi-action planning problem.
 It holds the planning-unit table, feature and threat catalogues, action definitions
 and distributions (feasibility, costs, effects), optional spatial inputs (sf geometry,

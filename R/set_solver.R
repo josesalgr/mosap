@@ -1,26 +1,83 @@
-#' @title Configure solver settings
+#' Configure solver settings
 #'
 #' @description
-#' Stores solver configuration inside a \code{Data} object, so that \code{solve(x)}
-#' can run without repeating solver arguments.
+#' Store solver configuration inside a \code{Data} object so that
+#' \code{solve(x)} can run without repeating solver arguments.
 #'
-#' This function does not build the model; it only stores runtime solver options.
+#' This function does not build or solve the optimization model. It only stores
+#' runtime options related to the solver backend.
 #'
-#' @param x A \code{Data} object created with \code{inputData()} or \code{inputDataSpatial()}.
-#' @param solver Character. One of \code{"auto"}, \code{"gurobi"}, \code{"cplex"}, \code{"cbc"}, \code{"symphony"}.
+#' @param x A \code{Data} object created with \code{\link{inputData}} or
+#'   \code{\link{inputDataSpatial}}.
 #'
-#' @param gap_limit Numeric in [0,1]. Relative MIP optimality gap. If \code{NULL}, keep stored value.
-#' @param time_limit Numeric. Time limit in seconds. If \code{NULL}, keep stored value.
-#' @param solution_limit Logical. If \code{NULL}, keep stored value.
-#' @param cores Integer. If \code{NULL}, keep stored value.
-#' @param verbose Logical. If \code{NULL}, keep stored value.
-#' @param output_file Logical. If \code{NULL}, keep stored value.
-#' @param name_output_file Character. If \code{NULL}, keep stored value.
+#' @param solver Character string indicating the solver backend to use.
+#'   One of \code{"auto"}, \code{"gurobi"}, \code{"cplex"},
+#'   \code{"cbc"}, or \code{"symphony"}.
 #'
-#' @param solver_params List. Solver-specific parameters (merged with stored ones).
-#' @param ... Convenience: solver-specific parameters (e.g., \code{MIPFocus=1}) merged into \code{solver_params}.
+#' @param gap_limit Numeric value in \code{[0, 1]} giving the relative
+#'   optimality gap for mixed-integer optimization. If \code{NULL},
+#'   the currently stored value is kept unchanged.
 #'
-#' @return Updated \code{Data} object.
+#' @param time_limit Numeric. Maximum solving time in seconds.
+#'   If \code{NULL}, the currently stored value is kept unchanged.
+#'
+#' @param solution_limit Logical. Whether the solver should stop after
+#'   finding a feasible solution according to the backend-specific behavior.
+#'   If \code{NULL}, the currently stored value is kept unchanged.
+#'
+#' @param cores Integer. Number of CPU cores to use.
+#'   If \code{NULL}, the currently stored value is kept unchanged.
+#'
+#' @param verbose Logical. Should the solver print log output?
+#'   If \code{NULL}, the currently stored value is kept unchanged.
+#'
+#' @param name_output_file Character string with the name of the solver log file.
+#'   If \code{NULL}, the currently stored value is kept unchanged.
+#'
+#' @param output_file Logical. Should solver output be written to a file?
+#'   If \code{NULL}, the currently stored value is kept unchanged.
+#'
+#' @param solver_params A named list of solver-specific parameters.
+#'   These values are merged with previously stored solver parameters rather
+#'   than replacing them completely.
+#'
+#' @param ... Additional solver-specific parameters passed as named arguments.
+#'   These are merged into \code{solver_params}. For example,
+#'   \code{MIPFocus = 1} for Gurobi.
+#'
+#' @details
+#' The function updates the \code{solve_args} slot stored in the input
+#' \code{Data} object. Arguments set to \code{NULL} are not modified, so the
+#' function can be used incrementally to update only selected solver options.
+#'
+#' Solver-specific parameters supplied through \code{solver_params} and
+#' \code{...} are merged with any previously stored parameters.
+#'
+#' @return
+#' An updated \code{Data} object with modified solver settings.
+#'
+#' @seealso
+#' \code{\link{solve}},
+#' \code{\link{set_solver_gurobi}},
+#' \code{\link{set_solver_cplex}},
+#' \code{\link{set_solver_cbc}},
+#' \code{\link{set_solver_symphony}}
+#'
+#' @examples
+#' \dontrun{
+#' x <- inputData(pu = pu, features = features)
+#'
+#' x <- set_solver(
+#'   x,
+#'   solver = "gurobi",
+#'   gap_limit = 0.01,
+#'   time_limit = 300,
+#'   cores = 4,
+#'   verbose = TRUE,
+#'   MIPFocus = 1
+#' )
+#' }
+#'
 #' @export
 set_solver <- function(x,
                        solver = c("auto", "gurobi", "cplex", "cbc", "symphony"),
@@ -28,7 +85,7 @@ set_solver <- function(x,
                        time_limit = NULL,
                        solution_limit = NULL,
                        cores = NULL,
-                       verbose = NULL,
+                       verbose = FALSE,
                        name_output_file = NULL,
                        output_file = NULL,
                        solver_params = list(),
@@ -94,10 +151,35 @@ set_solver <- function(x,
   x
 }
 
-# Wrappers: keep them thin and let set_solver do the heavy lifting
+#' Configure Gurobi solver settings
+#'
+#' @description
+#' Convenience wrapper around \code{\link{set_solver}} that sets
+#' \code{solver = "gurobi"}.
+#'
+#' @inheritParams set_solver
+#'
+#' @return
+#' An updated \code{Data} object with Gurobi solver settings.
+#'
+#' @seealso
+#' \code{\link{set_solver}},
+#' \code{\link{solve}}
+#'
+#' @examples
+#' \dontrun{
+#' x <- set_solver_gurobi(
+#'   x,
+#'   gap_limit = 0.01,
+#'   time_limit = 600,
+#'   cores = 4,
+#'   MIPFocus = 1
+#' )
+#' }
+#'
 #' @export
 set_solver_gurobi <- function(x, ..., solver_params = list(), gap_limit = NULL, time_limit = NULL,
-                              solution_limit = NULL, cores = NULL, verbose = NULL,
+                              solution_limit = NULL, cores = NULL, verbose = FALSE,
                               name_output_file = NULL, output_file = NULL) {
   set_solver(
     x,
@@ -114,9 +196,34 @@ set_solver_gurobi <- function(x, ..., solver_params = list(), gap_limit = NULL, 
   )
 }
 
+#' Configure CBC solver settings
+#'
+#' @description
+#' Convenience wrapper around \code{\link{set_solver}} that sets
+#' \code{solver = "cbc"}.
+#'
+#' @inheritParams set_solver
+#'
+#' @return
+#' An updated \code{Data} object with CBC solver settings.
+#'
+#' @seealso
+#' \code{\link{set_solver}},
+#' \code{\link{solve}}
+#'
+#' @examples
+#' \dontrun{
+#' x <- set_solver_cbc(
+#'   x,
+#'   gap_limit = 0.01,
+#'   time_limit = 600,
+#'   verbose = TRUE
+#' )
+#' }
+#'
 #' @export
 set_solver_cbc <- function(x, ..., solver_params = list(), gap_limit = NULL, time_limit = NULL,
-                           solution_limit = NULL, cores = NULL, verbose = NULL,
+                           solution_limit = NULL, cores = NULL, verbose = FALSE,
                            name_output_file = NULL, output_file = NULL) {
   set_solver(
     x,
@@ -133,9 +240,34 @@ set_solver_cbc <- function(x, ..., solver_params = list(), gap_limit = NULL, tim
   )
 }
 
+#' Configure CPLEX solver settings
+#'
+#' @description
+#' Convenience wrapper around \code{\link{set_solver}} that sets
+#' \code{solver = "cplex"}.
+#'
+#' @inheritParams set_solver
+#'
+#' @return
+#' An updated \code{Data} object with CPLEX solver settings.
+#'
+#' @seealso
+#' \code{\link{set_solver}},
+#' \code{\link{solve}}
+#'
+#' @examples
+#' \dontrun{
+#' x <- set_solver_cplex(
+#'   x,
+#'   gap_limit = 0.001,
+#'   time_limit = 1200,
+#'   cores = 8
+#' )
+#' }
+#'
 #' @export
 set_solver_cplex <- function(x, ..., solver_params = list(), gap_limit = NULL, time_limit = NULL,
-                             solution_limit = NULL, cores = NULL, verbose = NULL,
+                             solution_limit = NULL, cores = NULL, verbose = FALSE,
                              name_output_file = NULL, output_file = NULL) {
   set_solver(
     x,
@@ -152,9 +284,33 @@ set_solver_cplex <- function(x, ..., solver_params = list(), gap_limit = NULL, t
   )
 }
 
+#' Configure SYMPHONY solver settings
+#'
+#' @description
+#' Convenience wrapper around \code{\link{set_solver}} that sets
+#' \code{solver = "symphony"}.
+#'
+#' @inheritParams set_solver
+#'
+#' @return
+#' An updated \code{Data} object with SYMPHONY solver settings.
+#'
+#' @seealso
+#' \code{\link{set_solver}},
+#' \code{\link{solve}}
+#'
+#' @examples
+#' \dontrun{
+#' x <- set_solver_symphony(
+#'   x,
+#'   gap_limit = 0.05,
+#'   time_limit = 300
+#' )
+#' }
+#'
 #' @export
 set_solver_symphony <- function(x, ..., solver_params = list(), gap_limit = NULL, time_limit = NULL,
-                                solution_limit = NULL, cores = NULL, verbose = NULL,
+                                solution_limit = NULL, cores = NULL, verbose = FALSE,
                                 name_output_file = NULL, output_file = NULL) {
   set_solver(
     x,

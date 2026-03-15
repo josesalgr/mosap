@@ -316,41 +316,6 @@ add_objective_min_action_fragmentation <- function(
   )
 }
 
-#' @title Add objective: minimize intervention fragmentation
-#'
-#' @description
-#' Specify an objective that minimizes fragmentation at the intervention level
-#' over a spatial relation.
-#'
-#' @param x A `Data` object.
-#' @param relation_name Character. Name of the spatial relation.
-#' @param weight_multiplier Numeric >= 0. Multiplier applied to relation weights.
-#' @param alias Optional identifier for multi-objective workflows.
-#'
-#' @return Updated `Data` object.
-#' @export
-add_objective_min_intervention_fragmentation <- function(
-    x,
-    relation_name = "boundary",
-    weight_multiplier = 1,
-    alias = NULL
-) {
-  stopifnot(inherits(x, "Data"))
-
-  args <- list(
-    relation_name = as.character(relation_name)[1],
-    weight_multiplier = as.numeric(weight_multiplier)[1]
-  )
-
-  .pa_set_active_and_register_objective(
-    x = x,
-    model_type = "minimizeInterventionFragmentation",
-    objective_id = "min_intervention_fragmentation",
-    objective_args = args,
-    sense = "min",
-    alias = alias
-  )
-}
 
 #' @title Add objective: maximize representation
 #'

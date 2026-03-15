@@ -7,7 +7,7 @@ NULL
 #' Data class
 #'
 #' @description
-#' The \code{Data} class is the core container used by \pkg{prioriactions} to store the
+#' The \code{Data} class is the core container used by \pkg{mosap} to store the
 #' information required to define and solve a multi-action planning problem.
 #' It holds the planning-unit table, feature and threat catalogues, action definitions
 #' and distributions (feasibility, costs, effects), optional spatial inputs (sf geometry,
@@ -86,7 +86,7 @@ Data <- pproto(
       n_pu <- if (is.null(pu)) 0L else nrow(pu)
       unit_rng <- .pa_safe_range(.pa_get_cost_vec(pu))
       feat_names <- self$getFeatureNames()
-      thr_names <- self$getThreatNames()
+      # thr_names <- self$getThreatNames()
 
       msg <- paste0(
         "Data",
@@ -101,7 +101,7 @@ Data <- pproto(
       }
 
       msg <- paste0(msg, "\n  features:        ", paste(feat_names, collapse = ", "))
-      msg <- paste0(msg, "\n  threats:         ", paste(thr_names, collapse = ", "))
+      # msg <- paste0(msg, "\n  threats:         ", paste(thr_names, collapse = ", "))
 
       # model summary (if present)
       if (.pa_has_model(self)) {
@@ -142,7 +142,7 @@ Data <- pproto(
     ch <- .pa_cli_box_chars()
     div_id <- cli::cli_div(theme = .pa_cli_theme())
 
-    cli::cli_text("A prioriactions object ({.cls Data})")
+    cli::cli_text("A mosap object ({.cls Data})")
 
     # --- precompute counts / ranges safely
     pu <- self$data$pu
@@ -153,9 +153,9 @@ Data <- pproto(
     n_feat <- .pa_nrow0(feats)
     feat_names <- self$getFeatureNames()
 
-    thr <- self$data$threats
-    n_thr <- .pa_nrow0(thr)
-    thr_names <- self$getThreatNames()
+    # thr <- self$data$threats
+    # n_thr <- .pa_nrow0(thr)
+    # thr_names <- self$getThreatNames()
 
     pu_coords <- self$data$pu_coords
     has_coords <- .pa_has_coords(self)
@@ -196,9 +196,9 @@ Data <- pproto(
     cli::cli_text("{ch$v}{ch$j}{ch$b}features:       {txt}",
                   .envir = environment())
 
-    txt <- if (n_thr == 0) "{.muted (0 threats)}" else .pa_repr_atomic(thr_names, "threats")
-    cli::cli_text("{ch$v}{ch$j}{ch$b}threats:        {txt}",
-                  .envir = environment())
+    # txt <- if (n_thr == 0) "{.muted (0 threats)}" else .pa_repr_atomic(thr_names, "threats")
+    # cli::cli_text("{ch$v}{ch$j}{ch$b}threats:        {txt}",
+    #               .envir = environment())
 
     # ---- ACTIONS SECTION
     cli::cli_text("{ch$l}{ch$b}{.h actions}", .envir = environment())
@@ -377,17 +377,17 @@ Data <- pproto(
     as.character(feats$name)
   },
 
-  getThreatNames = function(self) {
-    thr <- self$data$threats
-    if (is.null(thr) || nrow(thr) == 0) return(character(0))
-    as.character(thr$name)
-  },
+  # getThreatNames = function(self) {
+  #   thr <- self$data$threats
+  #   if (is.null(thr) || nrow(thr) == 0) return(character(0))
+  #   as.character(thr$name)
+  # },
 
-  getThreatsAmount = function(self) {
-    thr <- self$data$threats
-    if (is.null(thr)) return(0L)
-    nrow(thr)
-  },
+  # getThreatsAmount = function(self) {
+  #   thr <- self$data$threats
+  #   if (is.null(thr)) return(0L)
+  #   nrow(thr)
+  # },
 
   getActionCosts = function(self) {
     # prefer new dist_actions

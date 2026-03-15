@@ -1,6 +1,6 @@
 Package: mosap
 Type: Package
-Version: 1.0.2
+Version: 1.0.3
 Title: Integrated Multi-Objective Spatial Action Planning            
 Description: Description: Provides an exact multi-objective optimisation framework for integrated
     spatial action planning using mixed-integer programming (MIP). The package
@@ -32,7 +32,8 @@ Imports:
     tidyr,
     dplyr,
     Rcpp,
-    rlang
+    rlang,
+    cli
 Suggests: 
     knitr,
     gurobi (>= 9.0),
@@ -55,8 +56,7 @@ Suggests:
     methods,
     reshape2,
     terra,
-    sf,
-    cli
+    sf
 LinkingTo:
   Rcpp, 
   RcppArmadillo (>= 0.10.1.0.0), 
@@ -87,12 +87,10 @@ Collate:
     'internalMO.R'
     'get_solution.R'
     'inputData.R'
-    'inputDataSpatial.R'
     'package.R'
     'plot.R'
     'presolve.R'
     'print.R'
-    'problem.R'
     'set_method_epsilon_constraint.R'
     'set_method_weighted.R'
     'set_solver.R'
@@ -101,7 +99,6 @@ Collate:
     'solution-class.R'
     'solve.R'
     'utils-pipe.R'
-    'writeOutputs.R'
     'zzz.R'
 Roxygen: list(markdown = TRUE)
 Config/testthat/edition: 3

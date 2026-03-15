@@ -11,7 +11,7 @@ set_solver(
   time_limit = NULL,
   solution_limit = NULL,
   cores = NULL,
-  verbose = NULL,
+  verbose = FALSE,
   name_output_file = NULL,
   output_file = NULL,
   solver_params = list(),
@@ -19,34 +19,82 @@ set_solver(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{inputData()} or \code{inputDataSpatial()}.}
+\item{x}{A \code{Data} object created with \code{\link{inputData}} or
+\code{\link{inputDataSpatial}}.}
 
-\item{solver}{Character. One of \code{"auto"}, \code{"gurobi"}, \code{"cplex"}, \code{"cbc"}, \code{"symphony"}.}
+\item{solver}{Character string indicating the solver backend to use.
+One of \code{"auto"}, \code{"gurobi"}, \code{"cplex"},
+\code{"cbc"}, or \code{"symphony"}.}
 
-\item{gap_limit}{Numeric in \link{0,1}. Relative MIP optimality gap. If \code{NULL}, keep stored value.}
+\item{gap_limit}{Numeric value in \code{[0, 1]} giving the relative
+optimality gap for mixed-integer optimization. If \code{NULL},
+the currently stored value is kept unchanged.}
 
-\item{time_limit}{Numeric. Time limit in seconds. If \code{NULL}, keep stored value.}
+\item{time_limit}{Numeric. Maximum solving time in seconds.
+If \code{NULL}, the currently stored value is kept unchanged.}
 
-\item{solution_limit}{Logical. If \code{NULL}, keep stored value.}
+\item{solution_limit}{Logical. Whether the solver should stop after
+finding a feasible solution according to the backend-specific behavior.
+If \code{NULL}, the currently stored value is kept unchanged.}
 
-\item{cores}{Integer. If \code{NULL}, keep stored value.}
+\item{cores}{Integer. Number of CPU cores to use.
+If \code{NULL}, the currently stored value is kept unchanged.}
 
-\item{verbose}{Logical. If \code{NULL}, keep stored value.}
+\item{verbose}{Logical. Should the solver print log output?
+If \code{NULL}, the currently stored value is kept unchanged.}
 
-\item{name_output_file}{Character. If \code{NULL}, keep stored value.}
+\item{name_output_file}{Character string with the name of the solver log file.
+If \code{NULL}, the currently stored value is kept unchanged.}
 
-\item{output_file}{Logical. If \code{NULL}, keep stored value.}
+\item{output_file}{Logical. Should solver output be written to a file?
+If \code{NULL}, the currently stored value is kept unchanged.}
 
-\item{solver_params}{List. Solver-specific parameters (merged with stored ones).}
+\item{solver_params}{A named list of solver-specific parameters.
+These values are merged with previously stored solver parameters rather
+than replacing them completely.}
 
-\item{...}{Convenience: solver-specific parameters (e.g., \code{MIPFocus=1}) merged into \code{solver_params}.}
+\item{...}{Additional solver-specific parameters passed as named arguments.
+These are merged into \code{solver_params}. For example,
+\code{MIPFocus = 1} for Gurobi.}
 }
 \value{
-Updated \code{Data} object.
+An updated \code{Data} object with modified solver settings.
 }
 \description{
-Stores solver configuration inside a \code{Data} object, so that \code{solve(x)}
-can run without repeating solver arguments.
+Store solver configuration inside a \code{Data} object so that
+\code{solve(x)} can run without repeating solver arguments.
 
-This function does not build the model; it only stores runtime solver options.
+This function does not build or solve the optimization model. It only stores
+runtime options related to the solver backend.
+}
+\details{
+The function updates the \code{solve_args} slot stored in the input
+\code{Data} object. Arguments set to \code{NULL} are not modified, so the
+function can be used incrementally to update only selected solver options.
+
+Solver-specific parameters supplied through \code{solver_params} and
+\code{...} are merged with any previously stored parameters.
+}
+\examples{
+\dontrun{
+x <- inputData(pu = pu, features = features)
+
+x <- set_solver(
+  x,
+  solver = "gurobi",
+  gap_limit = 0.01,
+  time_limit = 300,
+  cores = 4,
+  verbose = TRUE,
+  MIPFocus = 1
+)
+}
+
+}
+\seealso{
+\code{\link{solve}},
+\code{\link{set_solver_gurobi}},
+\code{\link{set_solver_cplex}},
+\code{\link{set_solver_cbc}},
+\code{\link{set_solver_symphony}}
 }

@@ -29,12 +29,12 @@ rcpp_add_action_locks <- function(x, dist_actions_data) {
     .Call(`_mosap_rcpp_add_action_locks`, x, dist_actions_data)
 }
 
-rcpp_add_action_max_per_pu <- function(x, dist_actions_data, max_per_pu = 1L, internal_pu_ids = integerVector(), internal_action_ids = integerVector()) {
-    .Call(`_mosap_rcpp_add_action_max_per_pu`, x, dist_actions_data, max_per_pu, internal_pu_ids, internal_action_ids)
-}
-
 rcpp_add_base_variables <- function(x, pu_data, dist_actions_data, dist_features_data, add_z = TRUE) {
     .Call(`_mosap_rcpp_add_base_variables`, x, pu_data, dist_actions_data, dist_features_data, add_z)
+}
+
+rcpp_add_constraint_action_max_per_pu <- function(x, dist_actions_data, max_per_pu = 1L, internal_pu_ids = integerVector(), internal_action_ids = integerVector()) {
+    .Call(`_mosap_rcpp_add_constraint_action_max_per_pu`, x, dist_actions_data, max_per_pu, internal_pu_ids, internal_action_ids)
 }
 
 rcpp_add_linear_constraint <- function(model_ptr, j0, x, sense, rhs, name = "", block_name = "linear_constraint", tag = "") {
@@ -73,8 +73,8 @@ rcpp_add_objective_min_fragmentation <- function(x, relation_data, weight = 1.0,
     .Call(`_mosap_rcpp_add_objective_min_fragmentation`, x, relation_data, weight, weight_multiplier, block_name, tag)
 }
 
-rcpp_add_objective_min_fragmentation_actions_by_action <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, action_weights = NULL, weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_fragmentation_actions_by_action", tag = "") {
-    .Call(`_mosap_rcpp_add_objective_min_fragmentation_actions_by_action`, x, dist_actions_data, relation_data, actions_to_use, action_weights, weight, weight_multiplier, block_name, tag)
+rcpp_add_objective_min_fragmentation_actions <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, action_weights = NULL, weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_fragmentation_actions_by_action", tag = "") {
+    .Call(`_mosap_rcpp_add_objective_min_fragmentation_actions`, x, dist_actions_data, relation_data, actions_to_use, action_weights, weight, weight_multiplier, block_name, tag)
 }
 
 rcpp_add_objective_min_intervention_impact <- function(x, pu_data, dist_actions_data, dist_features_data, subset_key = "", impact_col = "amount", features_to_use = integerVector(), actions_to_use = integerVector(), internal_feature_col = "internal_feature", weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_intervention_impact", tag = "") {
@@ -93,16 +93,8 @@ rcpp_add_target_mixed_total <- function(x, features_data, dist_features_data, di
     .Call(`_mosap_rcpp_add_target_mixed_total`, x, features_data, dist_features_data, dist_benefit_data, dist_actions_data, target_col_sexp, tol)
 }
 
-rcpp_add_target_mixed_total_power <- function(x, dist_features_data, dist_actions_data, dist_benefit_data, targets_df, exponent = 2.0, segments = 6L, amount_col_sexp = NULL, tol = 1e-12) {
-    .Call(`_mosap_rcpp_add_target_mixed_total_power`, x, dist_features_data, dist_actions_data, dist_benefit_data, targets_df, exponent, segments, amount_col_sexp, tol)
-}
-
 rcpp_add_target_recovery <- function(x, features_data, dist_actions_data, dist_benefit_data, target_col_sexp = NULL, tol = 1e-12) {
     .Call(`_mosap_rcpp_add_target_recovery`, x, features_data, dist_actions_data, dist_benefit_data, target_col_sexp, tol)
-}
-
-rcpp_add_target_recovery_power <- function(x, features_data, dist_actions_data, dist_benefit_data, exponent = 2.0, segments = 3L, target_col_sexp = NULL, tol = 1e-12) {
-    .Call(`_mosap_rcpp_add_target_recovery_power`, x, features_data, dist_actions_data, dist_benefit_data, exponent, segments, target_col_sexp, tol)
 }
 
 rcpp_fix_z_ineligible_by_positive_delta <- function(x, dist_features_data, dist_benefit_data, fix_lb_too = TRUE, eps = 1e-12) {
@@ -111,14 +103,6 @@ rcpp_fix_z_ineligible_by_positive_delta <- function(x, dist_features_data, dist_
 
 rcpp_model_set_objective_vector <- function(x, obj, model_sense = "min") {
     invisible(.Call(`_mosap_rcpp_model_set_objective_vector`, x, obj, model_sense))
-}
-
-rcpp_objective_max_coverage <- function(x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, boundary_data, blm, curve) {
-    .Call(`_mosap_rcpp_objective_max_coverage`, x, pu_data, features_data, dist_features_data, threats_data, dist_threats_data, boundary_data, blm, curve)
-}
-
-rcpp_objective_min_set <- function(x, pu_data, threats_data, dist_threats_data, boundary_data, blm, curve, block_name = "objective_min_set", tag = "") {
-    .Call(`_mosap_rcpp_objective_min_set`, x, pu_data, threats_data, dist_threats_data, boundary_data, blm, curve, block_name, tag)
 }
 
 rcpp_reset_objective <- function(x, modelsense = "", clear_blocks = TRUE) {
@@ -131,14 +115,6 @@ rcpp_add_to_objective <- function(x, ind, val) {
 
 rcpp_add_to_objective_scalar <- function(x, ind1, val) {
     invisible(.Call(`_mosap_rcpp_add_to_objective_scalar`, x, ind1, val))
-}
-
-rcpp_prepare_fragmentation_actions_by_action <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, block_name = "fragmentation_actions_by_action", tag = "") {
-    .Call(`_mosap_rcpp_prepare_fragmentation_actions_by_action`, x, dist_actions_data, relation_data, actions_to_use, block_name, tag)
-}
-
-rcpp_prepare_fragmentation_pu <- function(x, relation_data, block_name = "fragmentation_pu", tag = "") {
-    .Call(`_mosap_rcpp_prepare_fragmentation_pu`, x, relation_data, block_name, tag)
 }
 
 rcpp_prepare_objective_max_benefit <- function(x, dist_actions_data, dist_benefit_data, benefit_col = "benefit", block_name = "prepare_max_benefit", tag = "") {
@@ -155,6 +131,14 @@ rcpp_prepare_objective_max_profit <- function(x, dist_actions_data, dist_profit_
 
 rcpp_prepare_objective_min_cost <- function(x, pu_data, dist_actions_data, include_pu_cost = TRUE, include_action_cost = TRUE, block_name = "objective_min_cost", tag = "") {
     .Call(`_mosap_rcpp_prepare_objective_min_cost`, x, pu_data, dist_actions_data, include_pu_cost, include_action_cost, block_name, tag)
+}
+
+rcpp_prepare_objective_min_fragmentation <- function(x, relation_data, block_name = "fragmentation_pu", tag = "") {
+    .Call(`_mosap_rcpp_prepare_objective_min_fragmentation`, x, relation_data, block_name, tag)
+}
+
+rcpp_prepare_objective_min_fragmentation_actions <- function(x, dist_actions_data, relation_data, actions_to_use = NULL, block_name = "fragmentation_actions_by_action", tag = "") {
+    .Call(`_mosap_rcpp_prepare_objective_min_fragmentation_actions`, x, dist_actions_data, relation_data, actions_to_use, block_name, tag)
 }
 
 rcpp_prepare_objective_min_intervention_impact <- function(x, pu_data, dist_actions_data, dist_features_data, subset_key = "", impact_col = "amount", features_to_use = integerVector(), actions_to_use = integerVector(), internal_feature_col = "internal_feature", block_name = "objective_min_intervention_impact", tag = "") {

@@ -1,4 +1,4 @@
-# internal.R (prioriactionsMO)
+# internal.R (mosap)
 # -------------------------------------------------------------------------
 # Utilities
 # -------------------------------------------------------------------------
@@ -106,7 +106,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
 
 # -------------------------------------------------------------------------
-# Atomic objective registry accessors (stored in prioriactions::Data)
+# Atomic objective registry accessors (stored in mosap::Data)
 # Registry: x$base$data$objectives[[alias]] = list(...)
 # -------------------------------------------------------------------------
 
@@ -188,6 +188,256 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 # - terms: list of atomic terms (still indivisible objectives)
 # - objective_id, objective_args: to be able to re-activate the objective in a single-objective model
 # -------------------------------------------------------------------------
+.pamo_objvec_action_boundary_cut <- function(base_superset, term) {
+  stopifnot(inherits(base_superset, "Data"))
+
+  op <- base_superset$data$model_ptr
+  if (is.null(op)) {
+    stop("Superset model is not built (missing model_ptr).", call. = FALSE)
+  }
+
+  ml <- base_superset$data$model_list %||% NULL
+  if (is.null(ml) || !is.list(ml)) {
+    base_superset <- .pa_refresh_model_snapshot(base_superset)
+    ml <- base_superset$data$model_list %||% NULL
+  }
+  if (is.null(ml) || !is.list(ml)) {
+    stop("Model snapshot is missing in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+
+  m0 <- .pa_model_from_ptr(
+    op,
+    args = base_superset$data$model_args %||% list(),
+    drop_triplets = TRUE
+  )
+
+  n_col <- as.integer(
+    ml$ncol %||%
+      ml$n_col %||%
+      length(m0$obj)
+  )
+
+  n_x <- as.integer(ml$n_x %||% NA_integer_)
+  x_offset <- as.integer(ml$x_offset %||% NA_integer_)
+  y0 <- as.integer(ml$y_action_offset %||% NA_integer_)
+  n_y <- as.integer(ml$n_y_action %||% NA_integer_)
+
+  if (!is.finite(n_col) || is.na(n_col) || n_col <= 0L) {
+    stop("Invalid model dimension (ncol) in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+  if (!is.finite(n_x) || is.na(n_x) || n_x <= 0L) {
+    stop("Invalid n_x in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+  if (!is.finite(x_offset) || is.na(x_offset) || x_offset < 0L) {
+    stop("Invalid x_offset in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+  if (!is.finite(y0) || is.na(y0) || y0 < 0L) {
+    stop("Invalid y_action_offset in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+  if (!is.finite(n_y) || is.na(n_y) || n_y <= 0L) {
+    stop("Invalid n_y_action in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+
+  v <- numeric(n_col)
+
+  # ---- relation
+  rel_name <- as.character(term$relation_name %||% "boundary")[1]
+  rel_model <- base_superset$data$spatial_relations_model[[rel_name]] %||%
+    base_superset$data$spatial_relations[[rel_name]] %||%
+    NULL
+
+  if (is.null(rel_model) || !inherits(rel_model, "data.frame")) {
+    stop("Missing relation '", rel_name, "' in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+  for (nm in c("internal_pu1", "internal_pu2", "weight")) {
+    if (!nm %in% names(rel_model)) {
+      stop("Relation '", rel_name, "' must contain column '", nm, "'.", call. = FALSE)
+    }
+  }
+
+  # ---- dist_actions model-ready
+  da <- base_superset$data$dist_actions_model %||% NULL
+  if (is.null(da) || !inherits(da, "data.frame")) {
+    stop("dist_actions_model is missing in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+  for (nm in c("internal_row", "internal_pu", "internal_action")) {
+    if (!nm %in% names(da)) {
+      stop("dist_actions_model must contain column '", nm, "'.", call. = FALSE)
+    }
+  }
+
+  # ---- infer global number of actions
+  all_actions <- sort(unique(as.integer(da$internal_action)))
+  all_actions <- all_actions[is.finite(all_actions) & !is.na(all_actions)]
+  if (length(all_actions) == 0L) {
+    stop("Could not infer internal actions in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+  n_actions_global <- max(all_actions)
+
+  # ---- selected actions
+  act_raw <- term$actions %||% NULL
+  if (is.null(act_raw) || length(act_raw) == 0L) {
+    act_int <- all_actions
+  } else {
+    act_int <- as.integer(act_raw)
+    act_int <- sort(unique(act_int[is.finite(act_int) & !is.na(act_int)]))
+  }
+
+  if (length(act_int) == 0L) {
+    return(v)
+  }
+
+  # ---- action weights
+  aw <- term$action_weights %||% NULL
+  if (is.null(aw)) {
+    aw_map <- stats::setNames(rep(1, length(act_int)), act_int)
+  } else {
+    aw <- as.numeric(aw)
+    if (length(aw) == length(all_actions)) {
+      tmp_map <- stats::setNames(aw, all_actions)
+      aw_map <- tmp_map[as.character(act_int)]
+    } else if (length(aw) == length(act_int)) {
+      aw_map <- stats::setNames(aw, act_int)
+    } else {
+      stop(
+        "action_weights length must match either all actions or the selected action subset.",
+        call. = FALSE
+      )
+    }
+  }
+
+  weight_multiplier <- as.numeric(term$weight_multiplier %||% 1)[1]
+  if (!is.finite(weight_multiplier)) weight_multiplier <- 1
+
+  n_pu <- nrow(base_superset$data$pu)
+  if (!is.finite(n_pu) || is.na(n_pu) || n_pu <= 0L) {
+    stop("Invalid n_pu in .pamo_objvec_action_boundary_cut().", call. = FALSE)
+  }
+
+  # ---- canonicalize relation exactly like C++
+  ip1 <- as.integer(rel_model$internal_pu1)
+  ip2 <- as.integer(rel_model$internal_pu2)
+  ww  <- as.numeric(rel_model$weight)
+
+  ok <- is.finite(ip1) & is.finite(ip2) & is.finite(ww)
+  ip1 <- ip1[ok]
+  ip2 <- ip2[ok]
+  ww  <- ww[ok]
+
+  self_w <- numeric(n_pu)
+  edge_map <- new.env(parent = emptyenv(), hash = TRUE)
+
+  make_key <- function(a, b) paste0(a, "::", b)
+
+  for (r in seq_along(ip1)) {
+    i <- ip1[r]
+    j <- ip2[r]
+    wij <- ww[r]
+
+    if (i == j) {
+      self_w[i] <- self_w[i] + wij
+    } else {
+      a <- min(i, j)
+      b <- max(i, j)
+      k <- make_key(a, b)
+
+      old <- if (exists(k, envir = edge_map, inherits = FALSE)) {
+        get(k, envir = edge_map, inherits = FALSE)
+      } else {
+        NA_real_
+      }
+
+      if (is.na(old) || wij > old) {
+        assign(k, wij, envir = edge_map)
+      }
+    }
+  }
+
+  edge_keys <- ls(edge_map, all.names = TRUE)
+  if (length(edge_keys) == 0L) {
+    return(v)
+  }
+
+  edge_df <- data.frame(
+    a = integer(length(edge_keys)),
+    b = integer(length(edge_keys)),
+    weight = numeric(length(edge_keys))
+  )
+
+  for (k in seq_along(edge_keys)) {
+    parts <- strsplit(edge_keys[k], "::", fixed = TRUE)[[1]]
+    edge_df$a[k] <- as.integer(parts[1])
+    edge_df$b[k] <- as.integer(parts[2])
+    edge_df$weight[k] <- get(edge_keys[k], envir = edge_map, inherits = FALSE)
+  }
+
+  edge_df <- edge_df[order(edge_df$a, edge_df$b), , drop = FALSE]
+  k_edges <- nrow(edge_df)
+
+  expected_n_y <- k_edges * n_actions_global
+  if (expected_n_y != n_y) {
+    stop(
+      "Mismatch in y_action layout in .pamo_objvec_action_boundary_cut().\n",
+      "expected n_y_action = k_edges * n_actions_global = ", expected_n_y,
+      ", but model snapshot reports n_y_action = ", n_y, ".",
+      call. = FALSE
+    )
+  }
+
+  incident_w <- numeric(n_pu)
+  for (r in seq_len(k_edges)) {
+    incident_w[edge_df$a[r]] <- incident_w[edge_df$a[r]] + edge_df$weight[r]
+    incident_w[edge_df$b[r]] <- incident_w[edge_df$b[r]] + edge_df$weight[r]
+  }
+
+  # ---- sparse map (pu, action) -> x column
+  key2 <- function(i, a) paste0(i, "::", a)
+
+  da_key <- key2(da$internal_pu, da$internal_action)
+  x_cols <- x_offset + as.integer(da$internal_row) - 1L
+  x_map <- stats::setNames(as.integer(x_cols), da_key)
+
+  # ---- linear part on x
+  for (act in act_int) {
+    awi <- as.numeric(aw_map[[as.character(act)]])
+    if (!is.finite(awi) || awi == 0) next
+
+    for (i in seq_len(n_pu)) {
+      k <- key2(i, act)
+
+      # use [ ] instead of [[ ]] so missing keys return NA instead of error
+      col_x <- unname(x_map[k])[1]
+
+      if (!is.finite(col_x) || is.na(col_x)) next
+
+      coef <- weight_multiplier * awi * (incident_w[i] + self_w[i])
+      if (coef != 0) {
+        v[col_x + 1L] <- v[col_x + 1L] + coef
+      }
+    }
+  }
+
+  # ---- edge part on global y_action block
+  for (e in seq_len(k_edges)) {
+    we <- edge_df$weight[e]
+
+    for (act in act_int) {
+      awi <- as.numeric(aw_map[[as.character(act)]])
+      if (!is.finite(awi) || awi == 0) next
+
+      # global layout: e is 0-based in the formula
+      bcol0 <- y0 + (e - 1L) * n_actions_global + (act - 1L)
+      coef <- weight_multiplier * (-2) * we * awi
+
+      if (coef != 0) {
+        v[bcol0 + 1L] <- v[bcol0 + 1L] + coef
+      }
+    }
+  }
+
+  v
+}
+
 .pamo_objective_to_ir <- function(x, spec) {
   stopifnot(inherits(x, "Data"))
   stopifnot(is.list(spec), !is.null(spec$objective_id))
@@ -508,7 +758,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 }
 
 # -------------------------------------------------------------------------
-# Activate an IR as a single-objective config in prioriactions::Data
+# Activate an IR as a single-objective config in mosap::Data
 # (Used by the "rebuild + pad" objective vector strategy)
 # -------------------------------------------------------------------------
 
@@ -828,7 +1078,6 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   )
 }
 
-
 .pamo_solve_epsilon_constraint <- function(x, ...) {
 
   stopifnot(inherits(x, "MOProblem"))
@@ -861,6 +1110,10 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   gap_limit  <- dots$gap_limit %||% NULL
   time_limit <- dots$time_limit %||% NULL
 
+  # progress control
+  progress <- dots$progress %||% dots$verbose %||% interactive()
+  progress <- isTRUE(progress)
+
   # ---------------------------------------------------------
   # Build or recover epsilon design
   # ---------------------------------------------------------
@@ -888,16 +1141,13 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
       stop("epsilon_constraint (auto): generated epsilon runs are empty.", call. = FALSE)
     }
 
-    # keep the generated design in the method object for reporting/debugging
     x$method$runs <- design_df
   }
 
-  # common validation
   if (!("run_id" %in% names(design_df))) {
     design_df$run_id <- seq_len(nrow(design_df))
   }
 
-  # We expect epsilon columns to be named eps_<alias>
   eps_cols <- paste0("eps_", constrained)
   miss_cols <- setdiff(eps_cols, names(design_df))
   if (length(miss_cols) > 0L) {
@@ -921,6 +1171,12 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   status  <- character(n_runs)
   runtime <- numeric(n_runs)
   gap     <- numeric(n_runs)
+
+  pb <- NULL
+  if (progress && n_runs > 1L) {
+    pb <- utils::txtProgressBar(min = 0, max = n_runs, style = 3)
+    on.exit(close(pb), add = TRUE)
+  }
 
   for (r in seq_len(n_runs)) {
 
@@ -954,7 +1210,6 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
     value_mat[r, ] <- unname(as.numeric(alias_values))
 
-    # store metadata inside each individual Solution
     if (!is.null(solutions[[r]]) && !is.null(solutions[[r]]$data)) {
       solutions[[r]]$data$alias_values <- alias_values
       solutions[[r]]$data$run_id <- design_df$run_id[r]
@@ -964,6 +1219,10 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
         as.numeric(design_df[r, eps_cols, drop = TRUE]),
         constrained
       )
+    }
+
+    if (!is.null(pb)) {
+      utils::setTxtProgressBar(pb, r)
     }
   }
 
@@ -987,11 +1246,13 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   # Extras: method-specific metadata
   # ---------------------------------------------------------
   extras <- list()
-
-  # keep the epsilon design/grid here
   extras$epsilon_grid <- design_df
 
-  # keep any precomputed auto-mode metadata if available
+  ext <- attr(design_df, "extremes", exact = TRUE)
+  if (!is.null(ext)) {
+    extras$extremes <- ext
+  }
+
   if (!is.null(method$meta)) {
     extras$method_meta <- method$meta
   }
@@ -1008,7 +1269,6 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
     )
   )
 }
-
 
 .pamo_build_auto_epsilon_runs <- function(x) {
   stopifnot(inherits(x, "MOProblem"))
@@ -1116,10 +1376,10 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
 
 # ---------------------------------------------------------
-# Internal: extract (minimal) results from prioriactions Solution
+# Internal: extract (minimal) results from mosap Solution
 # ---------------------------------------------------------
 # .pamo_extract_solution <- function(out) {
-#   # out is expected to be a prioriactions::Solution (pproto)
+#   # out is expected to be a mosap::Solution (pproto)
 #   # We'll be defensive: if slots are missing, keep NA.
 #   objval <- tryCatch(out$data$objval, error = function(e) NA_real_)
 #   gap    <- tryCatch(out$data$gap,    error = function(e) NA_real_)
@@ -1162,7 +1422,7 @@ add_objective <- function(x, objective) {
     stop("add_objective() expects an objective of class 'pa_objective'.", call. = FALSE)
   }
 
-  # store it as an atomic spec in the prioriactions registry
+  # store it as an atomic spec in the mosap registry
   if (is.null(x$base$data$objectives) || !is.list(x$base$data$objectives)) {
     x$base$data$objectives <- list()
   }
@@ -1344,7 +1604,7 @@ add_objective <- function(x, objective) {
         stop("Missing relation '", rel_name, "'.", call. = FALSE)
       }
 
-      rcpp_prepare_fragmentation_pu(op, rel_model)
+      rcpp_prepare_objective_min_fragmentation(op, rel_model)
 
       rcpp_add_objective_min_fragmentation(
         op,
@@ -1448,18 +1708,60 @@ add_objective <- function(x, objective) {
       }
 
       act_int <- .resolve_action_internal(t$actions)
-      aw <- t$action_weights %||% NULL
-      if (!is.null(aw)) aw <- as.numeric(aw)
 
-      rcpp_add_objective_min_fragmentation_actions_by_action(
+      # ensure the global y_action block exists and matches the current layout
+      rcpp_prepare_objective_min_fragmentation_actions(
         op,
         dist_actions_data = base_superset$data$dist_actions_model,
         relation_data = rel_model,
         actions_to_use = if (length(act_int) > 0) act_int else NULL,
-        action_weights = aw,
-        weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1],
-        weight = 1.0
+        block_name = "fragmentation_actions",
+        tag = "from=.pamo_objvec_from_ir"
       )
+
+      # build the objective vector explicitly instead of relying on side effects
+      term2 <- t
+      term2$actions <- if (length(act_int) > 0) as.integer(act_int) else NULL
+
+      v_term <- .pamo_objvec_action_boundary_cut(base_superset, term2)
+
+      # write directly into the model objective buffer
+      if (length(v_term) == 0L) {
+        stop("Empty vector returned by .pamo_objvec_action_boundary_cut().", call. = FALSE)
+      }
+
+      if (!exists("rcpp_model_set_objective_vector", mode = "function")) {
+        # fallback: accumulate in current objective by recreating the whole vector
+        m0 <- .pa_model_from_ptr(
+          op,
+          args = base_superset$data$model_args %||% list(),
+          drop_triplets = TRUE
+        )
+        obj0 <- as.numeric(m0$obj)
+        if (length(obj0) != length(v_term)) {
+          stop("Current model objective length does not match action_boundary_cut term vector.", call. = FALSE)
+        }
+        rcpp_model_set_objective_vector(
+          x = op,
+          obj = obj0 + v_term,
+          model_sense = "min"
+        )
+      } else {
+        m0 <- .pa_model_from_ptr(
+          op,
+          args = base_superset$data$model_args %||% list(),
+          drop_triplets = TRUE
+        )
+        obj0 <- as.numeric(m0$obj)
+        if (length(obj0) != length(v_term)) {
+          stop("Current model objective length does not match action_boundary_cut term vector.", call. = FALSE)
+        }
+        rcpp_model_set_objective_vector(
+          x = op,
+          obj = obj0 + v_term,
+          model_sense = "min"
+        )
+      }
 
     } else if (identical(type, "intervention_boundary_cut")) {
 
@@ -1507,16 +1809,22 @@ add_objective <- function(x, objective) {
         )
       }
 
+      subset_key <- .pa_subset_to_string(as.character(t$actions))
+
       rcpp_add_objective_min_intervention_impact(
         op,
         pu_data = base_superset$data$pu,
         dist_features_data = df_sub,
         dist_actions_data = base_superset$data$dist_actions_model,
+        subset_key = subset_key,
         impact_col = icol,
         features_to_use = as.integer(feat_int),
         actions_to_use = as.integer(act_int),
         internal_feature_col = "internal_feature",
-        weight = 1.0
+        weight = 1.0,
+        weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1],
+        block_name = "objective_add_min_intervention_impact",
+        tag = "from=.pamo_objvec_from_ir"
       )
 
     } else if (identical(type, "custom")) {
@@ -1573,13 +1881,13 @@ add_objective <- function(x, objective) {
   # 4) combinar pesos -> objetivo final
   obj_w <- Reduce(`+`, Map(`*`, objvecs, as.list(weights)))
 
-  # 5) IMPORTANTÍSIMO: inyectar runtime update para que prioriactions lo use en solve()
+  # 5) IMPORTANTÍSIMO: inyectar runtime update para que mosap lo use en solve()
   base2$data$runtime_updates <- list(
     obj = obj_w,
     modelsense = "min"
   )
 
-  # 6) asegurar que prioriactions NO reconstruya el modelo y no te borre runtime_updates
+  # 6) asegurar que mosap NO reconstruya el modelo y no te borre runtime_updates
   base2$data$meta$model_dirty <- FALSE
   base2$data$has_model <- TRUE
 
@@ -1662,7 +1970,7 @@ add_objective <- function(x, objective) {
 # }
 
 # ---------------------------------------------------------
-# Internal: solve a single run using prioriactions as engine
+# Internal: solve a single run using mosap as engine
 # ---------------------------------------------------------
 .pamo_solve_one <- function(x, spec) {
 
@@ -1778,6 +2086,7 @@ add_objective <- function(x, objective) {
   if (length(idx) == 0) stop("epsilon objvec has no non-zero coefficients.", call. = FALSE)
 
   # add row: sum(v[j]*x[j]) <= eps
+
   rcpp_add_linear_constraint(
     base$data$model_ptr,
     j0 = as.integer(idx - 1L),
@@ -1795,10 +2104,10 @@ add_objective <- function(x, objective) {
 }
 
 # ---------------------------------------------------------
-# Internal: extract (minimal) results from prioriactions Solution
+# Internal: extract (minimal) results from mosap Solution
 # ---------------------------------------------------------
 .pamo_extract_solution <- function(out) {
-  # out is expected to be a prioriactions::Solution (pproto)
+  # out is expected to be a mosap::Solution (pproto)
   # We'll be defensive: if slots are missing, keep NA.
   objval <- tryCatch(out$data$objval, error = function(e) NA_real_)
   gap    <- tryCatch(out$data$gap,    error = function(e) NA_real_)
@@ -1866,7 +2175,7 @@ add_objective <- function(x, objective) {
 
 
 # -------------------------------------------------------------------------
-# Internal: extract raw decision vector from a prioriactions Solution
+# Internal: extract raw decision vector from a mosap Solution
 # -------------------------------------------------------------------------
 .pamo_get_solution_vector <- function(sol) {
 
@@ -2036,13 +2345,21 @@ add_objective <- function(x, objective) {
     return(as.numeric(val))
   }
 
-  if (length(terms) == 1L && identical(terms[[1]]$type %||% "", "action_boundary_cut")) {
-    val <- .pamo_eval_action_boundary_cut_on_solution(x, solution, terms[[1]])
+  if (length(terms) == 1L && identical(terms[[1]]$type %||% "", "intervention_impact")) {
+    val <- .pamo_eval_intervention_impact_on_solution(x, solution, terms[[1]])
 
     sense <- as.character(spec$sense %||% "min")[1]
     if (identical(sense, "max")) return(-as.numeric(val))
     return(as.numeric(val))
   }
+
+  # if (length(terms) == 1L && identical(terms[[1]]$type %||% "", "action_boundary_cut")) {
+  #   val <- .pamo_eval_action_boundary_cut_on_solution(x, solution, terms[[1]])
+  #
+  #   sense <- as.character(spec$sense %||% "min")[1]
+  #   if (identical(sense, "max")) return(-as.numeric(val))
+  #   return(as.numeric(val))
+  # }
 
 
   # resto de objetivos: evaluación por objvec
@@ -2438,6 +2755,7 @@ add_objective <- function(x, objective) {
 
     secondary_min = min(vals_secondary),
     secondary_max = max(vals_secondary),
+    vals_secondary = vals_secondary,
 
     solution_primary = sol_primary_lexi$solution,
     solution_secondary = sol_secondary_lexi$solution,
@@ -2465,8 +2783,6 @@ add_objective <- function(x, objective) {
 
   need_z     <- "representation" %in% all_types
   need_y_pu  <- "boundary_cut" %in% all_types
-
-  # Fase 1: todavía NO soportamos estos auxiliares en superset general
   need_y_act <- "action_boundary_cut" %in% all_types
   need_y_int <- "intervention_boundary_cut" %in% all_types
   need_u_int <- "intervention_impact" %in% all_types
@@ -2479,14 +2795,9 @@ add_objective <- function(x, objective) {
     )
   }
 
-  if (isTRUE(need_u_int)) {
-    stop(
-      "Phase 1 superset does not yet support 'intervention_impact' objectives.\n",
-      "Please remove intervention impact from the MO method for now.",
-      call. = FALSE
-    )
-  }
-
+  # ------------------------------------------------------------
+  # PU fragmentation: at most one relation_name in phase 1
+  # ------------------------------------------------------------
   rel_names <- unique(vapply(
     Filter(function(t) identical(t$type, "boundary_cut"), all_terms),
     function(t) as.character(t$relation_name %||% "boundary")[1],
@@ -2503,17 +2814,68 @@ add_objective <- function(x, objective) {
     )
   }
 
+  # ------------------------------------------------------------
+  # intervention_impact: phase 1 supported ONLY if all terms
+  # share the same action subset
+  # ------------------------------------------------------------
+  u_int_actions <- NULL
+
+  if (isTRUE(need_u_int)) {
+    int_terms <- Filter(function(t) identical(t$type, "intervention_impact"), all_terms)
+
+    norm_actions <- function(x) {
+      x <- as.character(x %||% character(0))
+      x <- unique(x[!is.na(x) & nzchar(x)])
+      sort(x)
+    }
+
+    action_keys <- vapply(
+      int_terms,
+      function(t) paste(norm_actions(t$actions), collapse = "||"),
+      character(1)
+    )
+
+    uniq_keys <- unique(action_keys)
+
+    if (length(uniq_keys) != 1L) {
+      pretty <- vapply(
+        int_terms,
+        function(t) {
+          aa <- norm_actions(t$actions)
+          if (length(aa) == 0L) "<empty>" else paste(aa, collapse = ", ")
+        },
+        character(1)
+      )
+
+      stop(
+        "Phase 1 superset supports 'intervention_impact' only when all such objectives ",
+        "share the same action subset.\n",
+        "Found subsets: ", paste(unique(pretty), collapse = " | "),
+        call. = FALSE
+      )
+    }
+
+    u_int_actions <- norm_actions(int_terms[[1]]$actions)
+
+    if (length(u_int_actions) == 0L) {
+      stop(
+        "Phase 1 superset requires a non-empty action subset for 'intervention_impact'.",
+        call. = FALSE
+      )
+    }
+  }
+
   list(
     needs = list(
       z = isTRUE(need_z),
       y_pu = isTRUE(need_y_pu),
       y_action = isTRUE(need_y_act),
       y_intervention = FALSE,
-      u_intervention = FALSE
+      u_intervention = isTRUE(need_u_int),
+      u_intervention_actions = u_int_actions
     ),
     relation_name = if (length(rel_names) == 1L) rel_names[1] else NULL
   )
-
 }
 
 
@@ -2561,7 +2923,14 @@ add_objective <- function(x, objective) {
   stopifnot(inherits(x, "MOProblem"))
 
   rel_name <- as.character(term$relation_name %||% "boundary")[1]
-  rel <- x$base$data$spatial_relations[[rel_name]] %||% NULL
+  sol_data <- solution$data %||% list()
+
+  rel <- sol_data$spatial_relations_model[[rel_name]] %||%
+    sol_data$spatial_relations[[rel_name]] %||%
+    x$base$data$spatial_relations_model[[rel_name]] %||%
+    x$base$data$spatial_relations[[rel_name]] %||%
+    NULL
+
   if (is.null(rel) || !inherits(rel, "data.frame")) {
     stop("Missing spatial relation '", rel_name, "' while evaluating action_boundary_cut.", call. = FALSE)
   }
@@ -2572,53 +2941,43 @@ add_objective <- function(x, objective) {
     }
   }
 
-  da <- x$base$data$dist_actions_model %||% x$base$data$dist_actions %||% NULL
+  da <- sol_data$dist_actions_model %||%
+    sol_data$dist_actions %||%
+    x$base$data$dist_actions_model %||%
+    x$base$data$dist_actions %||%
+    NULL
+
   if (is.null(da) || !inherits(da, "data.frame")) {
     stop("Missing dist_actions data while evaluating action_boundary_cut.", call. = FALSE)
   }
 
-  # Need at least PU and action ids
-  need_basic <- c("internal_pu", "internal_action")
-  for (nm in need_basic) {
+  for (nm in c("internal_pu", "internal_action")) {
     if (!nm %in% names(da)) {
       stop("dist_actions data must contain column '", nm, "'.", call. = FALSE)
     }
   }
 
-
   sol_vec <- .pamo_get_solution_vector(solution)
 
-  # Need model snapshot to know x-offset / n_x
-  # Determine x block layout as robustly as possible.
-  # Preferred source: model snapshot if available.
-  # Fallback for phase 2A: infer x_offset = n_pu and n_x = nrow(dist_actions),
-  # which matches the current core layout (w first, then x).
-  ml <- x$base$data$model_list %||% NULL
+  ml <- sol_data$model_list %||% x$base$data$model_list %||% NULL
 
-  n_pu <- as.integer(nrow(x$base$data$pu))
+  n_pu <- as.integer(ml$n_pu %||% nrow(x$base$data$pu))
   if (!is.finite(n_pu) || is.na(n_pu) || n_pu <= 0L) {
     stop("Could not determine n_pu while evaluating action_boundary_cut.", call. = FALSE)
   }
 
-  if (!is.null(ml)) {
-    n_x <- as.integer(ml$n_x %||% nrow(da))
-    x0  <- as.integer(ml$x_offset %||% (length(sol_vec) - n_x))
-  } else {
-    n_x <- as.integer(nrow(da))
-    x0  <- as.integer(length(sol_vec) - n_x)
-  }
-
-
+  n_x <- as.integer(ml$n_x %||% nrow(da))
   if (!is.finite(n_x) || is.na(n_x) || n_x <= 0L) {
     stop("Could not determine n_x while evaluating action_boundary_cut.", call. = FALSE)
   }
+
+  # IMPORTANT:
+  # fallback must follow the structural layout w | x | ...
+  x0 <- as.integer(ml$x_offset %||% n_pu)
   if (!is.finite(x0) || is.na(x0) || x0 < 0L) {
     stop("Could not determine x_offset while evaluating action_boundary_cut.", call. = FALSE)
   }
 
-
-  # If internal_row is absent but the table is already model-ready in row order,
-  # reconstruct it from row position.
   if (!"internal_row" %in% names(da)) {
     if (nrow(da) != n_x) {
       stop(
@@ -2637,7 +2996,6 @@ add_objective <- function(x, objective) {
     stop("dist_actions$internal_row is out of valid range 1..n_x.", call. = FALSE)
   }
 
-
   if (length(sol_vec) < (x0 + n_x)) {
     stop(
       "Solution vector is too short for action boundary evaluation.\n",
@@ -2647,21 +3005,19 @@ add_objective <- function(x, objective) {
     )
   }
 
-  # ---- select actions used by the term
   all_actions <- sort(unique(as.integer(da$internal_action)))
   all_actions <- all_actions[is.finite(all_actions) & !is.na(all_actions)]
 
-  act_int <- term$actions %||% NULL
-  if (is.null(act_int) || length(act_int) == 0L) {
+  act_raw <- term$actions %||% NULL
+  if (is.null(act_raw) || length(act_raw) == 0L) {
     act_int <- all_actions
   } else {
-    act_int <- as.integer(act_int)
+    act_int <- as.integer(act_raw)
     act_int <- sort(unique(act_int))
   }
 
   if (length(act_int) == 0L) return(0)
 
-  # ---- action weights
   aw <- term$action_weights %||% NULL
   if (is.null(aw)) {
     aw_map <- stats::setNames(rep(1, length(act_int)), act_int)
@@ -2680,7 +3036,6 @@ add_objective <- function(x, objective) {
     }
   }
 
-  # ---- x values by (pu, action)
   da_sub <- da[, c("internal_row", "internal_pu", "internal_action"), drop = FALSE]
   da_sub <- da_sub[da_sub$internal_action %in% act_int, , drop = FALSE]
   if (nrow(da_sub) == 0L) return(0)
@@ -2688,21 +3043,65 @@ add_objective <- function(x, objective) {
   x_vals <- sol_vec[x0 + da_sub$internal_row]
   x_bin  <- as.numeric(x_vals > 0.5)
 
-  key <- paste(da_sub$internal_pu, da_sub$internal_action, sep = "::")
-  x_map <- stats::setNames(x_bin, key)
+  ip1 <- as.integer(rel$internal_pu1)
+  ip2 <- as.integer(rel$internal_pu2)
+  ww  <- as.numeric(rel$weight)
 
-  # ---- canonical off-diagonal edges
-  rel2 <- rel[rel$internal_pu1 != rel$internal_pu2,
-              c("internal_pu1", "internal_pu2", "weight"),
-              drop = FALSE]
-  if (nrow(rel2) == 0L) return(0)
+  ok <- is.finite(ip1) & is.finite(ip2) & is.finite(ww)
+  ip1 <- ip1[ok]
+  ip2 <- ip2[ok]
+  ww  <- ww[ok]
 
-  rel2$a <- pmin(rel2$internal_pu1, rel2$internal_pu2)
-  rel2$b <- pmax(rel2$internal_pu1, rel2$internal_pu2)
-  rel2 <- rel2[order(rel2$a, rel2$b), , drop = FALSE]
+  self_w <- numeric(n_pu)
+  edge_map <- new.env(parent = emptyenv(), hash = TRUE)
 
-  # same canonicalization rule used in C++: keep max duplicate weight
-  rel2 <- stats::aggregate(weight ~ a + b, data = rel2, FUN = max)
+  make_key <- function(a, b) paste0(a, "::", b)
+
+  for (r in seq_along(ip1)) {
+    i <- ip1[r]
+    j <- ip2[r]
+    wij <- ww[r]
+
+    if (i == j) {
+      self_w[i] <- self_w[i] + wij
+    } else {
+      a <- min(i, j)
+      b <- max(i, j)
+      k <- make_key(a, b)
+      old <- if (exists(k, envir = edge_map, inherits = FALSE)) {
+        get(k, envir = edge_map, inherits = FALSE)
+      } else {
+        NA_real_
+      }
+      if (is.na(old) || wij > old) {
+        assign(k, wij, envir = edge_map)
+      }
+    }
+  }
+
+  edge_keys <- ls(edge_map, all.names = TRUE)
+  if (length(edge_keys) == 0L) return(0)
+
+  edge_df <- data.frame(
+    a = integer(length(edge_keys)),
+    b = integer(length(edge_keys)),
+    weight = numeric(length(edge_keys))
+  )
+
+  for (k in seq_along(edge_keys)) {
+    parts <- strsplit(edge_keys[k], "::", fixed = TRUE)[[1]]
+    edge_df$a[k] <- as.integer(parts[1])
+    edge_df$b[k] <- as.integer(parts[2])
+    edge_df$weight[k] <- get(edge_keys[k], envir = edge_map, inherits = FALSE)
+  }
+
+  edge_df <- edge_df[order(edge_df$a, edge_df$b), , drop = FALSE]
+
+  incident_w <- numeric(n_pu)
+  for (r in seq_len(nrow(edge_df))) {
+    incident_w[edge_df$a[r]] <- incident_w[edge_df$a[r]] + edge_df$weight[r]
+    incident_w[edge_df$b[r]] <- incident_w[edge_df$b[r]] + edge_df$weight[r]
+  }
 
   val <- 0
 
@@ -2710,13 +3109,22 @@ add_objective <- function(x, objective) {
     awi <- as.numeric(aw_map[[as.character(act)]])
     if (!is.finite(awi) || awi == 0) next
 
-    s1 <- x_map[paste(rel2$a, act, sep = "::")]
-    s2 <- x_map[paste(rel2$b, act, sep = "::")]
-    s1[is.na(s1)] <- 0
-    s2[is.na(s2)] <- 0
+    x_i <- numeric(n_pu)
+    idx_act <- da_sub$internal_action == act
+    if (any(idx_act)) {
+      pu_act <- da_sub$internal_pu[idx_act]
+      xv_act <- x_bin[idx_act]
+      x_i[pu_act] <- xv_act
+    }
 
-    # perimeter contribution for this action
-    val <- val + awi * sum(rel2$weight * abs(s1 - s2))
+    linear_sum <- sum((incident_w + self_w) * x_i)
+
+    edge_sum <- 0
+    for (r in seq_len(nrow(edge_df))) {
+      edge_sum <- edge_sum + edge_df$weight[r] * x_i[edge_df$a[r]] * x_i[edge_df$b[r]]
+    }
+
+    val <- val + awi * (linear_sum - 2 * edge_sum)
   }
 
   mult <- as.numeric(term$weight_multiplier %||% 1)[1]
@@ -2726,3 +3134,75 @@ add_objective <- function(x, objective) {
 }
 
 
+.pamo_eval_intervention_impact_on_solution <- function(x, solution, term) {
+  stopifnot(inherits(x, "MOProblem"))
+
+  icol <- as.character(term$impact_col %||% "amount")[1]
+  feats <- as.character(term$features %||% character(0))
+  acts  <- as.character(term$actions %||% character(0))
+
+  distf <- x$base$data$dist_features %||% NULL
+  if (is.null(distf) || !inherits(distf, "data.frame") || nrow(distf) == 0) {
+    stop("dist_features is missing or empty while evaluating intervention_impact.", call. = FALSE)
+  }
+
+  if (!(icol %in% names(distf))) {
+    stop("impact column '", icol, "' not found in dist_features.", call. = FALSE)
+  }
+
+  # filtrar features si corresponde
+  if (length(feats) > 0) {
+    feat_subset <- .pa_resolve_feature_subset(x$base, features = feats)
+    feat_ids <- unique(as.character(feat_subset$id))
+    distf <- distf[as.character(distf$feature) %in% feat_ids, , drop = FALSE]
+  }
+
+  if (nrow(distf) == 0) return(0)
+
+  # resolver subset de acciones
+  act_subset <- .pa_resolve_action_subset(x$base, subset = acts)
+  if (!inherits(act_subset, "data.frame") || nrow(act_subset) == 0) {
+    stop("intervention_impact resolved to zero actions.", call. = FALSE)
+  }
+
+  act_ids <- unique(as.character(act_subset$id))
+
+  # tabla de acciones de la solución
+  act_tbl <- solution$data$tables$actions %||% NULL
+  if (is.null(act_tbl) || !inherits(act_tbl, "data.frame")) {
+    stop("No actions table found in solution while evaluating intervention_impact.", call. = FALSE)
+  }
+
+  if (!("selected" %in% names(act_tbl))) {
+    stop("Solution actions table has no 'selected' column.", call. = FALSE)
+  }
+
+  # columnas esperadas: pu, action
+  pu_col <- if ("pu" %in% names(act_tbl)) "pu" else if ("internal_pu" %in% names(act_tbl)) "internal_pu" else NULL
+  ac_col <- if ("action" %in% names(act_tbl)) "action" else if ("id" %in% names(act_tbl)) "id" else NULL
+
+  if (is.null(pu_col) || is.null(ac_col)) {
+    stop(
+      "Could not identify PU/action columns in solution$data$tables$actions while evaluating intervention_impact.",
+      call. = FALSE
+    )
+  }
+
+  act_sel <- act_tbl[
+    act_tbl$selected > 0.5 & as.character(act_tbl[[ac_col]]) %in% act_ids,
+    ,
+    drop = FALSE
+  ]
+
+  if (nrow(act_sel) == 0) return(0)
+
+  pu_hit <- unique(act_sel[[pu_col]])
+
+  # sumar impacto por PU intervenida
+  val <- sum(
+    distf[distf$pu %in% pu_hit, icol, drop = TRUE],
+    na.rm = TRUE
+  )
+
+  as.numeric(val)
+}

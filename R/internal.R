@@ -1247,13 +1247,13 @@ available_to_solve <- function(package = ""){
       "cost" %in% names(self$data$dist_actions)) {
     return(as.numeric(self$data$dist_actions$cost))
   }
-  # legacy field (older prioriactions)
-  if (!is.null(self$data$dist_threats) &&
-      inherits(self$data$dist_threats, "data.frame") &&
-      nrow(self$data$dist_threats) > 0 &&
-      "action_cost" %in% names(self$data$dist_threats)) {
-    return(as.numeric(self$data$dist_threats$action_cost))
-  }
+  # legacy field (older mosap)
+  # if (!is.null(self$data$dist_threats) &&
+  #     inherits(self$data$dist_threats, "data.frame") &&
+  #     nrow(self$data$dist_threats) > 0 &&
+  #     "action_cost" %in% names(self$data$dist_threats)) {
+  #   return(as.numeric(self$data$dist_threats$action_cost))
+  # }
   numeric(0)
 }
 
@@ -1774,297 +1774,297 @@ available_to_solve <- function(package = ""){
 # ------------------------------------------------------------
 # Legacy fallback: build 1 action per threat + effects from threats/sensitivity
 # ------------------------------------------------------------
-.pa_add_actions_default_from_threats <- function(x,
-                                                 action_prefix = "threat_",
-                                                 overwrite = FALSE,
-                                                 benefit_exponent = 1,     # NUEVO
-                                                 curve_segments = 3L) {
-  stopifnot(inherits(x, "Data"))
-
-  # already has actions?
-  if (!overwrite && !is.null(x$data$actions) && inherits(x$data$actions, "data.frame") && nrow(x$data$actions) > 0) {
-    return(invisible(x))
-  }
-
-  # check legacy inputs exist
-  if (is.null(x$data$threats) || is.null(x$data$dist_threats)) {
-    stop("Legacy default actions require x$data$threats and x$data$dist_threats.", call. = FALSE)
-  }
-  if (is.null(x$data$pu) || is.null(x$data$features) || is.null(x$data$dist_features)) {
-    stop("Missing required tables: pu/features/dist_features must exist before building actions.", call. = FALSE)
-  }
-
-  pu <- x$data$pu
-  threats <- x$data$threats
-  dist_threats <- x$data$dist_threats
-  dist_features <- x$data$dist_features
-
-  # small util
-  `%||%` <- function(a, b) if (!is.null(a)) a else b
-
-  # ------------------------------------------------------------
-  # 0) Normalize / validate minimal columns
-  # ------------------------------------------------------------
-  if (!all(c("id","internal_id") %in% names(pu))) {
-    stop("x$data$pu must contain columns: id, internal_id.", call. = FALSE)
-  }
-  if (!all(c("id","internal_id") %in% names(x$data$features))) {
-    stop("x$data$features must contain columns: id, internal_id.", call. = FALSE)
-  }
-  if (!all(c("pu","feature","amount","internal_pu","internal_feature") %in% names(dist_features))) {
-    stop("x$data$dist_features must contain columns: pu, feature, amount, internal_pu, internal_feature.", call. = FALSE)
-  }
-
-  if (!all(c("id") %in% names(threats))) {
-    stop("x$data$threats must contain column: id.", call. = FALSE)
-  }
-  if (!all(c("pu","threat","amount","action_cost") %in% names(dist_threats))) {
-    stop("x$data$dist_threats must contain columns: pu, threat, amount, action_cost.", call. = FALSE)
-  }
-
-  dist_threats$pu <- as.integer(dist_threats$pu)
-  dist_threats$threat <- as.integer(dist_threats$threat)
-  dist_threats$amount <- as.numeric(dist_threats$amount)
-  dist_threats$action_cost <- as.numeric(dist_threats$action_cost)
-
-  if (!("status" %in% names(dist_threats))) dist_threats$status <- 0L
-  dist_threats$status <- as.integer(dist_threats$status)
-
-  # enforce PU locked_out -> all actions there locked_out
-  if ("locked_out" %in% names(pu) && any(pu$locked_out, na.rm = TRUE)) {
-    locked_out_pus <- pu$id[isTRUE(pu$locked_out) | (!is.na(pu$locked_out) & pu$locked_out)]
-    idx2 <- dist_threats$pu %in% locked_out_pus
-    dist_threats$status[idx2] <- 3L
-  }
-
-  # drop zero threat intensity rows for modeling (consistent with your inputData behavior)
-  dt_present <- dist_threats[is.finite(dist_threats$amount) & !is.na(dist_threats$amount) & dist_threats$amount > 0, ,
-                             drop = FALSE]
-
-  # ------------------------------------------------------------
-  # 1) Build actions: one per threat
-  # ------------------------------------------------------------
-  threat_ids <- sort(unique(threats$id))
-  action_ids <- paste0(action_prefix, threat_ids)
-
-  actions <- data.frame(
-    id = as.character(action_ids),
-    threat = as.integer(threat_ids),
-    stringsAsFactors = FALSE
-  )
-  actions$internal_id <- seq_len(nrow(actions))
-
-  action_index <- stats::setNames(actions$internal_id, actions$id)
-
-  # ------------------------------------------------------------
-  # 2) Build dist_actions from dist_threats
-  # ------------------------------------------------------------
-  dist_actions <- dist_threats
-  dist_actions$action <- paste0(action_prefix, dist_actions$threat)
-  dist_actions$cost <- dist_actions$action_cost
-
-  # map internal ids
-  pu_index <- stats::setNames(pu$internal_id, as.character(pu$id))
-  dist_actions$internal_pu <- unname(pu_index[as.character(dist_actions$pu)])
-  dist_actions$internal_action <- unname(action_index[as.character(dist_actions$action)])
-
-  # keep model-ready cols
-  dist_actions <- dist_actions[, c("pu","action","cost","status","internal_pu","internal_action"), drop = FALSE]
-
-  # ------------------------------------------------------------
-  # 3) Build dist_effects (benefit) from legacy rule
-  #    - binary (0/1): amount_is / (# sensitive threats present)
-  #    - continuous: amount_is * (resp_var*alpha/sum_alpha)  (your C++)
-  # ------------------------------------------------------------
-
-  # detect binary
-  # (binary if all amounts in dist_threats are 0/1)
-  is_binary <- all(dist_threats$amount %in% c(0, 1), na.rm = TRUE)
-
-  # sensitivity table
-  sens <- x$data$sensitivity
-  if (is.null(sens) || !inherits(sens, "data.frame") || nrow(sens) == 0) {
-    # default: all features sensitive to all threats
-    sens <- base::expand.grid(
-      feature = x$data$features$id,
-      threat  = threats$id,
-      KEEP.OUT.ATTRS = FALSE,
-      stringsAsFactors = FALSE
-    )
-  } else {
-    sens <- unique(sens)
-  }
-
-  if (!all(c("feature","threat") %in% names(sens))) {
-    stop("x$data$sensitivity must contain columns: feature, threat.", call. = FALSE)
-  }
-
-  # ensure deltas exist with defaults
-  if (!("delta1" %in% names(sens))) sens$delta1 <- 0
-  if (!("delta2" %in% names(sens))) sens$delta2 <- NA_real_
-  if (!("delta3" %in% names(sens))) sens$delta3 <- 0
-  if (!("delta4" %in% names(sens))) sens$delta4 <- 1
-
-  sens$feature <- as.integer(sens$feature)
-  sens$threat  <- as.integer(sens$threat)
-  sens$delta1  <- as.numeric(sens$delta1); sens$delta1[is.na(sens$delta1)] <- 0
-  sens$delta3  <- as.numeric(sens$delta3); sens$delta3[is.na(sens$delta3)] <- 0
-  sens$delta4  <- as.numeric(sens$delta4); sens$delta4[is.na(sens$delta4)] <- 1
-  sens$delta2  <- as.numeric(sens$delta2)
-
-  # fill delta2 with max intensity per threat (like your old code path)
-  if (anyNA(sens$delta2)) {
-    if (nrow(dt_present) > 0) {
-      max_int <- stats::aggregate(amount ~ threat, data = dt_present[, c("threat","amount")], FUN = max)
-      names(max_int)[2] <- "max_amount"
-      sens <- merge(sens, max_int, by = "threat", all.x = TRUE)
-      sens$delta2[is.na(sens$delta2)] <- sens$max_amount[is.na(sens$delta2)]
-      sens$max_amount <- NULL
-    }
-  }
-
-  # helper: response & alpha exactly as legacy C++
-  .pa_resp_alpha <- function(intensity, a, b, c, d) {
-    if (intensity <= a) {
-      resp_const <- d
-      resp_var   <- 0.0
-      alpha      <- 1.0 - resp_const
-    } else if (intensity >= b) {
-      resp_const <- c
-      resp_var   <- d - c
-      alpha      <- 1.0 - resp_const
-    } else {
-      resp_const <- (c * (intensity - a) - d * (intensity - b)) / (b - a)
-      resp_var   <- ((a - intensity) * (c - d)) / (b - a)
-      alpha      <- 1.0 - resp_const
-    }
-    list(resp_var = resp_var, alpha = alpha)
-  }
-
-  # Prepare df_base (feature presence/amount in PU)
-  df_base <- dist_features[, c("pu","feature","amount","internal_pu","internal_feature"), drop = FALSE]
-  df_base$pu <- as.integer(df_base$pu)
-  df_base$feature <- as.integer(df_base$feature)
-  df_base$amount <- as.numeric(df_base$amount)
-  df_base <- df_base[is.finite(df_base$amount) & !is.na(df_base$amount) & df_base$amount > 0, , drop = FALSE]
-
-  # Prepare threats present with intensity
-  dtp <- dt_present[, c("pu","threat","amount"), drop = FALSE]
-  names(dtp)[names(dtp) == "amount"] <- "intensity"
-
-  if (nrow(df_base) == 0 || nrow(dtp) == 0) {
-    de <- data.frame(
-      pu = integer(0),
-      action = character(0),
-      feature = integer(0),
-      benefit = numeric(0),
-      internal_pu = integer(0),
-      internal_action = integer(0),
-      internal_feature = integer(0),
-      stringsAsFactors = FALSE
-    )
-  } else {
-
-    # Join (pu,feature) x (pu,threat) then filter by sensitivity(feature,threat)
-    pf <- merge(df_base, dtp, by = "pu")                    # adds threat + intensity
-    pf <- merge(pf, sens, by = c("feature","threat", "internal_feature"))       # keep only sensitive pairs
-
-    if (nrow(pf) == 0) {
-      de <- data.frame(
-        pu = integer(0),
-        action = character(0),
-        feature = integer(0),
-        benefit = numeric(0),
-        internal_pu = integer(0),
-        internal_action = integer(0),
-        internal_feature = integer(0),
-        stringsAsFactors = FALSE
-      )
-    } else {
-
-      if (is_binary) {
-        # benefit = amount_is / count_sensitive_threats_present
-        denom <- stats::aggregate(threat ~ pu + feature, data = pf, FUN = function(z) length(unique(z)))
-        names(denom)[3] <- "d_is"
-        pf <- merge(pf, denom, by = c("pu","feature"), all.x = TRUE)
-
-        pf$action  <- paste0(action_prefix, pf$threat)
-        pf$benefit <- pf$amount / pf$d_is
-
-      } else {
-        # continuous: amount_is * (resp_var*alpha/sum_alpha)
-        ra <- mapply(
-          FUN = function(intensity, a, b, c, d) .pa_resp_alpha(intensity, a, b, c, d),
-          intensity = pf$intensity,
-          a = pf$delta1, b = pf$delta2, c = pf$delta3, d = pf$delta4,
-          SIMPLIFY = FALSE
-        )
-        pf$resp_var <- vapply(ra, `[[`, numeric(1), "resp_var")
-        pf$alpha    <- vapply(ra, `[[`, numeric(1), "alpha")
-
-        sum_a <- stats::aggregate(alpha ~ pu + feature, data = pf, FUN = sum)
-        names(sum_a)[3] <- "sum_alpha"
-        pf <- merge(pf, sum_a, by = c("pu","feature"), all.x = TRUE)
-
-        pf$action <- paste0(action_prefix, pf$threat)
-        pf$benefit <- 0.0
-        ok <- is.finite(pf$sum_alpha) & !is.na(pf$sum_alpha) & (pf$sum_alpha > 0)
-        pf$benefit[ok] <- pf$amount[ok] * (pf$resp_var[ok] * pf$alpha[ok]) / pf$sum_alpha[ok]
-      }
-
-      # map internal_action
-      pf$internal_action <- unname(action_index[as.character(pf$action)])
-
-      # build dist_effects
-      de <- pf[, c("pu","action","internal_feature","benefit","internal_pu","internal_action"), drop = FALSE]
-      names(de)[names(de) == "internal_feature"] <- "feature"
-      de$feature <- as.integer(de$feature)
-      de$internal_feature <- de$feature
-      de$benefit <- as.numeric(de$benefit)
-
-      de <- de[, c("pu","action","feature","benefit","internal_pu","internal_action","internal_feature"), drop = FALSE]
-      de <- de[is.finite(de$benefit) & !is.na(de$benefit) & de$benefit != 0, , drop = FALSE]
-    }
-  }
-
-  # ------------------------------------------------------------
-  # 4) Store into Data
-  # ------------------------------------------------------------
-  x$data$actions <- actions
-  x$data$dist_actions <- dist_actions
-  x$data$dist_effects <- de
-
-  # optional compat: keep dist_benefit alias
-  x$data$dist_benefit <- if (inherits(de, "data.frame") && nrow(de) > 0) de else NULL
-
-  # meta for debugging/printing
-  if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
-  x$data$meta$actions_generated_from_legacy <- TRUE
-  x$data$meta$legacy_actions_rule <- "one action per threat"
-  x$data$meta$effects_rule <- if (is_binary) {
-    "binary: benefit = amount_is / (# sensitive threats present in PU for feature)"
-  } else {
-    "continuous: benefit = amount_is * (resp_var*alpha/sum_alpha) using delta1..delta4"
-  }
-
-  if (is.null(x$data$model_args)) x$data$model_args <- list()
-
-  if (is.null(x$data$model_args$benefit_exponent)) {
-    x$data$model_args$benefit_exponent <- as.numeric(benefit_exponent)[1]
-  }
-  if (is.null(x$data$model_args$curve_segments)) {
-    x$data$model_args$curve_segments <- as.integer(curve_segments)[1]
-  }
-
-  if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
-  x$data$meta$benefit_transform <- list(
-    type = "power",
-    exponent = x$data$model_args$benefit_exponent,
-    segments = x$data$model_args$curve_segments
-  )
-
-  invisible(x)
-}
+# .pa_add_actions_default_from_threats <- function(x,
+#                                                  action_prefix = "threat_",
+#                                                  overwrite = FALSE,
+#                                                  benefit_exponent = 1,     # NUEVO
+#                                                  curve_segments = 3L) {
+#   stopifnot(inherits(x, "Data"))
+#
+#   # already has actions?
+#   if (!overwrite && !is.null(x$data$actions) && inherits(x$data$actions, "data.frame") && nrow(x$data$actions) > 0) {
+#     return(invisible(x))
+#   }
+#
+#   # check legacy inputs exist
+#   if (is.null(x$data$threats) || is.null(x$data$dist_threats)) {
+#     stop("Legacy default actions require x$data$threats and x$data$dist_threats.", call. = FALSE)
+#   }
+#   if (is.null(x$data$pu) || is.null(x$data$features) || is.null(x$data$dist_features)) {
+#     stop("Missing required tables: pu/features/dist_features must exist before building actions.", call. = FALSE)
+#   }
+#
+#   pu <- x$data$pu
+#   threats <- x$data$threats
+#   dist_threats <- x$data$dist_threats
+#   dist_features <- x$data$dist_features
+#
+#   # small util
+#   `%||%` <- function(a, b) if (!is.null(a)) a else b
+#
+#   # ------------------------------------------------------------
+#   # 0) Normalize / validate minimal columns
+#   # ------------------------------------------------------------
+#   if (!all(c("id","internal_id") %in% names(pu))) {
+#     stop("x$data$pu must contain columns: id, internal_id.", call. = FALSE)
+#   }
+#   if (!all(c("id","internal_id") %in% names(x$data$features))) {
+#     stop("x$data$features must contain columns: id, internal_id.", call. = FALSE)
+#   }
+#   if (!all(c("pu","feature","amount","internal_pu","internal_feature") %in% names(dist_features))) {
+#     stop("x$data$dist_features must contain columns: pu, feature, amount, internal_pu, internal_feature.", call. = FALSE)
+#   }
+#
+#   if (!all(c("id") %in% names(threats))) {
+#     stop("x$data$threats must contain column: id.", call. = FALSE)
+#   }
+#   if (!all(c("pu","threat","amount","action_cost") %in% names(dist_threats))) {
+#     stop("x$data$dist_threats must contain columns: pu, threat, amount, action_cost.", call. = FALSE)
+#   }
+#
+#   dist_threats$pu <- as.integer(dist_threats$pu)
+#   dist_threats$threat <- as.integer(dist_threats$threat)
+#   dist_threats$amount <- as.numeric(dist_threats$amount)
+#   dist_threats$action_cost <- as.numeric(dist_threats$action_cost)
+#
+#   if (!("status" %in% names(dist_threats))) dist_threats$status <- 0L
+#   dist_threats$status <- as.integer(dist_threats$status)
+#
+#   # enforce PU locked_out -> all actions there locked_out
+#   if ("locked_out" %in% names(pu) && any(pu$locked_out, na.rm = TRUE)) {
+#     locked_out_pus <- pu$id[isTRUE(pu$locked_out) | (!is.na(pu$locked_out) & pu$locked_out)]
+#     idx2 <- dist_threats$pu %in% locked_out_pus
+#     dist_threats$status[idx2] <- 3L
+#   }
+#
+#   # drop zero threat intensity rows for modeling (consistent with your inputData behavior)
+#   dt_present <- dist_threats[is.finite(dist_threats$amount) & !is.na(dist_threats$amount) & dist_threats$amount > 0, ,
+#                              drop = FALSE]
+#
+#   # ------------------------------------------------------------
+#   # 1) Build actions: one per threat
+#   # ------------------------------------------------------------
+#   threat_ids <- sort(unique(threats$id))
+#   action_ids <- paste0(action_prefix, threat_ids)
+#
+#   actions <- data.frame(
+#     id = as.character(action_ids),
+#     threat = as.integer(threat_ids),
+#     stringsAsFactors = FALSE
+#   )
+#   actions$internal_id <- seq_len(nrow(actions))
+#
+#   action_index <- stats::setNames(actions$internal_id, actions$id)
+#
+#   # ------------------------------------------------------------
+#   # 2) Build dist_actions from dist_threats
+#   # ------------------------------------------------------------
+#   dist_actions <- dist_threats
+#   dist_actions$action <- paste0(action_prefix, dist_actions$threat)
+#   dist_actions$cost <- dist_actions$action_cost
+#
+#   # map internal ids
+#   pu_index <- stats::setNames(pu$internal_id, as.character(pu$id))
+#   dist_actions$internal_pu <- unname(pu_index[as.character(dist_actions$pu)])
+#   dist_actions$internal_action <- unname(action_index[as.character(dist_actions$action)])
+#
+#   # keep model-ready cols
+#   dist_actions <- dist_actions[, c("pu","action","cost","status","internal_pu","internal_action"), drop = FALSE]
+#
+#   # ------------------------------------------------------------
+#   # 3) Build dist_effects (benefit) from legacy rule
+#   #    - binary (0/1): amount_is / (# sensitive threats present)
+#   #    - continuous: amount_is * (resp_var*alpha/sum_alpha)  (your C++)
+#   # ------------------------------------------------------------
+#
+#   # detect binary
+#   # (binary if all amounts in dist_threats are 0/1)
+#   is_binary <- all(dist_threats$amount %in% c(0, 1), na.rm = TRUE)
+#
+#   # sensitivity table
+#   sens <- x$data$sensitivity
+#   if (is.null(sens) || !inherits(sens, "data.frame") || nrow(sens) == 0) {
+#     # default: all features sensitive to all threats
+#     sens <- base::expand.grid(
+#       feature = x$data$features$id,
+#       threat  = threats$id,
+#       KEEP.OUT.ATTRS = FALSE,
+#       stringsAsFactors = FALSE
+#     )
+#   } else {
+#     sens <- unique(sens)
+#   }
+#
+#   if (!all(c("feature","threat") %in% names(sens))) {
+#     stop("x$data$sensitivity must contain columns: feature, threat.", call. = FALSE)
+#   }
+#
+#   # ensure deltas exist with defaults
+#   if (!("delta1" %in% names(sens))) sens$delta1 <- 0
+#   if (!("delta2" %in% names(sens))) sens$delta2 <- NA_real_
+#   if (!("delta3" %in% names(sens))) sens$delta3 <- 0
+#   if (!("delta4" %in% names(sens))) sens$delta4 <- 1
+#
+#   sens$feature <- as.integer(sens$feature)
+#   sens$threat  <- as.integer(sens$threat)
+#   sens$delta1  <- as.numeric(sens$delta1); sens$delta1[is.na(sens$delta1)] <- 0
+#   sens$delta3  <- as.numeric(sens$delta3); sens$delta3[is.na(sens$delta3)] <- 0
+#   sens$delta4  <- as.numeric(sens$delta4); sens$delta4[is.na(sens$delta4)] <- 1
+#   sens$delta2  <- as.numeric(sens$delta2)
+#
+#   # fill delta2 with max intensity per threat (like your old code path)
+#   if (anyNA(sens$delta2)) {
+#     if (nrow(dt_present) > 0) {
+#       max_int <- stats::aggregate(amount ~ threat, data = dt_present[, c("threat","amount")], FUN = max)
+#       names(max_int)[2] <- "max_amount"
+#       sens <- merge(sens, max_int, by = "threat", all.x = TRUE)
+#       sens$delta2[is.na(sens$delta2)] <- sens$max_amount[is.na(sens$delta2)]
+#       sens$max_amount <- NULL
+#     }
+#   }
+#
+#   # helper: response & alpha exactly as legacy C++
+#   .pa_resp_alpha <- function(intensity, a, b, c, d) {
+#     if (intensity <= a) {
+#       resp_const <- d
+#       resp_var   <- 0.0
+#       alpha      <- 1.0 - resp_const
+#     } else if (intensity >= b) {
+#       resp_const <- c
+#       resp_var   <- d - c
+#       alpha      <- 1.0 - resp_const
+#     } else {
+#       resp_const <- (c * (intensity - a) - d * (intensity - b)) / (b - a)
+#       resp_var   <- ((a - intensity) * (c - d)) / (b - a)
+#       alpha      <- 1.0 - resp_const
+#     }
+#     list(resp_var = resp_var, alpha = alpha)
+#   }
+#
+#   # Prepare df_base (feature presence/amount in PU)
+#   df_base <- dist_features[, c("pu","feature","amount","internal_pu","internal_feature"), drop = FALSE]
+#   df_base$pu <- as.integer(df_base$pu)
+#   df_base$feature <- as.integer(df_base$feature)
+#   df_base$amount <- as.numeric(df_base$amount)
+#   df_base <- df_base[is.finite(df_base$amount) & !is.na(df_base$amount) & df_base$amount > 0, , drop = FALSE]
+#
+#   # Prepare threats present with intensity
+#   dtp <- dt_present[, c("pu","threat","amount"), drop = FALSE]
+#   names(dtp)[names(dtp) == "amount"] <- "intensity"
+#
+#   if (nrow(df_base) == 0 || nrow(dtp) == 0) {
+#     de <- data.frame(
+#       pu = integer(0),
+#       action = character(0),
+#       feature = integer(0),
+#       benefit = numeric(0),
+#       internal_pu = integer(0),
+#       internal_action = integer(0),
+#       internal_feature = integer(0),
+#       stringsAsFactors = FALSE
+#     )
+#   } else {
+#
+#     # Join (pu,feature) x (pu,threat) then filter by sensitivity(feature,threat)
+#     pf <- merge(df_base, dtp, by = "pu")                    # adds threat + intensity
+#     pf <- merge(pf, sens, by = c("feature","threat", "internal_feature"))       # keep only sensitive pairs
+#
+#     if (nrow(pf) == 0) {
+#       de <- data.frame(
+#         pu = integer(0),
+#         action = character(0),
+#         feature = integer(0),
+#         benefit = numeric(0),
+#         internal_pu = integer(0),
+#         internal_action = integer(0),
+#         internal_feature = integer(0),
+#         stringsAsFactors = FALSE
+#       )
+#     } else {
+#
+#       if (is_binary) {
+#         # benefit = amount_is / count_sensitive_threats_present
+#         denom <- stats::aggregate(threat ~ pu + feature, data = pf, FUN = function(z) length(unique(z)))
+#         names(denom)[3] <- "d_is"
+#         pf <- merge(pf, denom, by = c("pu","feature"), all.x = TRUE)
+#
+#         pf$action  <- paste0(action_prefix, pf$threat)
+#         pf$benefit <- pf$amount / pf$d_is
+#
+#       } else {
+#         # continuous: amount_is * (resp_var*alpha/sum_alpha)
+#         ra <- mapply(
+#           FUN = function(intensity, a, b, c, d) .pa_resp_alpha(intensity, a, b, c, d),
+#           intensity = pf$intensity,
+#           a = pf$delta1, b = pf$delta2, c = pf$delta3, d = pf$delta4,
+#           SIMPLIFY = FALSE
+#         )
+#         pf$resp_var <- vapply(ra, `[[`, numeric(1), "resp_var")
+#         pf$alpha    <- vapply(ra, `[[`, numeric(1), "alpha")
+#
+#         sum_a <- stats::aggregate(alpha ~ pu + feature, data = pf, FUN = sum)
+#         names(sum_a)[3] <- "sum_alpha"
+#         pf <- merge(pf, sum_a, by = c("pu","feature"), all.x = TRUE)
+#
+#         pf$action <- paste0(action_prefix, pf$threat)
+#         pf$benefit <- 0.0
+#         ok <- is.finite(pf$sum_alpha) & !is.na(pf$sum_alpha) & (pf$sum_alpha > 0)
+#         pf$benefit[ok] <- pf$amount[ok] * (pf$resp_var[ok] * pf$alpha[ok]) / pf$sum_alpha[ok]
+#       }
+#
+#       # map internal_action
+#       pf$internal_action <- unname(action_index[as.character(pf$action)])
+#
+#       # build dist_effects
+#       de <- pf[, c("pu","action","internal_feature","benefit","internal_pu","internal_action"), drop = FALSE]
+#       names(de)[names(de) == "internal_feature"] <- "feature"
+#       de$feature <- as.integer(de$feature)
+#       de$internal_feature <- de$feature
+#       de$benefit <- as.numeric(de$benefit)
+#
+#       de <- de[, c("pu","action","feature","benefit","internal_pu","internal_action","internal_feature"), drop = FALSE]
+#       de <- de[is.finite(de$benefit) & !is.na(de$benefit) & de$benefit != 0, , drop = FALSE]
+#     }
+#   }
+#
+#   # ------------------------------------------------------------
+#   # 4) Store into Data
+#   # ------------------------------------------------------------
+#   x$data$actions <- actions
+#   x$data$dist_actions <- dist_actions
+#   x$data$dist_effects <- de
+#
+#   # optional compat: keep dist_benefit alias
+#   x$data$dist_benefit <- if (inherits(de, "data.frame") && nrow(de) > 0) de else NULL
+#
+#   # meta for debugging/printing
+#   if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
+#   x$data$meta$actions_generated_from_legacy <- TRUE
+#   x$data$meta$legacy_actions_rule <- "one action per threat"
+#   x$data$meta$effects_rule <- if (is_binary) {
+#     "binary: benefit = amount_is / (# sensitive threats present in PU for feature)"
+#   } else {
+#     "continuous: benefit = amount_is * (resp_var*alpha/sum_alpha) using delta1..delta4"
+#   }
+#
+#   if (is.null(x$data$model_args)) x$data$model_args <- list()
+#
+#   if (is.null(x$data$model_args$benefit_exponent)) {
+#     x$data$model_args$benefit_exponent <- as.numeric(benefit_exponent)[1]
+#   }
+#   if (is.null(x$data$model_args$curve_segments)) {
+#     x$data$model_args$curve_segments <- as.integer(curve_segments)[1]
+#   }
+#
+#   if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
+#   x$data$meta$benefit_transform <- list(
+#     type = "power",
+#     exponent = x$data$model_args$benefit_exponent,
+#     segments = x$data$model_args$curve_segments
+#   )
+#
+#   invisible(x)
+# }
 
 
 # ------------------------------------------------------------------------------
@@ -2072,91 +2072,91 @@ available_to_solve <- function(package = ""){
 # - required cols: feature (INTERNAL feature id), type, target_value
 # - type ∈ {conservation, recovery, mixed}
 # ------------------------------------------------------------------------------
-
-.pa_targets_from_features_legacy <- function(x, overwrite = FALSE, warn = TRUE) {
-
-  stopifnot(inherits(x, "Data"))
-
-  fmt <- x$data$meta$input_format %||% NA_character_
-  if (!identical(fmt, "legacy")) {
-    return(invisible(x))
-  }
-
-  # if already has targets, do nothing unless overwrite=TRUE
-  if (!is.null(x$data$targets) &&
-      inherits(x$data$targets, "data.frame") &&
-      nrow(x$data$targets) > 0 &&
-      !isTRUE(overwrite)) {
-    return(invisible(x))
-  }
-
-  feats <- x$data$features
-  if (is.null(feats) || !inherits(feats, "data.frame") || nrow(feats) == 0) {
-    stop("Legacy targets: missing x$data$features.", call. = FALSE)
-  }
-
-  # Need internal_id mapping
-  if (!("internal_id" %in% names(feats))) {
-    # fall back to index mapping if present
-    if (is.null(x$data$index$feature)) stop("Legacy targets: missing feature index.", call. = FALSE)
-    feats$internal_id <- unname(x$data$index$feature[as.character(feats$id)])
-  }
-
-  if (!("target_recovery" %in% names(feats))) {
-    stop("Legacy targets: features$target_recovery is required in legacy mode.", call. = FALSE)
-  }
-  if (!("target_conservation" %in% names(feats))) {
-    feats$target_conservation <- 0
-  }
-
-  tr <- as.numeric(feats$target_recovery)
-  tc <- as.numeric(feats$target_conservation)
-
-  if (anyNA(feats$internal_id)) {
-    stop("Legacy targets: some features have missing internal_id.", call. = FALSE)
-  }
-
-  out <- rbind(
-    data.frame(
-      feature = as.integer(feats$internal_id),
-      type = "recovery",
-      target_value = tr,
-      stringsAsFactors = FALSE
-    ),
-    data.frame(
-      feature = as.integer(feats$internal_id),
-      type = "conservation",
-      target_value = tc,
-      stringsAsFactors = FALSE
-    )
-  )
-
-  # drop zeros / NAs
-  out <- out[is.finite(out$target_value) & !is.na(out$target_value) & out$target_value > 0, , drop = FALSE]
-
-  # if nothing to add, keep targets NULL (clean)
-  if (nrow(out) == 0) {
-    x$data$targets <- NULL
-    if (isTRUE(warn)) {
-      warning("Legacy targets: no positive target_* values found in features; x$data$targets left as NULL.", call. = FALSE, immediate. = TRUE)
-    }
-    return(invisible(x))
-  }
-
-  # aggregate (feature,type) just in case
-  out <- stats::aggregate(target_value ~ feature + type, data = out, FUN = sum)
-
-  x$data$targets <- out
-
-  if (isTRUE(warn)) {
-    warning(
-      "Legacy input: created x$data$targets from features$target_recovery/target_conservation.",
-      call. = FALSE, immediate. = TRUE
-    )
-  }
-
-  invisible(x)
-}
+#
+# .pa_targets_from_features_legacy <- function(x, overwrite = FALSE, warn = TRUE) {
+#
+#   stopifnot(inherits(x, "Data"))
+#
+#   fmt <- x$data$meta$input_format %||% NA_character_
+#   if (!identical(fmt, "legacy")) {
+#     return(invisible(x))
+#   }
+#
+#   # if already has targets, do nothing unless overwrite=TRUE
+#   if (!is.null(x$data$targets) &&
+#       inherits(x$data$targets, "data.frame") &&
+#       nrow(x$data$targets) > 0 &&
+#       !isTRUE(overwrite)) {
+#     return(invisible(x))
+#   }
+#
+#   feats <- x$data$features
+#   if (is.null(feats) || !inherits(feats, "data.frame") || nrow(feats) == 0) {
+#     stop("Legacy targets: missing x$data$features.", call. = FALSE)
+#   }
+#
+#   # Need internal_id mapping
+#   if (!("internal_id" %in% names(feats))) {
+#     # fall back to index mapping if present
+#     if (is.null(x$data$index$feature)) stop("Legacy targets: missing feature index.", call. = FALSE)
+#     feats$internal_id <- unname(x$data$index$feature[as.character(feats$id)])
+#   }
+#
+#   if (!("target_recovery" %in% names(feats))) {
+#     stop("Legacy targets: features$target_recovery is required in legacy mode.", call. = FALSE)
+#   }
+#   if (!("target_conservation" %in% names(feats))) {
+#     feats$target_conservation <- 0
+#   }
+#
+#   tr <- as.numeric(feats$target_recovery)
+#   tc <- as.numeric(feats$target_conservation)
+#
+#   if (anyNA(feats$internal_id)) {
+#     stop("Legacy targets: some features have missing internal_id.", call. = FALSE)
+#   }
+#
+#   out <- rbind(
+#     data.frame(
+#       feature = as.integer(feats$internal_id),
+#       type = "recovery",
+#       target_value = tr,
+#       stringsAsFactors = FALSE
+#     ),
+#     data.frame(
+#       feature = as.integer(feats$internal_id),
+#       type = "conservation",
+#       target_value = tc,
+#       stringsAsFactors = FALSE
+#     )
+#   )
+#
+#   # drop zeros / NAs
+#   out <- out[is.finite(out$target_value) & !is.na(out$target_value) & out$target_value > 0, , drop = FALSE]
+#
+#   # if nothing to add, keep targets NULL (clean)
+#   if (nrow(out) == 0) {
+#     x$data$targets <- NULL
+#     if (isTRUE(warn)) {
+#       warning("Legacy targets: no positive target_* values found in features; x$data$targets left as NULL.", call. = FALSE, immediate. = TRUE)
+#     }
+#     return(invisible(x))
+#   }
+#
+#   # aggregate (feature,type) just in case
+#   out <- stats::aggregate(target_value ~ feature + type, data = out, FUN = sum)
+#
+#   x$data$targets <- out
+#
+#   if (isTRUE(warn)) {
+#     warning(
+#       "Legacy input: created x$data$targets from features$target_recovery/target_conservation.",
+#       call. = FALSE, immediate. = TRUE
+#     )
+#   }
+#
+#   invisible(x)
+# }
 
 
 
@@ -2923,7 +2923,7 @@ available_to_solve <- function(package = ""){
   }
 
   # 3A) objetivo: override directo (vector obj completo)
-  # Esto es lo que necesita prioriactionsMO (weighted, etc.)
+  # Esto es lo que necesita mosap (weighted, etc.)
   if (!is.null(upd$obj)) {
     obj_new <- as.numeric(upd$obj)
 
@@ -2977,18 +2977,18 @@ available_to_solve <- function(package = ""){
   # -------------------------
   # Detect legacy inputs
   # -------------------------
-  has_legacy <- !is.null(dots$threats) || !is.null(dots$dist_threats) || !is.null(dots$sensitivity)
-
-  format <- dots$format %||% "auto"
-  if (!format %in% c("auto", "new", "legacy")) {
-    stop("`format` must be one of: 'auto', 'new', 'legacy'.", call. = FALSE)
-  }
-  if (format == "new" && has_legacy) {
-    stop("You provided legacy inputs (threats/dist_threats/sensitivity) but format='new'.", call. = FALSE)
-  }
-  if (format == "legacy" && (!is.data.frame(dots$threats) || !is.data.frame(dots$dist_threats))) {
-    stop("format='legacy' requires `threats` and `dist_threats` (data.frame) in ...", call. = FALSE)
-  }
+  # has_legacy <- !is.null(dots$threats) || !is.null(dots$dist_threats) || !is.null(dots$sensitivity)
+  #
+  # format <- dots$format %||% "auto"
+  # if (!format %in% c("auto", "new", "legacy")) {
+  #   stop("`format` must be one of: 'auto', 'new', 'legacy'.", call. = FALSE)
+  # }
+  # if (format == "new" && has_legacy) {
+  #   stop("You provided legacy inputs (threats/dist_threats/sensitivity) but format='new'.", call. = FALSE)
+  # }
+  # if (format == "legacy" && (!is.data.frame(dots$threats) || !is.data.frame(dots$dist_threats))) {
+  #   stop("format='legacy' requires `threats` and `dist_threats` (data.frame) in ...", call. = FALSE)
+  # }
 
   pu_coords <- NULL
 
@@ -3094,14 +3094,14 @@ available_to_solve <- function(package = ""){
   }
 
   # legacy-only: require targets
-  if ((format == "legacy") || (format == "auto" && has_legacy)) {
-    if (!("target_recovery" %in% names(features))) {
-      stop("Legacy mode requires features$target_recovery.", call. = FALSE)
-    }
-    assertthat::assert_that(is.numeric(features$target_recovery), assertthat::noNA(features$target_recovery))
-    if (!("target_conservation" %in% names(features))) features$target_conservation <- 0
-    assertthat::assert_that(is.numeric(features$target_conservation), assertthat::noNA(features$target_conservation))
-  }
+  # if ((format == "legacy") || (format == "auto" && has_legacy)) {
+  #   if (!("target_recovery" %in% names(features))) {
+  #     stop("Legacy mode requires features$target_recovery.", call. = FALSE)
+  #   }
+  #   assertthat::assert_that(is.numeric(features$target_recovery), assertthat::noNA(features$target_recovery))
+  #   if (!("target_conservation" %in% names(features))) features$target_conservation <- 0
+  #   assertthat::assert_that(is.numeric(features$target_conservation), assertthat::noNA(features$target_conservation))
+  # }
 
   features <- features[, c("id", "name", setdiff(names(features), c("id", "name"))), drop = FALSE]
   features <- features[order(features$id), , drop = FALSE]
@@ -3201,168 +3201,168 @@ available_to_solve <- function(package = ""){
     )
   }
 
-  # =========================
-  # LEGACY BLOCK (optional)
-  # =========================
-  threats <- NULL
-  dist_threats <- NULL
-  sensitivity <- NULL
-  threat_index <- NULL
-
-  if ((format == "legacy") || (format == "auto" && has_legacy)) {
-
-    threats <- dots$threats
-    dist_threats <- dots$dist_threats
-    sensitivity <- dots$sensitivity %||% NULL
-
-    if (!inherits(threats, "data.frame") || !inherits(dist_threats, "data.frame")) {
-      stop("Legacy inputs require `threats` and `dist_threats` as data.frame (passed via ...).", call. = FALSE)
-    }
-
-    # ---- threats
-    assertthat::assert_that(
-      assertthat::has_name(threats, "id"),
-      nrow(threats) > 0,
-      assertthat::noNA(threats$id)
-    )
-    threats$id <- .as_int_id(threats$id, "threats$id")
-    if (anyDuplicated(threats$id) != 0) stop("threats$id must be unique.", call. = FALSE)
-
-    if (!("name" %in% names(threats))) threats$name <- paste0("threat.", seq_len(nrow(threats)))
-    threats$name <- as.character(threats$name)
-    if (anyDuplicated(threats$name) != 0) stop("threats$name must be unique.", call. = FALSE)
-
-    if (!("blm_actions" %in% names(threats))) threats$blm_actions <- 0
-    assertthat::assert_that(is.numeric(threats$blm_actions), all(threats$blm_actions >= 0))
-
-    threats <- threats[order(threats$id), , drop = FALSE]
-    threats$internal_id <- seq_len(nrow(threats))
-    threat_index <- stats::setNames(threats$internal_id, as.character(threats$id))
-
-    # ---- dist_threats
-    assertthat::assert_that(
-      assertthat::has_name(dist_threats, "pu"),
-      assertthat::has_name(dist_threats, "threat"),
-      assertthat::has_name(dist_threats, "amount"),
-      assertthat::has_name(dist_threats, "action_cost"),
-      nrow(dist_threats) > 0,
-      assertthat::noNA(dist_threats$pu),
-      assertthat::noNA(dist_threats$threat),
-      assertthat::noNA(dist_threats$amount),
-      assertthat::noNA(dist_threats$action_cost),
-      is.numeric(dist_threats$amount),
-      is.numeric(dist_threats$action_cost),
-      all(dist_threats$amount >= 0)
-    )
-
-    dist_threats$pu     <- .as_int_id(dist_threats$pu, "dist_threats$pu")
-    dist_threats$threat <- .as_int_id(dist_threats$threat, "dist_threats$threat")
-
-    if (!all(dist_threats$pu %in% pu$id)) {
-      bad <- unique(dist_threats$pu[!dist_threats$pu %in% pu$id])
-      stop("dist_threats contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
-    }
-    if (!all(dist_threats$threat %in% threats$id)) {
-      bad <- unique(dist_threats$threat[!dist_threats$threat %in% threats$id])
-      stop("dist_threats contains unknown threat ids: ", paste(bad, collapse = ", "), call. = FALSE)
-    }
-
-    # status handling (optional)
-    if ("status" %in% names(dist_threats)) {
-      dist_threats$status <- as.integer(dist_threats$status)
-      ok <- dist_threats$status %in% c(0L, 2L, 3L)
-      if (!all(ok, na.rm = TRUE)) stop("dist_threats$status must be in {0,2,3}.", call. = FALSE)
-
-      locked_out_pus <- pu$id[pu$locked_out]
-      if (length(locked_out_pus)) {
-        idx <- dist_threats$pu %in% locked_out_pus & dist_threats$status == 2L
-        if (any(idx, na.rm = TRUE)) {
-          warning("Some actions were locked-in inside locked-out PU(s); setting them to locked-out.", call. = FALSE, immediate. = TRUE)
-          dist_threats$status[idx] <- 3L
-        }
-        idx2 <- dist_threats$pu %in% locked_out_pus
-        dist_threats$status[idx2] <- 3L
-      }
-    } else {
-      dist_threats$status <- 0L
-    }
-
-    dist_threats <- dist_threats[dist_threats$amount != 0, , drop = FALSE]
-    key_t <- paste(dist_threats$pu, dist_threats$threat, sep = "||")
-    if (anyDuplicated(key_t) != 0) stop("There are duplicate (pu, threat) pairs in dist_threats.", call. = FALSE)
-
-    dist_threats$internal_pu <- unname(pu_index[as.character(dist_threats$pu)])
-    dist_threats$internal_threat <- unname(threat_index[as.character(dist_threats$threat)])
-
-    # ---- sensitivity
-    if (is.null(sensitivity)) {
-      sensitivity <- base::expand.grid(feature = features$id, threat = threats$id)
-    } else {
-      assertthat::assert_that(
-        inherits(sensitivity, "data.frame"),
-        assertthat::has_name(sensitivity, "feature"),
-        assertthat::has_name(sensitivity, "threat"),
-        nrow(sensitivity) > 0,
-        assertthat::noNA(sensitivity$feature),
-        assertthat::noNA(sensitivity$threat)
-      )
-    }
-
-    sensitivity$feature <- .as_int_id(sensitivity$feature, "sensitivity$feature")
-    sensitivity$threat  <- .as_int_id(sensitivity$threat,  "sensitivity$threat")
-
-    sensitivity <- sensitivity[sensitivity$feature %in% features$id & sensitivity$threat %in% threats$id, , drop = FALSE]
-    if (nrow(sensitivity) == 0) stop("After filtering, sensitivity has 0 valid rows.", call. = FALSE)
-
-    if (!("delta1" %in% names(sensitivity))) sensitivity$delta1 <- 0
-    if (!("delta2" %in% names(sensitivity))) sensitivity$delta2 <- NA
-    if (!("delta3" %in% names(sensitivity))) sensitivity$delta3 <- 0
-    if (!("delta4" %in% names(sensitivity))) sensitivity$delta4 <- 1
-
-    sensitivity$delta1[is.na(sensitivity$delta1)] <- 0
-    sensitivity$delta3[is.na(sensitivity$delta3)] <- 0
-    sensitivity$delta4[is.na(sensitivity$delta4)] <- 1
-
-    max_int <- stats::aggregate(dist_threats$amount, by = list(threat = dist_threats$threat), FUN = max)
-    names(max_int)[2] <- "max_amount"
-    idx_map <- match(sensitivity$threat, max_int$threat)
-    fill_vals <- max_int$max_amount[idx_map]
-    sensitivity$delta2[is.na(sensitivity$delta2)] <- fill_vals[is.na(sensitivity$delta2)]
-
-    if (!all(sensitivity$delta2 > sensitivity$delta1)) stop("Each delta2 must be > delta1.", call. = FALSE)
-    if (!all(sensitivity$delta4 > sensitivity$delta3)) stop("Each delta4 must be > delta3.", call. = FALSE)
-
-    sensitivity$internal_feature <- unname(feature_index[as.character(sensitivity$feature)])
-    sensitivity$internal_threat  <- unname(threat_index[as.character(sensitivity$threat)])
-
-    # threats$blm_actions <- base::round(threats$blm_actions, 3)
-    # dist_threats$amount <- base::round(dist_threats$amount, 3)
-    # dist_threats$action_cost <- base::round(dist_threats$action_cost, 3)
-    # sensitivity$delta1 <- base::round(sensitivity$delta1, 3)
-    # sensitivity$delta2 <- base::round(sensitivity$delta2, 3)
-    # sensitivity$delta3 <- base::round(sensitivity$delta3, 3)
-    # sensitivity$delta4 <- base::round(sensitivity$delta4, 3)
-
-    if (isTRUE(dots$warn_legacy %||% TRUE)) {
-      if (requireNamespace("lifecycle", quietly = TRUE)) {
-        lifecycle::deprecate_warn(
-          when = "1.0.1",
-          what = "inputData()",
-          with = "add_actions()",
-          details = paste(
-            "Legacy inputs detected (threats/dist_threats/sensitivity).",
-            "New workflow example:",
-            "inputData(...) %>% add_actions(...) %>% add_effects(...) %>% solve()"
-          )
-        )
-      } else {
-        warning(
-          "Legacy inputs detected (threats/dist_threats/sensitivity). Consider migrating to the new format.",
-          call. = FALSE, immediate. = TRUE
-        )
-      }
-    }
-  }
+  # # =========================
+  # # LEGACY BLOCK (optional)
+  # # =========================
+  # threats <- NULL
+  # dist_threats <- NULL
+  # sensitivity <- NULL
+  # threat_index <- NULL
+  #
+  # if ((format == "legacy") || (format == "auto" && has_legacy)) {
+  #
+  #   threats <- dots$threats
+  #   dist_threats <- dots$dist_threats
+  #   sensitivity <- dots$sensitivity %||% NULL
+  #
+  #   if (!inherits(threats, "data.frame") || !inherits(dist_threats, "data.frame")) {
+  #     stop("Legacy inputs require `threats` and `dist_threats` as data.frame (passed via ...).", call. = FALSE)
+  #   }
+  #
+  #   # ---- threats
+  #   assertthat::assert_that(
+  #     assertthat::has_name(threats, "id"),
+  #     nrow(threats) > 0,
+  #     assertthat::noNA(threats$id)
+  #   )
+  #   threats$id <- .as_int_id(threats$id, "threats$id")
+  #   if (anyDuplicated(threats$id) != 0) stop("threats$id must be unique.", call. = FALSE)
+  #
+  #   if (!("name" %in% names(threats))) threats$name <- paste0("threat.", seq_len(nrow(threats)))
+  #   threats$name <- as.character(threats$name)
+  #   if (anyDuplicated(threats$name) != 0) stop("threats$name must be unique.", call. = FALSE)
+  #
+  #   if (!("blm_actions" %in% names(threats))) threats$blm_actions <- 0
+  #   assertthat::assert_that(is.numeric(threats$blm_actions), all(threats$blm_actions >= 0))
+  #
+  #   threats <- threats[order(threats$id), , drop = FALSE]
+  #   threats$internal_id <- seq_len(nrow(threats))
+  #   threat_index <- stats::setNames(threats$internal_id, as.character(threats$id))
+  #
+  #   # ---- dist_threats
+  #   assertthat::assert_that(
+  #     assertthat::has_name(dist_threats, "pu"),
+  #     assertthat::has_name(dist_threats, "threat"),
+  #     assertthat::has_name(dist_threats, "amount"),
+  #     assertthat::has_name(dist_threats, "action_cost"),
+  #     nrow(dist_threats) > 0,
+  #     assertthat::noNA(dist_threats$pu),
+  #     assertthat::noNA(dist_threats$threat),
+  #     assertthat::noNA(dist_threats$amount),
+  #     assertthat::noNA(dist_threats$action_cost),
+  #     is.numeric(dist_threats$amount),
+  #     is.numeric(dist_threats$action_cost),
+  #     all(dist_threats$amount >= 0)
+  #   )
+  #
+  #   dist_threats$pu     <- .as_int_id(dist_threats$pu, "dist_threats$pu")
+  #   dist_threats$threat <- .as_int_id(dist_threats$threat, "dist_threats$threat")
+  #
+  #   if (!all(dist_threats$pu %in% pu$id)) {
+  #     bad <- unique(dist_threats$pu[!dist_threats$pu %in% pu$id])
+  #     stop("dist_threats contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
+  #   }
+  #   if (!all(dist_threats$threat %in% threats$id)) {
+  #     bad <- unique(dist_threats$threat[!dist_threats$threat %in% threats$id])
+  #     stop("dist_threats contains unknown threat ids: ", paste(bad, collapse = ", "), call. = FALSE)
+  #   }
+  #
+  #   # status handling (optional)
+  #   if ("status" %in% names(dist_threats)) {
+  #     dist_threats$status <- as.integer(dist_threats$status)
+  #     ok <- dist_threats$status %in% c(0L, 2L, 3L)
+  #     if (!all(ok, na.rm = TRUE)) stop("dist_threats$status must be in {0,2,3}.", call. = FALSE)
+  #
+  #     locked_out_pus <- pu$id[pu$locked_out]
+  #     if (length(locked_out_pus)) {
+  #       idx <- dist_threats$pu %in% locked_out_pus & dist_threats$status == 2L
+  #       if (any(idx, na.rm = TRUE)) {
+  #         warning("Some actions were locked-in inside locked-out PU(s); setting them to locked-out.", call. = FALSE, immediate. = TRUE)
+  #         dist_threats$status[idx] <- 3L
+  #       }
+  #       idx2 <- dist_threats$pu %in% locked_out_pus
+  #       dist_threats$status[idx2] <- 3L
+  #     }
+  #   } else {
+  #     dist_threats$status <- 0L
+  #   }
+  #
+  #   dist_threats <- dist_threats[dist_threats$amount != 0, , drop = FALSE]
+  #   key_t <- paste(dist_threats$pu, dist_threats$threat, sep = "||")
+  #   if (anyDuplicated(key_t) != 0) stop("There are duplicate (pu, threat) pairs in dist_threats.", call. = FALSE)
+  #
+  #   dist_threats$internal_pu <- unname(pu_index[as.character(dist_threats$pu)])
+  #   dist_threats$internal_threat <- unname(threat_index[as.character(dist_threats$threat)])
+  #
+  #   # ---- sensitivity
+  #   if (is.null(sensitivity)) {
+  #     sensitivity <- base::expand.grid(feature = features$id, threat = threats$id)
+  #   } else {
+  #     assertthat::assert_that(
+  #       inherits(sensitivity, "data.frame"),
+  #       assertthat::has_name(sensitivity, "feature"),
+  #       assertthat::has_name(sensitivity, "threat"),
+  #       nrow(sensitivity) > 0,
+  #       assertthat::noNA(sensitivity$feature),
+  #       assertthat::noNA(sensitivity$threat)
+  #     )
+  #   }
+  #
+  #   sensitivity$feature <- .as_int_id(sensitivity$feature, "sensitivity$feature")
+  #   sensitivity$threat  <- .as_int_id(sensitivity$threat,  "sensitivity$threat")
+  #
+  #   sensitivity <- sensitivity[sensitivity$feature %in% features$id & sensitivity$threat %in% threats$id, , drop = FALSE]
+  #   if (nrow(sensitivity) == 0) stop("After filtering, sensitivity has 0 valid rows.", call. = FALSE)
+  #
+  #   if (!("delta1" %in% names(sensitivity))) sensitivity$delta1 <- 0
+  #   if (!("delta2" %in% names(sensitivity))) sensitivity$delta2 <- NA
+  #   if (!("delta3" %in% names(sensitivity))) sensitivity$delta3 <- 0
+  #   if (!("delta4" %in% names(sensitivity))) sensitivity$delta4 <- 1
+  #
+  #   sensitivity$delta1[is.na(sensitivity$delta1)] <- 0
+  #   sensitivity$delta3[is.na(sensitivity$delta3)] <- 0
+  #   sensitivity$delta4[is.na(sensitivity$delta4)] <- 1
+  #
+  #   max_int <- stats::aggregate(dist_threats$amount, by = list(threat = dist_threats$threat), FUN = max)
+  #   names(max_int)[2] <- "max_amount"
+  #   idx_map <- match(sensitivity$threat, max_int$threat)
+  #   fill_vals <- max_int$max_amount[idx_map]
+  #   sensitivity$delta2[is.na(sensitivity$delta2)] <- fill_vals[is.na(sensitivity$delta2)]
+  #
+  #   if (!all(sensitivity$delta2 > sensitivity$delta1)) stop("Each delta2 must be > delta1.", call. = FALSE)
+  #   if (!all(sensitivity$delta4 > sensitivity$delta3)) stop("Each delta4 must be > delta3.", call. = FALSE)
+  #
+  #   sensitivity$internal_feature <- unname(feature_index[as.character(sensitivity$feature)])
+  #   sensitivity$internal_threat  <- unname(threat_index[as.character(sensitivity$threat)])
+  #
+  #   # threats$blm_actions <- base::round(threats$blm_actions, 3)
+  #   # dist_threats$amount <- base::round(dist_threats$amount, 3)
+  #   # dist_threats$action_cost <- base::round(dist_threats$action_cost, 3)
+  #   # sensitivity$delta1 <- base::round(sensitivity$delta1, 3)
+  #   # sensitivity$delta2 <- base::round(sensitivity$delta2, 3)
+  #   # sensitivity$delta3 <- base::round(sensitivity$delta3, 3)
+  #   # sensitivity$delta4 <- base::round(sensitivity$delta4, 3)
+  #
+  #   if (isTRUE(dots$warn_legacy %||% TRUE)) {
+  #     if (requireNamespace("lifecycle", quietly = TRUE)) {
+  #       lifecycle::deprecate_warn(
+  #         when = "1.0.1",
+  #         what = "inputData()",
+  #         with = "add_actions()",
+  #         details = paste(
+  #           "Legacy inputs detected (threats/dist_threats/sensitivity).",
+  #           "New workflow example:",
+  #           "inputData(...) %>% add_actions(...) %>% add_effects(...) %>% solve()"
+  #         )
+  #       )
+  #     } else {
+  #       warning(
+  #         "Legacy inputs detected (threats/dist_threats/sensitivity). Consider migrating to the new format.",
+  #         call. = FALSE, immediate. = TRUE
+  #       )
+  #     }
+  #   }
+  # }
 
   # =========================
   # build Data object (FIXED: assign to x and return it)
@@ -3378,20 +3378,20 @@ available_to_solve <- function(package = ""){
       pu_coords = pu_coords,
       spatial_relations = list(),
 
-      # legacy (optional)
-      threats = threats,
-      dist_threats = dist_threats,
-      sensitivity = sensitivity,
+      # # legacy (optional)
+      # threats = threats,
+      # dist_threats = dist_threats,
+      # sensitivity = sensitivity,
 
       index = list(
         pu = pu_index,
         feature = feature_index,
-        threat = threat_index,
+        #threat = threat_index,
         feature_name_to_id = stats::setNames(features$id, features$name)
       ),
 
       meta = list(
-        input_format = if ((format == "legacy") || (format == "auto" && has_legacy)) "legacy" else "new",
+        # input_format = if ((format == "legacy") || (format == "auto" && has_legacy)) "legacy" else "new",
         dist_features_meaning = "baseline_amount",
         dist_benefit_meaning  = "delta_by_default"
       ),
@@ -3879,13 +3879,6 @@ available_to_solve <- function(package = ""){
     )
   }
 
-  if (isTRUE(mo_mode) && isTRUE(needs$u_intervention)) {
-    .pa_abort(
-      "MO phase 1 does not support preparing u_intervention in the shared superset yet."
-    )
-  }
-
-  # nothing to do
   if (!isTRUE(needs$y_pu) &&
       !isTRUE(needs$y_action) &&
       !isTRUE(needs$y_intervention) &&
@@ -3893,7 +3886,9 @@ available_to_solve <- function(package = ""){
     return(x)
   }
 
-  # helper: relation model (same as objective path)
+  x$data$model_registry <- x$data$model_registry %||% list()
+  x$data$model_registry$vars <- x$data$model_registry$vars %||% list()
+
   .pa_prepare_relation_model <- function(rel) {
     rel <- rel[, c(
       "internal_pu1","internal_pu2","weight",
@@ -3907,48 +3902,44 @@ available_to_solve <- function(package = ""){
     rel
   }
 
-  # choose relation_name:
-  # - prefer explicit needs$relation_name if present (useful for MO superset)
-  # - else objective_args$relation_name
-  # - else "boundary"
-  rel_name <- as.character(needs$relation_name %||% oargs$relation_name %||% "boundary")[1]
+  rel_model <- NULL
+  if (isTRUE(needs$y_pu) ||
+      isTRUE(needs$y_action) ||
+      isTRUE(needs$y_intervention)) {
 
-  rels <- x$data$spatial_relations
-  if (is.null(rels) || is.null(rels[[rel_name]])) {
-    .pa_abort("prepare_needs: missing spatial relation '", rel_name, "'.")
-  }
+    rel_name <- as.character(needs$relation_name %||% oargs$relation_name %||% "boundary")[1]
 
-  # build / reuse model-ready relation table
-  x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
-  if (is.null(x$data$spatial_relations_model[[rel_name]])) {
-    x$data$spatial_relations_model[[rel_name]] <- .pa_prepare_relation_model(rels[[rel_name]])
-  }
-  rel_model <- x$data$spatial_relations_model[[rel_name]]
-
-  # registry containers
-  x$data$model_registry <- x$data$model_registry %||% list()
-  x$data$model_registry$vars <- x$data$model_registry$vars %||% list()
-
-  # ---- PU fragmentation prepare
-  if (isTRUE(needs$y_pu)) {
-    if (!exists("rcpp_prepare_fragmentation_pu", mode = "function")) {
-      .pa_abort("Missing rcpp_prepare_fragmentation_pu() in the package.")
+    rels <- x$data$spatial_relations
+    if (is.null(rels) || is.null(rels[[rel_name]])) {
+      .pa_abort("prepare_needs: missing spatial relation '", rel_name, "'.")
     }
-    # if your C++ signature is (op, relation_data)
-    res <- rcpp_prepare_fragmentation_pu(
+
+    x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
+    if (is.null(x$data$spatial_relations_model[[rel_name]])) {
+      x$data$spatial_relations_model[[rel_name]] <- .pa_prepare_relation_model(rels[[rel_name]])
+    }
+    rel_model <- x$data$spatial_relations_model[[rel_name]]
+  }
+
+  # ---- y_pu
+  if (isTRUE(needs$y_pu)) {
+    if (!exists("rcpp_prepare_objective_min_fragmentation", mode = "function")) {
+      .pa_abort("Missing rcpp_prepare_objective_min_fragmentation() in the package.")
+    }
+
+    res <- rcpp_prepare_objective_min_fragmentation(
       x = op,
       relation_data = rel_model
     )
     x$data$model_registry$vars$y_pu <- res
   }
 
-  # ---- Action fragmentation prepare
+  # ---- y_action
   if (isTRUE(needs$y_action)) {
-    if (!exists("rcpp_prepare_fragmentation_actions_by_action", mode = "function")) {
-      .pa_abort("Missing rcpp_prepare_fragmentation_actions_by_action() in the package.")
+    if (!exists("rcpp_prepare_objective_min_fragmentation_actions", mode = "function")) {
+      .pa_abort("Missing rcpp_prepare_objective_min_fragmentation_actions() in the package.")
     }
 
-    # requires model-ready dist_actions
     if (is.null(x$data$dist_actions_model) || !inherits(x$data$dist_actions_model, "data.frame")) {
       .pa_abort("prepare_needs: y_action requires x$data$dist_actions_model (model-ready).")
     }
@@ -3956,36 +3947,83 @@ available_to_solve <- function(package = ""){
       .pa_abort("prepare_needs: y_action requires action variables, but dist_actions_model has 0 rows.")
     }
 
-    # optional subset of actions (internal_action ids, 1-based) from needs or objective args
     actions_to_use <- needs$actions_to_use %||% oargs$actions_to_use %||% oargs$actions %||% NULL
     if (!is.null(actions_to_use)) actions_to_use <- as.integer(actions_to_use)
 
-    res <- rcpp_prepare_fragmentation_actions_by_action(
+    res <- rcpp_prepare_objective_min_fragmentation_actions(
       x = op,
       dist_actions_data = x$data$dist_actions_model,
       relation_data     = rel_model,
       actions_to_use    = actions_to_use,
-      block_name        = "fragmentation_actions_by_action",
+      block_name        = "fragmentation_actions",
       tag               = ""
     )
 
     x$data$model_registry$vars$y_action <- res
   }
 
-  # ---- Intervention fragmentation prepare (future hook)
-  if (isTRUE(needs$y_intervention) || isTRUE(needs$u_intervention)) {
-    if (!exists("rcpp_prepare_fragmentation_interventions", mode = "function")) {
-      .pa_abort("Missing rcpp_prepare_fragmentation_interventions() in the package.")
+  # ---- u_intervention for min_intervention_impact
+  if (isTRUE(needs$u_intervention)) {
+    if (!exists("rcpp_prepare_objective_min_intervention_impact", mode = "function")) {
+      .pa_abort("Missing rcpp_prepare_objective_min_intervention_impact() in the package.")
     }
 
-    # if your interventions prepare also needs dist_actions_data in the future,
-    # you can mirror the same pattern as y_action above.
+    if (is.null(x$data$dist_actions_model) || !inherits(x$data$dist_actions_model, "data.frame")) {
+      .pa_abort("prepare_needs: u_intervention requires x$data$dist_actions_model (model-ready).")
+    }
+    if (nrow(x$data$dist_actions_model) == 0) {
+      .pa_abort("prepare_needs: u_intervention requires action variables, but dist_actions_model has 0 rows.")
+    }
 
-    res <- rcpp_prepare_fragmentation_interventions(
+    if (is.null(x$data$dist_features) || !inherits(x$data$dist_features, "data.frame")) {
+      .pa_abort("prepare_needs: u_intervention requires x$data$dist_features.")
+    }
+    if (nrow(x$data$dist_features) == 0) {
+      .pa_abort("prepare_needs: u_intervention requires non-empty x$data$dist_features.")
+    }
+
+    actions_chr <- needs$u_intervention_actions %||% oargs$actions %||% NULL
+    if (is.null(actions_chr) || length(actions_chr) == 0) {
+      .pa_abort(
+        "prepare_needs: u_intervention requires a non-empty shared action subset.\n",
+        "For MO phase 1, all intervention_impact objectives must use the same actions."
+      )
+    }
+
+    act_subset <- .pa_resolve_action_subset(x, subset = actions_chr)
+    acts_internal <- as.integer(act_subset$internal_id)
+
+    if (length(acts_internal) == 0) {
+      .pa_abort("prepare_needs: u_intervention action subset resolved to zero actions.")
+    }
+
+    subset_key <- .pa_subset_to_string(act_subset$id)
+
+    impact_col <- as.character(oargs$impact_col %||% "amount")[1]
+    if (!(impact_col %in% names(x$data$dist_features))) {
+      impact_col <- "amount"
+      if (!("amount" %in% names(x$data$dist_features))) {
+        .pa_abort(
+          "prepare_needs: could not find a valid impact column in x$data$dist_features."
+        )
+      }
+    }
+
+    res <- rcpp_prepare_objective_min_intervention_impact(
       x = op,
-      relation_data = rel_model
+      pu_data = x$data$pu,
+      dist_actions_data = x$data$dist_actions_model,
+      dist_features_data = x$data$dist_features,
+      subset_key = subset_key,
+      impact_col = impact_col,
+      features_to_use = integer(0),
+      actions_to_use = acts_internal,
+      internal_feature_col = "internal_feature",
+      block_name = "objective_min_intervention_impact",
+      tag = if (isTRUE(mo_mode)) "from=prepare_needs_cpp;mode=MO" else ""
     )
-    x$data$model_registry$vars$y_intervention <- res
+
+    x$data$model_registry$vars$u_intervention_impact <- res
   }
 
   x
