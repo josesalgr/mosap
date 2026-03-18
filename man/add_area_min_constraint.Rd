@@ -14,7 +14,7 @@ add_area_min_constraint(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{area_min}{Numeric scalar \eqn{\ge 0}. Minimum area to select.}
 
@@ -27,7 +27,7 @@ add_area_min_constraint(
 \item{overwrite}{Logical. Replace existing stored area_min constraint if present.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Store a minimum selected area constraint to be applied later by the model builder.

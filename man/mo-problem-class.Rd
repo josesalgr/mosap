@@ -6,7 +6,7 @@
 \title{MOProblem class}
 \description{
 A container for multi-objective optimization workflows built on top of a
-prioriactions \code{Data} object.
+prioriactions \code{Problem} object.
 }
 \details{
 The goal of \code{MOProblem} is to keep \code{prioriactions} focused on defining data,
@@ -16,7 +16,7 @@ goal programming, interactive, etc.).
 
 Conceptually, an \code{MOProblem} wraps:
 \enumerate{
-\item A base \code{Data} object (coming from \code{prioriactions::inputData()}),
+\item A base \code{Problem} object (coming from \code{prioriactions::inputData()}),
 \item A registry of atomic objectives (each with alias, direction and builders),
 \item A multi-objective "method" configuration (e.g., weights, epsilons),
 \item Results (solutions, objective values, solver logs).
@@ -25,7 +25,7 @@ Conceptually, an \code{MOProblem} wraps:
 \section{Fields}{
 
 \describe{
-\item{data}{A \code{Data} object from \code{prioriactions}.}
+\item{data}{A \code{Problem} object from \code{prioriactions}.}
 \item{objectives}{A named list of registered objectives (by alias).}
 \item{method}{A list describing the selected multi-objective method and its parameters.}
 \item{results}{A list storing solutions, objective values and diagnostics.}
@@ -39,7 +39,7 @@ Conceptually, an \code{MOProblem} wraps:
 \item{print():}{Print a compact summary.}
 \item{show():}{Alias of \code{print()}.}
 \item{repr():}{Short representation.}
-\item{getData():}{Return the underlying \code{Data} object.}
+\item{getData():}{Return the underlying \code{Problem} object.}
 \item{listObjectives():}{Return objective aliases currently registered.}
 \item{getObjective(alias):}{Return an objective definition by alias.}
 }

@@ -96,10 +96,10 @@ Either \code{"mean"} or \code{"sum"}.}
 \item{...}{Additional arguments forwarded to internal builders.}
 }
 \value{
-A \code{Data} object used by downstream functions (\verb{add_*()}, \code{set_solver()}, \code{solve()}, etc.).
+A \code{Problem} object used by downstream functions (\verb{add_*()}, \code{set_solver()}, \code{solve()}, etc.).
 }
 \description{
-Builds a \code{Data} object from either tabular inputs or spatial inputs.
+Builds a \code{Problem} object from either tabular inputs or spatial inputs.
 This is the entry point for the \strong{mosap} workflow.
 
 The function supports three input styles:

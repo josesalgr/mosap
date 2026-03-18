@@ -14,7 +14,7 @@ add_spatial_distance(
 )
 }
 \arguments{
-\item{x}{A \linkS4class{data} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \linkS4class{problem} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
 \item{coords}{Optional coordinates specification (see \code{\link{add_spatial_knn}}).}
 
@@ -28,7 +28,7 @@ add_spatial_distance(
 \item{eps}{Small numeric constant to avoid division by zero when using inverse weights.}
 }
 \value{
-Updated \linkS4class{data} object.
+Updated \linkS4class{problem} object.
 }
 \description{
 Build and register edges between planning units whose Euclidean distance is less than or equal to

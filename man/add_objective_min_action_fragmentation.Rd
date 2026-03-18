@@ -14,7 +14,7 @@ add_objective_min_action_fragmentation(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{relation_name}{Character. Name of the spatial relation.}
 
@@ -29,7 +29,7 @@ and, if present, \code{actions$action_set}.}
 \item{alias}{Optional identifier for multi-objective workflows.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Specify an objective that minimizes fragmentation at the action level over

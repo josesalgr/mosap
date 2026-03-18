@@ -12,7 +12,7 @@ NULL
 #' MOProblem class
 #'
 #' A container for multi-objective optimization workflows built on top of a
-#' prioriactions `Data` object.
+#' prioriactions `Problem` object.
 #'
 #' The goal of `MOProblem` is to keep `prioriactions` focused on defining data,
 #' constraints and *atomic objectives*, while `prioriactionsMO` orchestrates
@@ -21,14 +21,14 @@ NULL
 #'
 #' Conceptually, an `MOProblem` wraps:
 #'
-#' 1) A base `Data` object (coming from `prioriactions::inputData()`),
+#' 1) A base `Problem` object (coming from `prioriactions::inputData()`),
 #' 2) A registry of atomic objectives (each with alias, direction and builders),
 #' 3) A multi-objective "method" configuration (e.g., weights, epsilons),
 #' 4) Results (solutions, objective values, solver logs).
 #'
 #' @section Fields:
 #' \describe{
-#'   \item{data}{A `Data` object from `prioriactions`.}
+#'   \item{data}{A `Problem` object from `prioriactions`.}
 #'   \item{objectives}{A named list of registered objectives (by alias).}
 #'   \item{method}{A list describing the selected multi-objective method and its parameters.}
 #'   \item{results}{A list storing solutions, objective values and diagnostics.}
@@ -40,7 +40,7 @@ NULL
 #'   \item{print():}{Print a compact summary.}
 #'   \item{show():}{Alias of `print()`.}
 #'   \item{repr():}{Short representation.}
-#'   \item{getData():}{Return the underlying `Data` object.}
+#'   \item{getData():}{Return the underlying `Problem` object.}
 #'   \item{listObjectives():}{Return objective aliases currently registered.}
 #'   \item{getObjective(alias):}{Return an objective definition by alias.}
 #' }
@@ -91,13 +91,13 @@ MOProblem <- pproto(
 
 #' Create a multi-objective problem wrapper
 #'
-#' @param x A `Data` object created by `prioriactions::inputData()` (or a compatible object).
+#' @param x A `Problem` object created by `prioriactions::inputData()` (or a compatible object).
 #' @return An object of class `MOProblem`.
 #' @keywords internal
 as_mo_problem <- function(x) {
 
-  if (!inherits(x, "Data")) {
-    stop("as_mo_problem(): `x` must inherit from class 'Data'.", call. = FALSE)
+  if (!inherits(x, "Problem")) {
+    stop("as_mo_problem(): `x` must inherit from class 'Problem'.", call. = FALSE)
   }
 
   pproto(

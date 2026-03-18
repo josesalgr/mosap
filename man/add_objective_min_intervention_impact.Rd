@@ -13,7 +13,7 @@ add_objective_min_intervention_impact(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{impact_col}{Character. Column in \code{x$data$dist_features} containing the
 per-(pu,feature) impact amount. Default \code{"amount"}.}
@@ -24,7 +24,7 @@ and, if available, feature names.}
 \item{alias}{Optional alias for multi-objective workflows.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Specify an objective that minimizes the impact associated with selecting

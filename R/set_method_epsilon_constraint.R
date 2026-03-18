@@ -38,7 +38,7 @@
 #' \code{x$method$runs}. In automatic mode, \code{x$method$runs} is initially
 #' \code{NULL} and is created later during \code{\link{solve}}.
 #'
-#' @param x A \code{Data} or \code{MOProblem} object.
+#' @param x A \code{Problem} or \code{MOProblem} object.
 #' @param primary Character scalar. Alias of the primary objective to optimize.
 #' @param eps Optional epsilon specification used only in \code{mode = "manual"}.
 #'   It can be either:

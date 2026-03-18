@@ -67,7 +67,7 @@ NULL
 Solution <- pproto(
   "Solution",
   data = list(),
-  Data = NULL,   # en vez de OptimizationClass
+  Problem = NULL,   # en vez de OptimizationClass
   name = "sol",
 
   print = function(self) {

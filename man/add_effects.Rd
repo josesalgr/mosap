@@ -17,7 +17,7 @@ add_effects(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+\item{x}{A \code{Problem} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
 Must contain \code{x$data$dist_actions} (run \code{\link{add_actions}} first).}
 
 \item{effects}{Effect specification. One of:
@@ -64,7 +64,7 @@ Default \code{TRUE}.}
 }}
 }
 \value{
-The updated \code{Data} object with \code{x$data$dist_effects} created/updated, and
+The updated \code{Problem} object with \code{x$data$dist_effects} created/updated, and
 metadata stored in \code{x$data$effects_meta}.
 }
 \description{

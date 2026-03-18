@@ -12,7 +12,7 @@ add_objective_min_fragmentation(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{relation_name}{Character. Name of the spatial relation.}
 
@@ -21,7 +21,7 @@ add_objective_min_fragmentation(
 \item{alias}{Optional identifier for multi-objective workflows.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Specify an objective that minimizes planning-unit fragmentation over a spatial relation.

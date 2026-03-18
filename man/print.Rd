@@ -2,12 +2,12 @@
 % Please edit documentation in R/print.R
 \name{print}
 \alias{print}
-\alias{print.Data}
+\alias{print.Problem}
 \alias{print.Solution}
 \alias{print.MOProblem}
 \title{Print}
 \usage{
-\method{print}{Data}(x, ...)
+\method{print}{Problem}(x, ...)
 
 \method{print}{Solution}(x, ...)
 

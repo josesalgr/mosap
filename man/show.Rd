@@ -8,7 +8,7 @@
 \alias{show,Portfolio-method}
 \title{Show}
 \usage{
-\S4method{show}{Data}(x)
+\S4method{show}{Problem}(x)
 
 \S4method{show}{MOProblem}(x)
 }

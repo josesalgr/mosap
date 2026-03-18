@@ -16,14 +16,14 @@
 #' active single-objective specification stored in \code{x$data$model_args} (set by the calling
 #' objective setter) is used.
 #'
-#' @param x A \code{Data} object.
+#' @param x A \code{Problem} object.
 #' @param alias Character scalar or \code{NULL}. Unique identifier to register the objective.
 #' @param objective_id Character. Stable objective identifier (e.g., \code{"min_cost"}).
 #' @param model_type Character. Model type label used by the model builder (e.g., \code{"minimizeCosts"}).
 #' @param objective_args List. Objective-specific arguments to be stored with the objective.
 #' @param sense Character. Either \code{"min"} or \code{"max"}.
 #'
-#' @return The updated \code{Data} object.
+#' @return The updated \code{Problem} object.
 #'
 #' @keywords internal
 #'
@@ -35,14 +35,14 @@
 #' the action-cost component is restricted to that subset of actions, while planning-unit
 #' costs remain global.
 #'
-#' @param x A `Data` object.
+#' @param x A `Problem` object.
 #' @param include_pu_cost Logical. If `TRUE`, include planning-unit costs.
 #' @param include_action_cost Logical. If `TRUE`, include action costs.
 #' @param actions Optional subset of actions to include in the action-cost component.
 #'   Values may match `actions$id` and, if present, `actions$action_set`.
 #' @param alias Optional identifier for multi-objective workflows.
 #'
-#' @return Updated `Data` object.
+#' @return Updated `Problem` object.
 #' @export
 add_objective_min_cost <- function(
     x,
@@ -51,7 +51,7 @@ add_objective_min_cost <- function(
     actions = NULL,
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   action_subset <- NULL
   if (!is.null(actions)) {
@@ -80,7 +80,7 @@ add_objective_min_cost <- function(
 #' Specify an objective that maximizes total benefit delivered by selected actions.
 #' The objective can optionally be restricted to subsets of actions and/or features.
 #'
-#' @param x A `Data` object.
+#' @param x A `Problem` object.
 #' @param benefit_col Character. Benefit column name in the model-ready effects table.
 #' @param actions Optional subset of actions to include. Values may match `actions$id`
 #'   and, if present, `actions$action_set`.
@@ -88,7 +88,7 @@ add_objective_min_cost <- function(
 #'   `features$id` and, if present, `features$name`.
 #' @param alias Optional identifier for multi-objective workflows.
 #'
-#' @return Updated `Data` object.
+#' @return Updated `Problem` object.
 #' @export
 add_objective_max_benefit <- function(
     x,
@@ -97,7 +97,7 @@ add_objective_max_benefit <- function(
     features = NULL,
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   action_subset <- NULL
   feature_subset <- NULL
@@ -131,13 +131,13 @@ add_objective_max_benefit <- function(
 #' Specify an objective that maximizes total profit from selected `(pu, action)` pairs.
 #' The objective can optionally be restricted to a subset of actions.
 #'
-#' @param x A `Data` object.
+#' @param x A `Problem` object.
 #' @param profit_col Character. Profit column in `x$data$dist_profit`.
 #' @param actions Optional subset of actions to include. Values may match `actions$id`
 #'   and, if present, `actions$action_set`.
 #' @param alias Optional identifier for multi-objective workflows.
 #'
-#' @return Updated `Data` object.
+#' @return Updated `Problem` object.
 #' @export
 add_objective_max_profit <- function(
     x,
@@ -145,7 +145,7 @@ add_objective_max_profit <- function(
     actions = NULL,
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   action_subset <- NULL
   if (!is.null(actions)) {
@@ -173,7 +173,7 @@ add_objective_max_profit <- function(
 #' Specify an objective that maximizes net profit, optionally restricting the
 #' profit and action-cost components to a subset of actions.
 #'
-#' @param x A `Data` object.
+#' @param x A `Problem` object.
 #' @param profit_col Character. Profit column in `x$data$dist_profit`.
 #' @param include_pu_cost Logical. If `TRUE`, subtract planning-unit costs.
 #' @param include_action_cost Logical. If `TRUE`, subtract action costs.
@@ -181,7 +181,7 @@ add_objective_max_profit <- function(
 #'   Values may match `actions$id` and, if present, `actions$action_set`.
 #' @param alias Optional identifier for multi-objective workflows.
 #'
-#' @return Updated `Data` object.
+#' @return Updated `Problem` object.
 #' @export
 add_objective_max_net_profit <- function(
     x,
@@ -191,7 +191,7 @@ add_objective_max_net_profit <- function(
     actions = NULL,
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   action_subset <- NULL
   if (!is.null(actions)) {
@@ -220,12 +220,12 @@ add_objective_max_net_profit <- function(
 #' @description
 #' Specify an objective that minimizes planning-unit fragmentation over a spatial relation.
 #'
-#' @param x A `Data` object.
+#' @param x A `Problem` object.
 #' @param relation_name Character. Name of the spatial relation.
 #' @param weight_multiplier Numeric >= 0. Multiplier applied to relation weights.
 #' @param alias Optional identifier for multi-objective workflows.
 #'
-#' @return Updated `Data` object.
+#' @return Updated `Problem` object.
 #' @export
 add_objective_min_fragmentation <- function(
     x,
@@ -233,7 +233,7 @@ add_objective_min_fragmentation <- function(
     weight_multiplier = 1,
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   relation_name <- as.character(relation_name)[1]
   weight_multiplier <- as.numeric(weight_multiplier)[1]
@@ -273,7 +273,7 @@ add_objective_min_fragmentation <- function(
 #' a spatial relation. The objective can optionally be restricted to a subset
 #' of actions and/or weighted by action.
 #'
-#' @param x A `Data` object.
+#' @param x A `Problem` object.
 #' @param relation_name Character. Name of the spatial relation.
 #' @param weight_multiplier Numeric >= 0. Multiplier applied to relation weights.
 #' @param action_weights Optional action weights. Either a named numeric vector
@@ -282,7 +282,7 @@ add_objective_min_fragmentation <- function(
 #'   and, if present, `actions$action_set`.
 #' @param alias Optional identifier for multi-objective workflows.
 #'
-#' @return Updated `Data` object.
+#' @return Updated `Problem` object.
 #' @export
 add_objective_min_action_fragmentation <- function(
     x,
@@ -292,7 +292,7 @@ add_objective_min_action_fragmentation <- function(
     actions = NULL,
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   action_subset <- NULL
   if (!is.null(actions)) {
@@ -322,13 +322,13 @@ add_objective_min_action_fragmentation <- function(
 #' @description
 #' Specify an objective that maximizes total representation across a subset of features.
 #'
-#' @param x A `Data` object.
+#' @param x A `Problem` object.
 #' @param amount_col Character. Column in `dist_features` containing amounts.
 #' @param features Optional subset of features to include. Values may match
 #'   `features$id` and, if present, `features$name`.
 #' @param alias Optional identifier for multi-objective workflows.
 #'
-#' @return Updated `Data` object.
+#' @return Updated `Problem` object.
 #' @export
 add_objective_max_representation <- function(
     x,
@@ -336,7 +336,7 @@ add_objective_max_representation <- function(
     features = NULL,
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   feature_subset <- NULL
   if (!is.null(features)) {
@@ -371,14 +371,14 @@ add_objective_max_representation <- function(
 #' `x$data$dist_features`. Optionally, the objective can be restricted to a
 #' subset of features.
 #'
-#' @param x A `Data` object.
+#' @param x A `Problem` object.
 #' @param impact_col Character. Column in `x$data$dist_features` containing the
 #'   per-(pu,feature) impact amount. Default `"amount"`.
 #' @param features Optional subset of features to include. Can be feature ids
 #'   and, if available, feature names.
 #' @param alias Optional alias for multi-objective workflows.
 #'
-#' @return Updated `Data` object.
+#' @return Updated `Problem` object.
 #' @export
 add_objective_min_intervention_impact <- function(
     x,
@@ -387,7 +387,7 @@ add_objective_min_intervention_impact <- function(
     actions = NULL,
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   impact_col <- as.character(impact_col)[1]
   if (is.na(impact_col) || !nzchar(impact_col)) {

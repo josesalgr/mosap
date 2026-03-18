@@ -13,7 +13,7 @@ add_objective_min_cost(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{include_pu_cost}{Logical. If \code{TRUE}, include planning-unit costs.}
 
@@ -33,9 +33,9 @@ Values may match \code{actions$id} and, if present, \code{actions$action_set}.}
 \item{sense}{Character. Either \code{"min"} or \code{"max"}.}
 }
 \value{
-The updated \code{Data} object.
+The updated \code{Problem} object.
 
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Internal helper used by objective setter functions to optionally register an objective

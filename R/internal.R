@@ -348,7 +348,6 @@ available_to_solve <- function(package = ""){
 # -------------------------------------------------------------------------
 # Internal helpers TARGETS
 # -------------------------------------------------------------------------
-
 .pa_parse_targets <- function(x, targets) {
   feats <- x$data$features
   if (is.null(feats) || nrow(feats) == 0) stop("x$data$features is missing/empty.", call. = FALSE)
@@ -357,6 +356,11 @@ available_to_solve <- function(package = ""){
   feat_ids <- as.numeric(feats$id)
   feat_names <- if ("name" %in% names(feats)) as.character(feats$name) else rep(NA_character_, length(feat_ids))
 
+  .feature_name_from_id <- function(fid) {
+    fid <- as.numeric(fid)
+    feat_names[match(fid, feat_ids)]
+  }
+
   # helper: map a feature identifier (id or name) to numeric id
   .map_feature <- function(v) {
     if (is.factor(v)) v <- as.character(v)
@@ -364,12 +368,13 @@ available_to_solve <- function(package = ""){
     if (is.numeric(v) || is.integer(v)) {
       v <- as.numeric(v)
       bad <- v[!v %in% feat_ids]
-      if (length(bad) > 0) stop("Unknown feature id(s): ", paste(unique(bad), collapse = ", "), call. = FALSE)
+      if (length(bad) > 0) {
+        stop("Unknown feature id(s): ", paste(unique(bad), collapse = ", "), call. = FALSE)
+      }
       return(v)
     }
 
     if (is.character(v)) {
-      # if looks numeric, try as id first
       sup <- suppressWarnings(as.numeric(v))
       is_numlike <- !is.na(sup) & nzchar(v)
       out <- rep(NA_real_, length(v))
@@ -380,7 +385,6 @@ available_to_solve <- function(package = ""){
         if (length(bad) == 0) out[is_numlike] <- vv
       }
 
-      # map remaining by name
       need_name <- is.na(out)
       if (any(need_name)) {
         if (!("name" %in% names(feats))) {
@@ -405,6 +409,20 @@ available_to_solve <- function(package = ""){
     stop("Unsupported feature identifier type in targets.", call. = FALSE)
   }
 
+  .finalize_targets <- function(f, t) {
+    dt <- data.frame(
+      feature = as.numeric(f),
+      feature_name = .feature_name_from_id(f),
+      target_raw = as.numeric(t),
+      stringsAsFactors = FALSE
+    )
+    dt <- dt[order(dt$feature), , drop = FALSE]
+    if (anyDuplicated(dt$feature)) {
+      stop("Duplicate targets for the same feature. Please de-duplicate.", call. = FALSE)
+    }
+    dt
+  }
+
   # 1) data.frame(feature, target)
   if (inherits(targets, "data.frame")) {
     if (!all(c("feature", "target") %in% names(targets))) {
@@ -413,11 +431,7 @@ available_to_solve <- function(package = ""){
     f <- .map_feature(targets$feature)
     t <- as.numeric(targets$target)
     if (any(is.na(t))) stop("Targets contain NA values.", call. = FALSE)
-
-    dt <- data.frame(feature = f, target_raw = t, stringsAsFactors = FALSE)
-    dt <- dt[order(dt$feature), , drop = FALSE]
-    if (anyDuplicated(dt$feature)) stop("Duplicate targets for the same feature. Please de-duplicate.", call. = FALSE)
-    return(dt)
+    return(.finalize_targets(f, t))
   }
 
   # 2) matrix (one column) with rownames
@@ -429,22 +443,20 @@ available_to_solve <- function(package = ""){
     rn <- rownames(targets)
     if (!is.null(rn) && length(rn) == length(t)) {
       f <- .map_feature(rn)
-      dt <- data.frame(feature = f, target_raw = t, stringsAsFactors = FALSE)
-      dt <- dt[order(dt$feature), , drop = FALSE]
-      if (anyDuplicated(dt$feature)) stop("Duplicate targets for the same feature. Please de-duplicate.", call. = FALSE)
-      return(dt)
+      return(.finalize_targets(f, t))
     }
 
-    # no rownames: assume feature order
-    if (length(t) != length(feat_ids)) stop("Matrix targets without rownames must have nrow = number of features.", call. = FALSE)
-    return(data.frame(feature = feat_ids, target_raw = t, stringsAsFactors = FALSE))
+    if (length(t) != length(feat_ids)) {
+      stop("Matrix targets without rownames must have nrow = number of features.", call. = FALSE)
+    }
+    return(.finalize_targets(feat_ids, t))
   }
 
   # 3) scalar numeric -> recycle
   if (is.numeric(targets) && length(targets) == 1) {
     t <- as.numeric(targets)
     if (is.na(t)) stop("Target is NA.", call. = FALSE)
-    return(data.frame(feature = feat_ids, target_raw = rep(t, length(feat_ids)), stringsAsFactors = FALSE))
+    return(.finalize_targets(feat_ids, rep(t, length(feat_ids))))
   }
 
   # 4) numeric vector
@@ -455,28 +467,22 @@ available_to_solve <- function(package = ""){
     nm <- names(targets)
     if (!is.null(nm) && any(nzchar(nm))) {
       f <- .map_feature(nm)
-      dt <- data.frame(feature = f, target_raw = t, stringsAsFactors = FALSE)
-      dt <- dt[order(dt$feature), , drop = FALSE]
-      if (anyDuplicated(dt$feature)) stop("Duplicate targets for the same feature name/id.", call. = FALSE)
-      return(dt)
+      return(.finalize_targets(f, t))
     }
 
-    # unnamed: assume feature order
     if (length(t) != length(feat_ids)) {
       stop("Un-named numeric targets must have length equal to number of features.", call. = FALSE)
     }
-    return(data.frame(feature = feat_ids, target_raw = t, stringsAsFactors = FALSE))
+    return(.finalize_targets(feat_ids, t))
   }
 
-  # 5) character -> parse "feature=target" or "target"?
+  # 5) character
   if (is.character(targets)) {
-    # allow a single proportion/number as character
     if (length(targets) == 1 && grepl("^\\s*[-+]?[0-9]*\\.?[0-9]+\\s*$", targets)) {
       t <- as.numeric(targets)
-      return(data.frame(feature = feat_ids, target_raw = rep(t, length(feat_ids)), stringsAsFactors = FALSE))
+      return(.finalize_targets(feat_ids, rep(t, length(feat_ids))))
     }
 
-    # parse "feat=val" pairs
     if (any(grepl("=", targets, fixed = TRUE))) {
       parts <- strsplit(targets, "=", fixed = TRUE)
       feat_part <- vapply(parts, `[[`, character(1), 1)
@@ -484,10 +490,7 @@ available_to_solve <- function(package = ""){
       f <- .map_feature(trimws(feat_part))
       t <- as.numeric(trimws(val_part))
       if (any(is.na(t))) stop("Could not parse numeric target values from character input.", call. = FALSE)
-      dt <- data.frame(feature = f, target_raw = t, stringsAsFactors = FALSE)
-      dt <- dt[order(dt$feature), , drop = FALSE]
-      if (anyDuplicated(dt$feature)) stop("Duplicate targets for the same feature.", call. = FALSE)
-      return(dt)
+      return(.finalize_targets(f, t))
     }
 
     stop("Unsupported character targets format. Use 'feature=target' pairs or a single numeric string.", call. = FALSE)
@@ -497,7 +500,7 @@ available_to_solve <- function(package = ""){
 }
 
 .pa_store_targets <- function(x, targets_df, overwrite = FALSE) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   stopifnot(inherits(targets_df, "data.frame"))
   stopifnot(all(c("feature", "type", "target_value") %in% names(targets_df)))
 
@@ -737,7 +740,7 @@ available_to_solve <- function(package = ""){
                                          allow_multiple_rows_per_feature = TRUE,
                                          zero_tol = 1e-12) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   if (is.null(x$data$targets) || !inherits(x$data$targets, "data.frame") || nrow(x$data$targets) == 0) {
     return(invisible(x))
@@ -925,7 +928,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_refresh_model_snapshot <- function(x, drop_triplets = TRUE) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   if (is.null(x$data$model_ptr)) return(x)
 
@@ -978,7 +981,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_apply_action_max_per_pu_if_present <- function(x) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   spec <- x$data$constraints$action_max_per_pu %||% NULL
   if (is.null(spec)) return(invisible(x))
@@ -1038,7 +1041,7 @@ available_to_solve <- function(package = ""){
 }
 
 .pa_apply_area_constraints_if_present <- function(x) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   cons <- x$data$constraints %||% list()
   if (length(cons) == 0L) return(x)
@@ -1179,12 +1182,23 @@ available_to_solve <- function(package = ""){
 # Internal helpers CLASS
 # -------------------------------------------------------------------------
 
+# .pa_cli_theme <- function() {
+#   list(
+#     .h     = list("font-weight" = "bold", color = "#569746"),
+#     .cls   = list("font-weight" = "bold", color = "blue"),
+#     .code  = list(color = "green"),
+#     .muted = list(color = "grey60")
+#   )
+# }
 .pa_cli_theme <- function() {
   list(
     .h     = list("font-weight" = "bold", color = "#569746"),
-    .cls   = list("font-weight" = "bold", color = "blue"),
-    .code  = list(color = "green"),
-    .muted = list(color = "grey60")
+    .cls   = list("font-weight" = "bold", color = "#4C78A8"),
+    .code  = list(color = "#3A7D44"),
+    .muted = list(color = "grey60"),
+    .ok    = list(color = "#569746", "font-weight" = "bold"),
+    .warn  = list(color = "#C78A00", "font-weight" = "bold"),
+    .bad   = list(color = "#C0392B", "font-weight" = "bold")
   )
 }
 
@@ -1483,7 +1497,7 @@ available_to_solve <- function(package = ""){
                                output_file = NULL,
                                solver_params = NULL) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   defaults <- list(
     solver = "auto",
@@ -1563,214 +1577,6 @@ available_to_solve <- function(package = ""){
   out
 }
 
-.pa_model_plan <- function(self) {
-  args <- self$data$model_args %||% list()
-  sa   <- self$data$solve_args %||% list()
-
-  # ---- objective
-  objective_id <- args$objective_id %||% NA_character_
-  model_type   <- args$model_type %||% NA_character_
-  oargs        <- args$objective_args %||% list()
-
-  # ---- solver
-  solver <- sa$solver %||% "auto"
-
-  # ---- constraints: detect what is present/configured
-  constraints <- list()
-
-  # targets
-  t <- self$data$targets %||% NULL
-  if (inherits(t, "data.frame") && nrow(t) > 0) {
-    types <- if ("type" %in% names(t)) sort(unique(as.character(t$type))) else character(0)
-    constraints$targets <- list(
-      present = TRUE,
-      n = nrow(t),
-      types = types
-    )
-  } else {
-    constraints$targets <- list(present = FALSE)
-  }
-
-  # budget (propuesto: store in model_args$budget or model_args$constraints$budget)
-  # aquí lo detecto de ambas formas para compatibilidad
-  bud <- NULL
-  if (!is.null(args$constraints) && is.list(args$constraints) && !is.null(args$constraints$budget)) {
-    bud <- args$constraints$budget
-  } else if (!is.null(args$budget)) {
-    bud <- args$budget
-  }
-  if (!is.null(bud) && is.finite(as.numeric(bud)) && as.numeric(bud) > 0) {
-    constraints$budget <- list(present = TRUE, value = as.numeric(bud))
-  } else {
-    constraints$budget <- list(present = FALSE)
-  }
-
-  # boundary/BLM (si existe config)
-  blm <- args$blm %||% NULL
-  if (!is.null(blm) && is.finite(as.numeric(blm)) && as.numeric(blm) != 0) {
-    constraints$blm <- list(present = TRUE, value = as.numeric(blm))
-  } else {
-    constraints$blm <- list(present = FALSE)
-  }
-
-  # locks (ya existen en tablas; esto es “presence info”, no constraint config)
-  # PU locks
-  pu <- self$data$pu
-  has_pu_locks <- !is.null(pu) && any(names(pu) %in% c("locked_in", "locked_out")) &&
-    (any(pu$locked_in %||% FALSE) || any(pu$locked_out %||% FALSE))
-  constraints$pu_locks <- list(present = isTRUE(has_pu_locks))
-
-  # action locks (status in dist_actions)
-  da <- self$data$dist_actions
-  has_action_locks <- !is.null(da) && "status" %in% names(da) && any(da$status %in% c(2L, 3L), na.rm = TRUE)
-  constraints$action_locks <- list(present = isTRUE(has_action_locks))
-
-  # ---- readiness checks (lightweight)
-  checks <- character(0)
-
-  if (!is.na(objective_id) && identical(objective_id, "max_benefit")) {
-    de <- self$data$dist_effects %||% NULL
-    if (is.null(de) || .pa_nrow0(de) == 0 || !("benefit" %in% names(de))) {
-      checks <- c(checks, "dist_effects: {.red missing} 'benefit' (required by max_benefit)")
-    }
-  } else if (!is.na(objective_id) && identical(objective_id, "min_loss")) {
-    de <- self$data$dist_effects %||% NULL
-    if (is.null(de) || .pa_nrow0(de) == 0 || !("loss" %in% names(de))) {
-      checks <- c(checks, "dist_effects: {.red missing} 'loss' (required by min_loss)")
-    }
-  } else if (!is.na(objective_id) && identical(objective_id, "max_profit")) {
-    if (is.null(self$data$dist_profit) || .pa_nrow0(self$data$dist_profit) == 0) {
-      checks <- c(checks, "dist_profit: {.red missing} (required by max_profit)")
-    }
-  } else if (!is.na(objective_id) && identical(objective_id, "max_net_profit")) {
-    if (is.null(self$data$dist_profit) || .pa_nrow0(self$data$dist_profit) == 0) {
-      checks <- c(checks, "dist_profit: {.red missing} (required by max_net_profit)")
-    }
-  }
-
-  # targets checks (basic)
-  if (inherits(t, "data.frame") && nrow(t) > 0 && "type" %in% names(t)) {
-    bad <- setdiff(sort(unique(as.character(t$type))), c("conservation", "recovery", "mixed"))
-    if (length(bad) > 0) {
-      checks <- c(checks, paste0("targets$type: {.red invalid} -> ", paste(bad, collapse = ", ")))
-    }
-  }
-
-  list(
-    objective_id = objective_id,
-    model_type = model_type,
-    objective_args = oargs,
-    solver = solver,
-    solve_args = sa,
-    constraints = constraints,
-    checks = checks
-  )
-}
-
-
-.pa_print_model_section <- function(self, ch) {
-  mp <- .pa_model_plan(self)
-
-  cli::cli_text("{ch$l}{ch$b}{.h model}", .envir = environment())
-
-  built <- !is.null(self$data$model_ptr)
-  if (built) {
-    d <- .pa_model_dims(self)
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}status:         {.green built}",
-                  .envir = environment())
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}dimensions:     {d$n_con} constraints, {d$n_var} vars, {d$nnz} nnz",
-                  .envir = environment())
-  } else {
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}status:         {.muted not built yet} (will build in solve())",
-                  .envir = environment())
-  }
-
-  # objective
-  if (is.na(mp$objective_id)) {
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}objective:      {.yellow not set} (defaults to {.code min_cost})",
-                  .envir = environment())
-  } else {
-    mt <- ifelse(is.na(mp$model_type), "{.muted unknown}", paste0("{.code ", mp$model_type, "}"))
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}objective:      {.code {mp$objective_id}} ({mt})",
-                  .envir = environment())
-  }
-
-  # constraints summary
-  con <- mp$constraints %||% list()
-  cli::cli_text(" {ch$v}{ch$j}{ch$b}constraints:",
-                .envir = environment())
-
-  # targets
-  if (isTRUE(con$targets$present %||% FALSE)) {
-    n <- con$targets$n %||% 0L
-    tt <- con$targets$types %||% character(0)
-    tt_txt <- if (length(tt) == 0) "{.muted unknown types}" else paste(tt, collapse = ", ")
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}  - targets:    {n} rows ({tt_txt})",
-                  .envir = environment())
-  } else {
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}  - targets:    {.muted none}",
-                  .envir = environment())
-  }
-
-  # budget
-  if (isTRUE(con$budget$present %||% FALSE)) {
-    bv <- con$budget$value
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}  - budget:     {bv}",
-                  .envir = environment())
-  } else {
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}  - budget:     {.muted none}",
-                  .envir = environment())
-  }
-
-  # BLM
-  if (isTRUE(con$blm$present %||% FALSE)) {
-    blm <- con$blm$value
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}  - blm:        {blm}",
-                  .envir = environment())
-  } else {
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}  - blm:        {.muted none}",
-                  .envir = environment())
-  }
-
-  # locks presence
-  cli::cli_text(" {ch$v}{ch$j}{ch$b}  - pu_locks:   {if (isTRUE(con$pu_locks$present %||% FALSE)) '{.code present}' else '{.muted none}'}",
-                .envir = environment())
-  cli::cli_text(" {ch$v}{ch$j}{ch$b}  - action_locks:{if (isTRUE(con$action_locks$present %||% FALSE)) '{.code present}' else '{.muted none}'}",
-                .envir = environment())
-
-  # solver
-  sa <- mp$solve_args %||% list()
-  if (length(sa) == 0) {
-    cli::cli_text(" {ch$v}{ch$l}{ch$b}solver:         {.muted not set} (auto)",
-                  .envir = environment())
-  } else {
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}solver:         {.code {mp$solver}}",
-                  .envir = environment())
-    gl <- sa$gap_limit %||% 0
-    tl <- sa$time_limit %||% .Machine$integer.max
-    cc <- sa$cores %||% 2L
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}gap/time/cores: {gl} / {tl} / {cc}",
-                  .envir = environment())
-  }
-
-  # checks
-  if (length(mp$checks) > 0) {
-    cli::cli_text(" {ch$v}{ch$l}{ch$b}checks:         ",
-                  .envir = environment())
-    for (i in seq_along(mp$checks)) {
-      prefix <- if (i < length(mp$checks)) "{ch$v}{ch$j}{ch$b}" else "{ch$v}{ch$l}{ch$b}"
-      cli::cli_text(paste0(" ", prefix, mp$checks[i]),
-                    .envir = environment())
-    }
-  } else {
-    cli::cli_text(" {ch$v}{ch$l}{ch$b}checks:         {.green ok}",
-                  .envir = environment())
-  }
-
-  invisible(TRUE)
-}
-
-
 # ------------------------------------------------------------
 # Legacy fallback: build 1 action per threat + effects from threats/sensitivity
 # ------------------------------------------------------------
@@ -1779,7 +1585,7 @@ available_to_solve <- function(package = ""){
 #                                                  overwrite = FALSE,
 #                                                  benefit_exponent = 1,     # NUEVO
 #                                                  curve_segments = 3L) {
-#   stopifnot(inherits(x, "Data"))
+#   stopifnot(inherits(x, "Problem"))
 #
 #   # already has actions?
 #   if (!overwrite && !is.null(x$data$actions) && inherits(x$data$actions, "data.frame") && nrow(x$data$actions) > 0) {
@@ -2028,7 +1834,7 @@ available_to_solve <- function(package = ""){
 #   }
 #
 #   # ------------------------------------------------------------
-#   # 4) Store into Data
+#   # 4) Store into Problem
 #   # ------------------------------------------------------------
 #   x$data$actions <- actions
 #   x$data$dist_actions <- dist_actions
@@ -2075,7 +1881,7 @@ available_to_solve <- function(package = ""){
 #
 # .pa_targets_from_features_legacy <- function(x, overwrite = FALSE, warn = TRUE) {
 #
-#   stopifnot(inherits(x, "Data"))
+#   stopifnot(inherits(x, "Problem"))
 #
 #   fmt <- x$data$meta$input_format %||% NA_character_
 #   if (!identical(fmt, "legacy")) {
@@ -2164,7 +1970,7 @@ available_to_solve <- function(package = ""){
 # Internal helpers SOLUTIONS
 # -------------------------------------------------------------------------
 .pa_extract_solution_tables <- function(x, sol, threshold = 0.5) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   stopifnot(is.numeric(sol))
 
   # --- get model list (snapshot) or from ptr
@@ -2445,7 +2251,7 @@ available_to_solve <- function(package = ""){
 # Internal helpers AREAS
 # -------------------------------------------------------------------------
 .pa_get_area_vec <- function(x, area_col = NULL, area_unit = c("m2", "ha", "km2")) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   area_unit <- match.arg(area_unit)
 
   pu <- x$data$pu
@@ -2539,7 +2345,7 @@ available_to_solve <- function(package = ""){
         "Could not retrieve planning unit area.\n",
         "No usable area column was found in x$data$pu, and no spatial geometry is available ",
         "to derive area internally.\n",
-        "Provide `area_col` explicitly or build the Data object with spatial information.",
+        "Provide `area_col` explicitly or build the Problem object with spatial information.",
         call. = FALSE
       )
     }
@@ -2598,7 +2404,7 @@ available_to_solve <- function(package = ""){
 
 # helper: ensure model built and model_list snapshot available
 .pa_ensure_model_snapshot <- function(x) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   if (is.null(x$data$model_ptr)) {
     x <- .pa_build_model(x)
@@ -2628,7 +2434,7 @@ available_to_solve <- function(package = ""){
 ) {
   sense <- match.arg(sense)
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   if (is.null(x$data$model_ptr)) {
     stop("Model pointer missing. Build model first.", call. = FALSE)
   }
@@ -2830,7 +2636,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_model_frag_vars_summary <- function(x) {
-  if (!inherits(x, "Data")) return(NULL)
+  if (!inherits(x, "Problem")) return(NULL)
   ml <- x$data$model_list
   if (is.null(ml) || !is.list(ml)) return(NULL)
 
@@ -3365,10 +3171,10 @@ available_to_solve <- function(package = ""){
   # }
 
   # =========================
-  # build Data object (FIXED: assign to x and return it)
+  # build Problem object (FIXED: assign to x and return it)
   # =========================
   x <- pproto(
-    NULL, Data,
+    NULL, Problem,
     data = list(
       pu = pu,
       features = features,
@@ -3452,7 +3258,7 @@ available_to_solve <- function(package = ""){
     objective_args = list(),
     sense = c("min", "max")
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   if (is.null(alias)) return(x)
 
@@ -3514,7 +3320,7 @@ available_to_solve <- function(package = ""){
   x
 }
 
-# internal registry for MO objectives inside Data
+# internal registry for MO objectives inside Problem
 .pa_init_objectives <- function(x) {
   if (is.null(x$data$objectives) || !is.list(x$data$objectives)) {
     x$data$objectives <- list()
@@ -3531,7 +3337,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_set_objective_linear <- function(x, obj, modelsense = c("min", "max")) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   modelsense <- match.arg(modelsense)
 
   # guarda runtime update para que .pa_apply_runtime_updates_to_model() lo aplique
@@ -3545,7 +3351,7 @@ available_to_solve <- function(package = ""){
 }
 
 .pa_mark_mo_needs <- function(x, needs) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   x$data$mo <- x$data$mo %||% list()
   x$data$mo$needs <- modifyList(x$data$mo$needs %||% list(), needs)
   x$data$meta$model_dirty <- TRUE
@@ -3629,7 +3435,7 @@ available_to_solve <- function(package = ""){
 .pa_has_sf <- function() requireNamespace("sf", quietly = TRUE)
 
 .pa_ensure_pu_index <- function(x) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   if (is.null(x$data$pu) || !inherits(x$data$pu, "data.frame")) {
     stop("x$data$pu is missing. Create the problem with inputData()/inputDataSpatial().", call. = FALSE)
   }
@@ -3650,7 +3456,7 @@ available_to_solve <- function(package = ""){
 }
 
 .pa_store_relation <- function(x, rel, name) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
     x$data$spatial_relations <- list()
   }
@@ -3660,7 +3466,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_coords_from_input <- function(x, coords = NULL) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   if (!is.null(coords)) {
     if (inherits(coords, "data.frame")) {
@@ -3713,7 +3519,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_get_pu_sf_aligned <- function(x, pu_sf = NULL, arg_name = "pu_sf") {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   x <- .pa_ensure_pu_index(x)
 
   if (is.null(pu_sf)) pu_sf <- x$data$pu_sf
@@ -3787,7 +3593,7 @@ available_to_solve <- function(package = ""){
 }
 
 .pa_build_model_init_needs <- function(x) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   if (is.null(x$data$model_args) || !is.list(x$data$model_args)) x$data$model_args <- list()
 
   needs <- x$data$model_args$needs
@@ -3804,7 +3610,7 @@ available_to_solve <- function(package = ""){
 }
 
 .pa_build_model_set_needs_from_objective <- function(x) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   args  <- x$data$model_args %||% list()
   mtype <- args$model_type %||% "minimizeCosts"
@@ -3882,7 +3688,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_build_model_prepare_needs_cpp <- function(x) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   .pa_abort <- function(...) stop(paste0(...), call. = FALSE)
 
   op    <- x$data$model_ptr
@@ -4059,7 +3865,7 @@ available_to_solve <- function(package = ""){
 }
 
 .pa_clone_data <- function(x, drop_model = TRUE) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   # crear un NUEVO proto heredando de x
   y <- pproto(NULL, x)
@@ -4085,7 +3891,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_log_add <- function(x, key, value) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   key <- as.character(key)[1]
   if (is.na(key) || !nzchar(key)) {
@@ -4110,7 +3916,7 @@ available_to_solve <- function(package = ""){
 
 
 .pa_resolve_action_subset <- function(x, subset = NULL) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   acts <- x$data$actions
   if (is.null(acts) || !inherits(acts, "data.frame") || nrow(acts) == 0) {
@@ -4171,7 +3977,7 @@ NULL
     sense = c("min", "max"),
     alias = NULL
 ) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   sense <- match.arg(sense)
 
   x <- .pa_clone_data(x)
@@ -4197,7 +4003,7 @@ NULL
 }
 
 .pa_resolve_feature_subset <- function(x, features = NULL) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   feats <- x$data$features
   if (is.null(feats) || !inherits(feats, "data.frame") || nrow(feats) == 0) {
@@ -4252,4 +4058,84 @@ NULL
   if (length(subset) == 0) return(NA_character_)
 
   paste(sort(subset), collapse = "|")
+}
+
+.pa_add_feature_labels <- function(df,
+                                   features_df,
+                                   feature_col = "feature",
+                                   internal_feature_col = "internal_feature",
+                                   out_col = "feature_name") {
+  stopifnot(is.data.frame(df), is.data.frame(features_df))
+
+  if (nrow(df) == 0) {
+    df[[out_col]] <- character(0)
+    return(df)
+  }
+
+  if (!("name" %in% names(features_df))) {
+    df[[out_col]] <- rep(NA_character_, nrow(df))
+    return(df)
+  }
+
+  out <- rep(NA_character_, nrow(df))
+
+  # Prefer external feature id
+  if (feature_col %in% names(df) && "id" %in% names(features_df)) {
+    m <- match(df[[feature_col]], features_df$id)
+    ok <- !is.na(m)
+    out[ok] <- as.character(features_df$name[m[ok]])
+  }
+
+  # Fill remaining using internal id
+  if (anyNA(out) &&
+      internal_feature_col %in% names(df) &&
+      "internal_id" %in% names(features_df)) {
+    miss <- which(is.na(out))
+    m2 <- match(df[[internal_feature_col]][miss], features_df$internal_id)
+    ok2 <- !is.na(m2)
+    out[miss[ok2]] <- as.character(features_df$name[m2[ok2]])
+  }
+
+  df[[out_col]] <- out
+  df
+}
+
+.pa_add_action_labels <- function(df,
+                                  actions_df,
+                                  action_col = "action",
+                                  internal_action_col = "internal_action",
+                                  out_col = "action_name") {
+  stopifnot(is.data.frame(df), is.data.frame(actions_df))
+
+  if (nrow(df) == 0) {
+    df[[out_col]] <- character(0)
+    return(df)
+  }
+
+  if (!("name" %in% names(actions_df))) {
+    df[[out_col]] <- rep(NA_character_, nrow(df))
+    return(df)
+  }
+
+  out <- rep(NA_character_, nrow(df))
+
+  # Prefer external action id
+  if (action_col %in% names(df) && "id" %in% names(actions_df)) {
+    m <- match(df[[action_col]], actions_df$id)
+    ok <- !is.na(m)
+    out[ok] <- as.character(actions_df$name[m[ok]])
+  }
+
+  # Fill remaining using internal id
+  if (anyNA(out) &&
+      internal_action_col %in% names(df) &&
+      "internal_id" %in% names(actions_df)) {
+    miss <- which(is.na(out))
+    m2 <- match(df[[internal_action_col]][miss], actions_df$internal_id)
+    ok2 <- !is.na(m2)
+    out[miss[ok2]] <- as.character(actions_df$name[m2[ok2]])
+  }
+
+  df[[out_col]] <- out
+  df
 }

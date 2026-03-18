@@ -4,14 +4,14 @@
 #' @description
 #' Store a minimum selected area constraint to be applied later by the model builder.
 #'
-#' @param x A \code{Data} object.
+#' @param x A \code{Problem} object.
 #' @param area_min Numeric scalar \eqn{\ge 0}. Minimum area to select.
 #' @param area_col Optional character. Name of area column in \code{x$data$pu}.
 #' @param area_unit Character. One of \code{"m2"}, \code{"ha"}, or \code{"km2"}.
 #' @param name Character. Constraint name.
 #' @param overwrite Logical. Replace existing stored area_min constraint if present.
 #'
-#' @return Updated \code{Data} object.
+#' @return Updated \code{Problem} object.
 #' @export
 add_area_min_constraint <- function(x,
                                     area_min,
@@ -20,7 +20,7 @@ add_area_min_constraint <- function(x,
                                     name = "area_min",
                                     overwrite = FALSE) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   area_unit <- match.arg(area_unit)
 
   assertthat::assert_that(
@@ -63,14 +63,14 @@ add_area_min_constraint <- function(x,
 #' @description
 #' Store a maximum selected area constraint to be applied later by the model builder.
 #'
-#' @param x A \code{Data} object.
+#' @param x A \code{Problem} object.
 #' @param area_max Numeric scalar \eqn{\ge 0}. Maximum area to select.
 #' @param area_col Optional character. Name of area column in \code{x$data$pu}.
 #' @param area_unit Character. One of \code{"m2"}, \code{"ha"}, or \code{"km2"}.
 #' @param name Character. Constraint name.
 #' @param overwrite Logical. Replace existing stored area_max constraint if present.
 #'
-#' @return Updated \code{Data} object.
+#' @return Updated \code{Problem} object.
 #' @export
 add_area_max_constraint <- function(x,
                                     area_max,
@@ -79,7 +79,7 @@ add_area_max_constraint <- function(x,
                                     name = "area_max",
                                     overwrite = FALSE) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   area_unit <- match.arg(area_unit)
 
   assertthat::assert_that(

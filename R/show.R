@@ -18,9 +18,9 @@ NULL
 #'
 #' @rdname show
 #'
-#' @usage \S4method{show}{Data}(x)
+#' @usage \S4method{show}{Problem}(x)
 #'
-methods::setMethod("show", "Data",
+methods::setMethod("show", "Problem",
                    function(object) object$show())
 
 #' @name show

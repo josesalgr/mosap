@@ -56,7 +56,7 @@
 #' If \code{x$data$pu} contains a logical \code{locked_out} column, then all action pairs in those
 #' PUs are forced to \code{status = 3}.
 #'
-#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param x A \code{Problem} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
 #'   Must contain at least \code{x$data$pu}, \code{x$data$features}, and \code{x$data$dist_features}.
 #' @param actions A \code{data.frame} defining the action catalogue. Must contain a unique
 #'   \code{id} column (action identifiers). For backwards compatibility, a column named
@@ -84,7 +84,7 @@
 #' @param sort_actions Logical. If \code{TRUE}, sort \code{actions} by \code{id} before assigning
 #'   internal ids.
 #'
-#' @return The updated \code{Data} object with:
+#' @return The updated \code{Problem} object with:
 #' \itemize{
 #'   \item \code{x$data$actions}: action catalogue including \code{internal_id},
 #'   \item \code{x$data$dist_actions}: feasible \code{(pu, action)} pairs with columns
@@ -136,7 +136,7 @@
 #'
 #' @seealso \code{\link{inputData}}, \code{\link{inputDataSpatial}}
 #'
-#' @return The updated [data-class] object.
+#' @return The updated [problem-class] object.
 #' @export
 add_actions <- function(
     x,
@@ -310,7 +310,7 @@ add_actions <- function(
 
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
-  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Data object")
+  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Problem object")
   assertthat::assert_that(!is.null(x$data$pu), !is.null(x$data$features), !is.null(x$data$dist_features),
                           msg = "x must be created with inputData()/inputDataSpatial()")
 

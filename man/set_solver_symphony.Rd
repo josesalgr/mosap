@@ -18,7 +18,7 @@ set_solver_symphony(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{\link{inputData}} or
+\item{x}{A \code{Problem} object created with \code{\link{inputData}} or
 \code{\link{inputDataSpatial}}.}
 
 \item{...}{Additional solver-specific parameters passed as named arguments.
@@ -53,7 +53,7 @@ If \code{NULL}, the currently stored value is kept unchanged.}
 If \code{NULL}, the currently stored value is kept unchanged.}
 }
 \value{
-An updated \code{Data} object with SYMPHONY solver settings.
+An updated \code{Problem} object with SYMPHONY solver settings.
 }
 \description{
 Convenience wrapper around \code{\link{set_solver}} that sets

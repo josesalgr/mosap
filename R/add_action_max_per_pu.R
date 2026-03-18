@@ -9,7 +9,7 @@
 #' for each PU in the selected set.
 #'
 #' This function is \strong{data-only}: it records the constraint specification in the
-#' \code{Data} object but does not build or modify the optimization model. The constraint
+#' \code{Problem} object but does not build or modify the optimization model. The constraint
 #' is later translated into linear constraints by the model builder (e.g.,
 #' \code{.pa_build_model_apply_constraints()}).
 #'
@@ -29,7 +29,7 @@
 #' the function marks the model as dirty by setting \code{x$data$meta$model_dirty <- TRUE},
 #' signalling that the model should be rebuilt before solving.
 #'
-#' @param x A \code{Data} object created with \code{\link{inputData}} or
+#' @param x A \code{Problem} object created with \code{\link{inputData}} or
 #'   \code{\link{inputDataSpatial}}. Must already contain actions (i.e., run
 #'   \code{\link{add_actions}} first).
 #' @param max Integer scalar \eqn{\ge 0}. Maximum number of actions allowed per PU.
@@ -43,7 +43,7 @@
 #'   constraint stored in \code{x$data$constraints}. If \code{FALSE} (default) and a constraint
 #'   already exists, an error is raised.
 #'
-#' @return The updated \code{Data} object with \code{x$data$constraints$action_max_per_pu}
+#' @return The updated \code{Problem} object with \code{x$data$constraints$action_max_per_pu}
 #'   set to a list containing the constraint specification.
 #'
 #' @examples
@@ -81,7 +81,7 @@ add_action_max_per_pu <- function(
 ) {
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
-  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Data object")
+  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Problem object")
   assertthat::assert_that(!is.null(x$data$pu), msg = "x$data$pu is missing. Run inputData()/inputDataSpatial() first.")
   assertthat::assert_that(!is.null(x$data$dist_actions), msg = "No actions found. Run add_actions() first.")
   assertthat::assert_that(!is.null(x$data$actions), msg = "No action catalog found. Run add_actions() first.")

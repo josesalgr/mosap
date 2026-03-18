@@ -13,7 +13,7 @@ add_targets_relative(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{targets}{Target specification as proportions in \eqn{[0,1]}. See Details.}
 
@@ -29,7 +29,7 @@ overlap is handled by \code{.pa_store_targets()}.}
 and bookkeeping.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Add feature-level relative targets to a planning problem.

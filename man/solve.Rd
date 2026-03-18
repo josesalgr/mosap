@@ -7,7 +7,7 @@
 solve(x, ...)
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{inputData()} or \code{inputDataSpatial()}.}
+\item{x}{A \code{Problem} object created with \code{inputData()} or \code{inputDataSpatial()}.}
 
 \item{...}{Optional legacy solver arguments (deprecated).}
 }
@@ -15,6 +15,6 @@ solve(x, ...)
 A \code{Solution} object.
 }
 \description{
-Solves a model defined by a \code{Data} object. Solver configuration is read from
+Solves a model defined by a \code{Problem} object. Solver configuration is read from
 \code{x$data$solve_args} (typically set via \code{set_solver()} / \code{set_solver_*()}).
 }

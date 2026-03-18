@@ -1,18 +1,18 @@
 #' @include internal.R
 #'
-#' @title Build optimization model from Data
+#' @title Build optimization model from Problem
 #'
 #' @description
-#' Materializes (builds) the optimization model using the current state of the `Data` object:
+#' Materializes (builds) the optimization model using the current state of the `Problem` object:
 #' prepared data tables, stored objective settings, and stored constraints (e.g., targets).
 #'
-#' @param x Data object (class "Data") created with inputData()/inputDataSpatial().
+#' @param x Problem object (class "Problem") created with inputData()/inputDataSpatial().
 #'
-#' @return Updated `Data` object with model pointer and model snapshot.
+#' @return Updated `Problem` object with model pointer and model snapshot.
 #' @keywords internal
 .pa_build_model <- function(x) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   stopifnot(!is.null(x$data$pu))
   stopifnot(!is.null(x$data$dist_features))
 
@@ -368,6 +368,23 @@
       .pa_abort("dist_effects has feature ids not found in x$data$features$id (cannot derive internal_feature).")
     }
   }
+
+  de <- .pa_add_feature_labels(
+    df = de,
+    features_df = x$data$features,
+    feature_col = "feature",
+    internal_feature_col = "internal_feature",
+    out_col = "feature_name"
+  )
+
+  de <- .pa_add_action_labels(
+    df = de,
+    actions_df = x$data$actions,
+    action_col = "action",
+    internal_action_col = "internal_action",
+    out_col = "action_name"
+  )
+
   x$data$dist_effects_model <- de
 
 
@@ -645,7 +662,7 @@
 
 .pa_build_model_validate_locked_in_action_feasibility <- function(x) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   pu <- x$data$pu
   da <- x$data$dist_actions_model
@@ -791,7 +808,8 @@
   # ------------------------------------------------------------
   # Decide modelsense for the atomic objective we are activating
   # ------------------------------------------------------------
-  modelsense <- if (mtype %in% c("minimizeCosts","minimizeLosses",
+  modelsense <- if (mtype %in% c("minimizeCosts",
+                                 "minimizeLosses",
                                  "minimizeFragmentation",
                                  "minimizeActionFragmentation",
                                  "minimizeInterventionFragmentation",
@@ -1026,6 +1044,32 @@
 
     objective_id <- "min_action_fragmentation"
 
+  } else if (identical(mtype, "minimizeFragmentation")) {
+
+    if (!exists("rcpp_add_objective_min_fragmentation", mode = "function")) .pa_abort("Missing rcpp_add_objective_min_fragmentation().")
+
+    rel_name  <- as.character(oargs$relation_name %||% "boundary")[1]
+    rel       <- x$data$spatial_relations[[rel_name]]
+    if (is.null(rel)) .pa_abort("Missing spatial relation: ", rel_name)
+
+    rel_model <- x$data$spatial_relations_model[[rel_name]] %||% .pa_prepare_relation_model(rel)
+    x$data$spatial_relations_model <- x$data$spatial_relations_model %||% list()
+    x$data$spatial_relations_model[[rel_name]] <- rel_model
+
+    # IMPORTANT: prepare of aux vars (idempotent)
+    if (exists("rcpp_prepare_objective_min_fragmentation", mode = "function")) {
+      rcpp_prepare_objective_min_fragmentation(op, rel_model)
+    }
+
+    res <- rcpp_add_objective_min_fragmentation(
+      op,
+      relation_data = rel_model,
+      weight = 1.0 ,
+      weight_multiplier = as.numeric(oargs$weight_multiplier %||% 1)[1]
+    )
+
+    objective_id <- "min_fragmentation"
+
   } else if (identical(mtype, "minimizeInterventionImpact")) {
 
     if (!exists("rcpp_prepare_objective_min_intervention_impact", mode = "function")) {
@@ -1149,7 +1193,7 @@
 
 .pa_apply_action_max_per_pu_default <- function(x) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   da <- x$data$dist_actions_model
   if (is.null(da) || !inherits(da, "data.frame") || nrow(da) == 0) {

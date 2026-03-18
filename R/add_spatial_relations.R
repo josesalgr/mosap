@@ -57,7 +57,7 @@ NULL
 #' @title Add spatial relations (core)
 #'
 #' @description
-#' Register an externally computed spatial relation inside a \code{Data} object using the unified
+#' Register an externally computed spatial relation inside a \code{Problem} object using the unified
 #' internal representation. Most users should prefer the convenience wrappers:
 #' \code{\link{add_spatial_boundary}}, \code{\link{add_spatial_rook}}, \code{\link{add_spatial_queen}},
 #' \code{\link{add_spatial_knn}}, or \code{\link{add_spatial_distance}}.
@@ -71,7 +71,7 @@ NULL
 #' \code{duplicate_agg}. If \code{symmetric = TRUE}, the relation is expanded to a directed edge list
 #' by adding swapped copies for off-diagonal edges.
 #'
-#' @param x A [data-class] object created with [inputData()] or [inputDataSpatial()].
+#' @param x A [problem-class] object created with [inputData()] or [inputDataSpatial()].
 #' @param relations A \code{data.frame} describing edges. Must contain either:
 #' \itemize{
 #'   \item \code{pu1}, \code{pu2}, \code{weight} (external PU ids), or
@@ -87,7 +87,7 @@ NULL
 #' @param symmetric Logical. If \code{TRUE}, expands an undirected relation into a directed one by duplicating
 #' off-diagonal edges in both directions. Default \code{FALSE}.
 #'
-#' @return Updated [data-class] object with \code{x$data$spatial_relations[[name]]}.
+#' @return Updated [problem-class] object with \code{x$data$spatial_relations[[name]]}.
 #' @examples
 #' \dontrun{
 #' # Register an externally computed adjacency list:
@@ -104,7 +104,7 @@ add_spatial_relations <- function(x,
                                   duplicate_agg = c("sum", "max", "min", "mean"),
                                   symmetric = FALSE) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   x <- .pa_ensure_pu_index(x)
@@ -252,7 +252,7 @@ add_spatial_relations <- function(x,
 #' an "effective exposed boundary" (scaled by \code{edge_factor}). This is useful for objectives such as
 #' boundary-length modifier / fragmentation penalties where perimeter exposed to the outside should be counted.
 #'
-#' @param x A [data-class] object.
+#' @param x A [problem-class] object.
 #' @param boundary Optional \code{data.frame} describing boundaries. Accepted formats:
 #' \itemize{
 #'   \item \code{(id1, id2, boundary)} (Marxan-style), or
@@ -270,7 +270,7 @@ add_spatial_relations <- function(x,
 #' effective exposed boundary length.
 #' @param edge_factor Numeric \eqn{\ge 0}. Multiplier applied to exposed boundary when computing diagonal weights.
 #'
-#' @return Updated [data-class] object with a stored relation \code{x$data$spatial_relations[[name]]}.
+#' @return Updated [problem-class] object with a stored relation \code{x$data$spatial_relations[[name]]}.
 #' @examples
 #' \dontrun{
 #' # From a Marxan-style boundary table:
@@ -291,7 +291,7 @@ add_spatial_boundary <- function(x,
                                  include_self = TRUE,
                                  edge_factor = 1) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   x <- .pa_ensure_pu_index(x)
@@ -545,13 +545,13 @@ add_spatial_boundary <- function(x,
 #' Build and register a rook adjacency relation (shared edge) from planning-unit polygons.
 #' Rook adjacency detects pairs of polygons that share a non-zero-length boundary segment.
 #'
-#' @param x A [data-class] object created with [inputDataSpatial()].
+#' @param x A [problem-class] object created with [inputDataSpatial()].
 #' @param pu_sf Optional \code{sf} object with PU polygons and an \code{id} column. If \code{NULL},
 #' uses \code{x$data$pu_sf}.
 #' @param name Character name/key under which to store the relation.
 #' @param weight Numeric edge weight assigned to each rook adjacency (default 1).
 #'
-#' @return Updated [data-class] object.
+#' @return Updated [problem-class] object.
 #' @examples
 #' \dontrun{
 #' x <- x |> add_spatial_rook(name = "rook", weight = 1)
@@ -563,7 +563,7 @@ add_spatial_rook <- function(x,
                              name = "default",
                              weight = 1) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   x <- .pa_ensure_pu_index(x)
@@ -606,13 +606,13 @@ add_spatial_rook <- function(x,
 #' Build and register a queen adjacency relation (shared edge or shared vertex) from planning-unit polygons.
 #' Queen adjacency includes all rook neighbours plus corner-touching neighbours.
 #'
-#' @param x A [data-class] object created with [inputDataSpatial()].
+#' @param x A [problem-class] object created with [inputDataSpatial()].
 #' @param pu_sf Optional \code{sf} object with PU polygons and an \code{id} column. If \code{NULL},
 #' uses \code{x$data$pu_sf}.
 #' @param name Character name/key under which to store the relation.
 #' @param weight Numeric edge weight assigned to each queen adjacency (default 1).
 #'
-#' @return Updated [data-class] object.
+#' @return Updated [problem-class] object.
 #' @examples
 #' \dontrun{
 #' x <- x |> add_spatial_queen(name = "queen", weight = 1)
@@ -624,7 +624,7 @@ add_spatial_queen <- function(x,
                               name = "default",
                               weight = 1) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   x <- .pa_ensure_pu_index(x)
@@ -674,7 +674,7 @@ add_spatial_queen <- function(x,
 #' Edge weights can be constant or derived from distance using \code{weight_fn}.
 #' The stored relation is undirected by default (duplicates are collapsed).
 #'
-#' @param x A [data-class] object created with [inputData()] or [inputDataSpatial()].
+#' @param x A [problem-class] object created with [inputData()] or [inputDataSpatial()].
 #' @param coords Optional coordinates specification:
 #' \itemize{
 #'   \item a \code{data.frame(id, x, y)}, or
@@ -687,7 +687,7 @@ add_spatial_queen <- function(x,
 #' \code{"constant"}, \code{"inverse"}, or \code{"inverse_sq"}.
 #' @param eps Small numeric constant to avoid division by zero when using inverse weights.
 #'
-#' @return Updated [data-class] object.
+#' @return Updated [problem-class] object.
 #' @examples
 #' \dontrun{
 #' x <- x |> add_spatial_knn(k = 8, name = "knn8", weight_fn = "inverse")
@@ -701,7 +701,7 @@ add_spatial_knn <- function(x,
                             weight_fn = c("constant", "inverse", "inverse_sq"),
                             eps = 1e-9) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   x <- .pa_ensure_pu_index(x)
@@ -765,7 +765,7 @@ add_spatial_knn <- function(x,
 #' This constructor uses an \eqn{O(n^2)} distance computation and is therefore best suited to small or
 #' moderate numbers of planning units. For large instances, consider \code{\link{add_spatial_knn}} instead.
 #'
-#' @param x A [data-class] object created with [inputData()] or [inputDataSpatial()].
+#' @param x A [problem-class] object created with [inputData()] or [inputDataSpatial()].
 #' @param coords Optional coordinates specification (see \code{\link{add_spatial_knn}}).
 #' @param dmax Numeric. Maximum distance for an edge (must be finite and positive).
 #' @param name Character name/key under which to store the relation.
@@ -773,7 +773,7 @@ add_spatial_knn <- function(x,
 #' \code{"constant"}, \code{"inverse"}, or \code{"inverse_sq"}.
 #' @param eps Small numeric constant to avoid division by zero when using inverse weights.
 #'
-#' @return Updated [data-class] object.
+#' @return Updated [problem-class] object.
 #' @examples
 #' \dontrun{
 #' x <- x |> add_spatial_distance(dmax = 1000, name = "within_1km", weight_fn = "constant")
@@ -787,7 +787,7 @@ add_spatial_distance <- function(x,
                                  weight_fn = c("constant", "inverse", "inverse_sq"),
                                  eps = 1e-9) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   x <- .pa_ensure_pu_index(x)

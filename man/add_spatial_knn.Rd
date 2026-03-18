@@ -14,7 +14,7 @@ add_spatial_knn(
 )
 }
 \arguments{
-\item{x}{A \linkS4class{data} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \linkS4class{problem} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
 \item{coords}{Optional coordinates specification:
 \itemize{
@@ -33,7 +33,7 @@ If \code{NULL}, uses \code{x$data$pu_coords} or \code{x$data$pu$x/y}.}
 \item{eps}{Small numeric constant to avoid division by zero when using inverse weights.}
 }
 \value{
-Updated \linkS4class{data} object.
+Updated \linkS4class{problem} object.
 }
 \description{
 Build and register a k-nearest-neighbours (kNN) graph between planning units based on coordinates.

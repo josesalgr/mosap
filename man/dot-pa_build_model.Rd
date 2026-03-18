@@ -2,18 +2,18 @@
 % Please edit documentation in R/build_model.R
 \name{.pa_build_model}
 \alias{.pa_build_model}
-\title{Build optimization model from Data}
+\title{Build optimization model from Problem}
 \usage{
 .pa_build_model(x)
 }
 \arguments{
-\item{x}{Data object (class "Data") created with inputData()/inputDataSpatial().}
+\item{x}{Problem object (class "Problem") created with inputData()/inputDataSpatial().}
 }
 \value{
-Updated \code{Data} object with model pointer and model snapshot.
+Updated \code{Problem} object with model pointer and model snapshot.
 }
 \description{
-Materializes (builds) the optimization model using the current state of the \code{Data} object:
+Materializes (builds) the optimization model using the current state of the \code{Problem} object:
 prepared data tables, stored objective settings, and stored constraints (e.g., targets).
 }
 \keyword{internal}

@@ -17,7 +17,7 @@ set_method_epsilon_constraint(
 )
 }
 \arguments{
-\item{x}{A \code{Data} or \code{MOProblem} object.}
+\item{x}{A \code{Problem} or \code{MOProblem} object.}
 
 \item{primary}{Character scalar. Alias of the primary objective to optimize.}
 

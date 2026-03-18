@@ -19,9 +19,9 @@ NULL
 NULL
 
 #' @rdname print
-#' @method print Data
+#' @method print Problem
 #' @export
-print.Data <- function(x, ...) x$print()
+print.Problem <- function(x, ...) x$print()
 
 
 #' @rdname print

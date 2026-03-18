@@ -3,10 +3,10 @@
 #' @title Solve optimization model
 #'
 #' @description
-#' Solves a model defined by a \code{Data} object. Solver configuration is read from
+#' Solves a model defined by a \code{Problem} object. Solver configuration is read from
 #' \code{x$data$solve_args} (typically set via \code{set_solver()} / \code{set_solver_*()}).
 #'
-#' @param x A \code{Data} object created with \code{inputData()} or \code{inputDataSpatial()}.
+#' @param x A \code{Problem} object created with \code{inputData()} or \code{inputDataSpatial()}.
 #' @param ... Optional legacy solver arguments (deprecated).
 #'
 #' @return A \code{Solution} object.
@@ -16,9 +16,9 @@ solve <- function(x, ...) {
 }
 
 #' @export
-solve.Data <- function(x, ...) {
+solve.Problem <- function(x, ...) {
 
-  assertthat::assert_that(inherits(x, "Data"))
+  assertthat::assert_that(inherits(x, "Problem"))
 
   # ---- gather stored solve args (defaults + stored)
   dots <- list(...)
@@ -560,7 +560,7 @@ solve.Data <- function(x, ...) {
       sol_conservation = sol_conservation,
       tables = tables
     ),
-    Data = x
+    Problem = x
   )
 
   s

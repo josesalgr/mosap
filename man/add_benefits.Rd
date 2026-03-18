@@ -17,7 +17,7 @@ add_benefits(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+\item{x}{A \code{Problem} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
 Must contain \code{x$data$dist_actions} (run \code{\link{add_actions}} first).}
 
 \item{benefits}{Alias of \code{effects} for backwards compatibility.}
@@ -44,7 +44,7 @@ Default \code{FALSE}.}
 Default \code{TRUE}.}
 }
 \value{
-The updated \code{Data} object.
+The updated \code{Problem} object.
 }
 \description{
 Convenience wrapper around \code{\link{add_effects}} that keeps only rows with

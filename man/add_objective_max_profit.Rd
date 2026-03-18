@@ -12,7 +12,7 @@ add_objective_max_profit(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{profit_col}{Character. Profit column in \code{x$data$dist_profit}.}
 
@@ -22,7 +22,7 @@ and, if present, \code{actions$action_set}.}
 \item{alias}{Optional identifier for multi-objective workflows.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Specify an objective that maximizes total profit from selected \verb{(pu, action)} pairs.

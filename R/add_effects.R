@@ -46,7 +46,7 @@
 #' You can keep only beneficial effects (\code{benefit > 0}) or only losses (\code{loss > 0}) using \code{filter}.
 #' By default, rows with both \code{benefit == 0} and \code{loss == 0} are dropped unless \code{keep_zero = TRUE}.
 #'
-#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param x A \code{Problem} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
 #'   Must contain \code{x$data$dist_actions} (run \code{\link{add_actions}} first).
 #' @param effects Effect specification. One of:
 #' \itemize{
@@ -84,7 +84,7 @@
 #'     \item \code{"loss"}: keep only rows with \code{loss > 0}.
 #'   }
 #'
-#' @return The updated \code{Data} object with \code{x$data$dist_effects} created/updated, and
+#' @return The updated \code{Problem} object with \code{x$data$dist_effects} created/updated, and
 #'   metadata stored in \code{x$data$effects_meta}.
 #'
 #' @examples
@@ -142,7 +142,7 @@ add_effects <- function(
 
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
-  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Data object")
+  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Problem object")
   assertthat::assert_that(
     !is.null(x$data$pu), !is.null(x$data$features), !is.null(x$data$dist_features),
     msg = "x must be created with inputData()/inputDataSpatial()"
@@ -523,7 +523,24 @@ add_effects <- function(
   dist_effects <- base[, c("pu","action","feature","benefit","loss",
                            "internal_pu","internal_action","internal_feature"), drop = FALSE]
 
+  dist_effects <- .pa_add_feature_labels(
+    df = dist_effects,
+    features_df = feats,
+    feature_col = "feature",
+    internal_feature_col = "internal_feature",
+    out_col = "feature_name"
+  )
+
+  dist_effects <- .pa_add_action_labels(
+    df = dist_effects,
+    actions_df = acts,
+    action_col = "action",
+    internal_action_col = "internal_action",
+    out_col = "action_name"
+  )
+
   x$data$dist_effects <- dist_effects
+
   x$data$effects_meta <- list(
     stored_as = "benefit_loss",
     input_interpretation = effect_type,
@@ -546,7 +563,7 @@ add_effects <- function(
 #' @inheritParams add_effects
 #' @param benefits Alias of \code{effects} for backwards compatibility.
 #'
-#' @return The updated \code{Data} object.
+#' @return The updated \code{Problem} object.
 #'
 #' @export
 add_benefits <- function(
@@ -596,7 +613,7 @@ add_benefits <- function(
 #'
 #' @inheritParams add_effects
 #'
-#' @return The updated \code{Data} object.
+#' @return The updated \code{Problem} object.
 #'
 #' @export
 add_losses <- function(

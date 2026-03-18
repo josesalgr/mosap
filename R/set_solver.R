@@ -1,13 +1,13 @@
 #' Configure solver settings
 #'
 #' @description
-#' Store solver configuration inside a \code{Data} object so that
+#' Store solver configuration inside a \code{Problem} object so that
 #' \code{solve(x)} can run without repeating solver arguments.
 #'
 #' This function does not build or solve the optimization model. It only stores
 #' runtime options related to the solver backend.
 #'
-#' @param x A \code{Data} object created with \code{\link{inputData}} or
+#' @param x A \code{Problem} object created with \code{\link{inputData}} or
 #'   \code{\link{inputDataSpatial}}.
 #'
 #' @param solver Character string indicating the solver backend to use.
@@ -47,14 +47,14 @@
 #'
 #' @details
 #' The function updates the \code{solve_args} slot stored in the input
-#' \code{Data} object. Arguments set to \code{NULL} are not modified, so the
+#' \code{Problem} object. Arguments set to \code{NULL} are not modified, so the
 #' function can be used incrementally to update only selected solver options.
 #'
 #' Solver-specific parameters supplied through \code{solver_params} and
 #' \code{...} are merged with any previously stored parameters.
 #'
 #' @return
-#' An updated \code{Data} object with modified solver settings.
+#' An updated \code{Problem} object with modified solver settings.
 #'
 #' @seealso
 #' \code{\link{solve}},
@@ -91,7 +91,7 @@ set_solver <- function(x,
                        solver_params = list(),
                        ...) {
 
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   solver <- match.arg(solver)
 
   dots <- list(...)
@@ -160,7 +160,7 @@ set_solver <- function(x,
 #' @inheritParams set_solver
 #'
 #' @return
-#' An updated \code{Data} object with Gurobi solver settings.
+#' An updated \code{Problem} object with Gurobi solver settings.
 #'
 #' @seealso
 #' \code{\link{set_solver}},
@@ -205,7 +205,7 @@ set_solver_gurobi <- function(x, ..., solver_params = list(), gap_limit = NULL, 
 #' @inheritParams set_solver
 #'
 #' @return
-#' An updated \code{Data} object with CBC solver settings.
+#' An updated \code{Problem} object with CBC solver settings.
 #'
 #' @seealso
 #' \code{\link{set_solver}},
@@ -249,7 +249,7 @@ set_solver_cbc <- function(x, ..., solver_params = list(), gap_limit = NULL, tim
 #' @inheritParams set_solver
 #'
 #' @return
-#' An updated \code{Data} object with CPLEX solver settings.
+#' An updated \code{Problem} object with CPLEX solver settings.
 #'
 #' @seealso
 #' \code{\link{set_solver}},
@@ -293,7 +293,7 @@ set_solver_cplex <- function(x, ..., solver_params = list(), gap_limit = NULL, t
 #' @inheritParams set_solver
 #'
 #' @return
-#' An updated \code{Data} object with SYMPHONY solver settings.
+#' An updated \code{Problem} object with SYMPHONY solver settings.
 #'
 #' @seealso
 #' \code{\link{set_solver}},

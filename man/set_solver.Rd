@@ -19,7 +19,7 @@ set_solver(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{\link{inputData}} or
+\item{x}{A \code{Problem} object created with \code{\link{inputData}} or
 \code{\link{inputDataSpatial}}.}
 
 \item{solver}{Character string indicating the solver backend to use.
@@ -58,10 +58,10 @@ These are merged into \code{solver_params}. For example,
 \code{MIPFocus = 1} for Gurobi.}
 }
 \value{
-An updated \code{Data} object with modified solver settings.
+An updated \code{Problem} object with modified solver settings.
 }
 \description{
-Store solver configuration inside a \code{Data} object so that
+Store solver configuration inside a \code{Problem} object so that
 \code{solve(x)} can run without repeating solver arguments.
 
 This function does not build or solve the optimization model. It only stores
@@ -69,7 +69,7 @@ runtime options related to the solver backend.
 }
 \details{
 The function updates the \code{solve_args} slot stored in the input
-\code{Data} object. Arguments set to \code{NULL} are not modified, so the
+\code{Problem} object. Arguments set to \code{NULL} are not modified, so the
 function can be used incrementally to update only selected solver options.
 
 Solver-specific parameters supplied through \code{solver_params} and

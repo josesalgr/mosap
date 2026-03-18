@@ -27,7 +27,7 @@
 #' be applied when preparing model-ready tables (typically inside the model builder invoked by
 #' \code{solve()}).
 #'
-#' @param x A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+#' @param x A \code{Problem} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
 #'   Must contain \code{x$data$dist_actions} and \code{x$data$actions} (run \code{\link{add_actions}} first).
 #' @param profit Profit specification. One of:
 #' \itemize{
@@ -42,7 +42,7 @@
 #' @param na_to_zero Logical. If \code{TRUE}, treat missing profit values as 0 after joins/matching.
 #'   Default \code{TRUE}.
 #'
-#' @return The updated \code{Data} object with \code{x$data$dist_profit} created/updated.
+#' @return The updated \code{Problem} object with \code{x$data$dist_profit} created/updated.
 #'
 #' @examples
 #' \dontrun{
@@ -79,7 +79,7 @@ add_profit <- function(
 
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
-  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Data object")
+  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Problem object")
   assertthat::assert_that(!is.null(x$data$pu), msg = "x$data$pu is missing. Run inputData()/inputDataSpatial() first.")
   assertthat::assert_that(!is.null(x$data$dist_actions), msg = "No actions found. Run add_actions() first.")
   assertthat::assert_that(!is.null(x$data$actions), msg = "No action catalog found. Run add_actions() first.")

@@ -7,8 +7,8 @@
 set_method_weighted(x, aliases, weights, normalize = FALSE)
 }
 \arguments{
-\item{x}{A planning object (\code{Data}) or an existing \code{"MOProblem"}.
-If a \code{Data} object is provided, it is promoted to \code{"MOProblem"} via \code{.pamo_as_mo()}.}
+\item{x}{A planning object (\code{Problem}) or an existing \code{"MOProblem"}.
+If a \code{Problem} object is provided, it is promoted to \code{"MOProblem"} via \code{.pamo_as_mo()}.}
 
 \item{aliases}{\code{character}. Objective aliases to combine (e.g. \code{c("cost","frag")}).
 Each alias must refer to a registered atomic objective.}

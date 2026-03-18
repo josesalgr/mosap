@@ -13,7 +13,7 @@ add_action_max_per_pu(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{\link{inputData}} or
+\item{x}{A \code{Problem} object created with \code{\link{inputData}} or
 \code{\link{inputDataSpatial}}. Must already contain actions (i.e., run
 \code{\link{add_actions}} first).}
 
@@ -32,7 +32,7 @@ constraint stored in \code{x$data$constraints}. If \code{FALSE} (default) and a 
 already exists, an error is raised.}
 }
 \value{
-The updated \code{Data} object with \code{x$data$constraints$action_max_per_pu}
+The updated \code{Problem} object with \code{x$data$constraints$action_max_per_pu}
 set to a list containing the constraint specification.
 }
 \description{
@@ -42,7 +42,7 @@ planning unit (PU). The constraint has the form:
 for each PU in the selected set.
 
 This function is \strong{data-only}: it records the constraint specification in the
-\code{Data} object but does not build or modify the optimization model. The constraint
+\code{Problem} object but does not build or modify the optimization model. The constraint
 is later translated into linear constraints by the model builder (e.g.,
 \code{.pa_build_model_apply_constraints()}).
 }

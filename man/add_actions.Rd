@@ -17,7 +17,7 @@ add_actions(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+\item{x}{A \code{Problem} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
 Must contain at least \code{x$data$pu}, \code{x$data$features}, and \code{x$data$dist_features}.}
 
 \item{actions}{A \code{data.frame} defining the action catalogue. Must contain a unique
@@ -54,7 +54,7 @@ in all planning units? If \code{FALSE} and \code{include} is \code{NULL}, the fu
 internal ids.}
 }
 \value{
-The updated \code{Data} object with:
+The updated \code{Problem} object with:
 \itemize{
 \item \code{x$data$actions}: action catalogue including \code{internal_id},
 \item \code{x$data$dist_actions}: feasible \code{(pu, action)} pairs with columns
@@ -62,7 +62,7 @@ The updated \code{Data} object with:
 \item \code{x$data$index$pu} and \code{x$data$index$action}: id-to-internal-id mappings.
 }
 
-The updated \linkS4class{data} object.
+The updated \linkS4class{problem} object.
 }
 \description{
 Define the set of management actions, where they can be implemented (feasibility),

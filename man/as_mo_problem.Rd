@@ -7,7 +7,7 @@
 as_mo_problem(x)
 }
 \arguments{
-\item{x}{A \code{Data} object created by \code{prioriactions::inputData()} (or a compatible object).}
+\item{x}{A \code{Problem} object created by \code{prioriactions::inputData()} (or a compatible object).}
 }
 \value{
 An object of class \code{MOProblem}.

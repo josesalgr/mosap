@@ -13,7 +13,7 @@ add_objective_max_benefit(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{benefit_col}{Character. Benefit column name in the model-ready effects table.}
 
@@ -26,7 +26,7 @@ and, if present, \code{actions$action_set}.}
 \item{alias}{Optional identifier for multi-objective workflows.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Specify an objective that maximizes total benefit delivered by selected actions.

@@ -54,8 +54,8 @@
 #' some efficient solutions cannot be obtained with any weight vector; consider epsilon-constraint
 #' or AUGMECON methods in those cases.
 #'
-#' @param x A planning object (`Data`) or an existing `"MOProblem"`.
-#'   If a `Data` object is provided, it is promoted to `"MOProblem"` via `.pamo_as_mo()`.
+#' @param x A planning object (`Problem`) or an existing `"MOProblem"`.
+#'   If a `Problem` object is provided, it is promoted to `"MOProblem"` via `.pamo_as_mo()`.
 #'
 #' @param aliases `character`. Objective aliases to combine (e.g. `c("cost","frag")`).
 #'   Each alias must refer to a registered atomic objective.
@@ -161,7 +161,7 @@ set_method_weighted <- function(x,
                                 weights,
                                 normalize = FALSE) {
 
-  # ---- promote (handles both Data and MOProblem)
+  # ---- promote (handles both Problem and MOProblem)
   x <- .pamo_as_mo(x)
 
   # ---- validate aliases

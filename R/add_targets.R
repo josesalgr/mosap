@@ -91,7 +91,7 @@ NULL
 #'   \item \code{basis_total = NA}.
 #' }
 #'
-#' @param x A \code{Data} object.
+#' @param x A \code{Problem} object.
 #' @param targets Target specification. See Details.
 #' @param subset Optional character vector indicating which actions count toward
 #'   target achievement. Entries may match action ids, \code{action_set} labels,
@@ -102,7 +102,7 @@ NULL
 #' @param label Optional character label stored with the targets for reporting
 #'   and bookkeeping.
 #'
-#' @return Updated \code{Data} object.
+#' @return Updated \code{Problem} object.
 #'
 #' @examples
 #' \dontrun{
@@ -128,7 +128,7 @@ add_targets_absolute <- function(x, targets,
                                  subset = NULL,
                                  overwrite = FALSE,
                                  label = NULL) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   dt <- .pa_parse_targets(x, targets)
@@ -147,6 +147,14 @@ add_targets_absolute <- function(x, targets,
     label        = if (is.null(label)) NA_character_ else as.character(label),
     created_at   = as.character(Sys.time()),
     stringsAsFactors = FALSE
+  )
+
+  out <- .pa_add_feature_labels(
+    df = out,
+    features_df = x$data$features,
+    feature_col = "feature",
+    internal_feature_col = "internal_feature",
+    out_col = "feature_name"
   )
 
   x$data$meta$model_dirty <- TRUE
@@ -185,7 +193,7 @@ add_targets_absolute <- function(x, targets,
 #' The resulting basis is stored in \code{basis_total}, and the absolute threshold
 #' is stored in \code{target_value}.
 #'
-#' @param x A \code{Data} object.
+#' @param x A \code{Problem} object.
 #' @param targets Target specification as proportions in \eqn{[0,1]}. See Details.
 #' @param subset Optional character vector indicating which actions count toward
 #'   target achievement. Entries may match action ids, \code{action_set} labels,
@@ -196,7 +204,7 @@ add_targets_absolute <- function(x, targets,
 #' @param label Optional character label stored with the targets for reporting
 #'   and bookkeeping.
 #'
-#' @return Updated \code{Data} object.
+#' @return Updated \code{Problem} object.
 #'
 #' @examples
 #' \dontrun{
@@ -216,7 +224,7 @@ add_targets_relative <- function(x, targets,
                                  subset = NULL,
                                  overwrite = FALSE,
                                  label = NULL) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   dt <- .pa_parse_targets(x, targets)
@@ -245,6 +253,14 @@ add_targets_relative <- function(x, targets,
     label        = if (is.null(label)) NA_character_ else as.character(label),
     created_at   = as.character(Sys.time()),
     stringsAsFactors = FALSE
+  )
+
+  out <- .pa_add_feature_labels(
+    df = out,
+    features_df = x$data$features,
+    feature_col = "feature",
+    internal_feature_col = "internal_feature",
+    out_col = "feature_name"
   )
 
   x$data$meta$model_dirty <- TRUE

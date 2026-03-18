@@ -7,7 +7,7 @@
 add_profit(x, profit = NULL, keep_zero = FALSE, na_to_zero = TRUE)
 }
 \arguments{
-\item{x}{A \code{Data} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
+\item{x}{A \code{Problem} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
 Must contain \code{x$data$dist_actions} and \code{x$data$actions} (run \code{\link{add_actions}} first).}
 
 \item{profit}{Profit specification. One of:
@@ -26,7 +26,7 @@ Default \code{FALSE} (zero-profit rows are dropped).}
 Default \code{TRUE}.}
 }
 \value{
-The updated \code{Data} object with \code{x$data$dist_profit} created/updated.
+The updated \code{Problem} object with \code{x$data$dist_profit} created/updated.
 }
 \description{
 Define (economic) profit values for feasible \code{(pu, action)} pairs and store them in

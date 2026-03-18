@@ -17,7 +17,7 @@ add_spatial_boundary(
 )
 }
 \arguments{
-\item{x}{A \linkS4class{data} object.}
+\item{x}{A \linkS4class{problem} object.}
 
 \item{boundary}{Optional \code{data.frame} describing boundaries. Accepted formats:
 \itemize{
@@ -44,7 +44,7 @@ effective exposed boundary length.}
 \item{edge_factor}{Numeric \eqn{\ge 0}. Multiplier applied to exposed boundary when computing diagonal weights.}
 }
 \value{
-Updated \linkS4class{data} object with a stored relation \code{x$data$spatial_relations[[name]]}.
+Updated \linkS4class{problem} object with a stored relation \code{x$data$spatial_relations[[name]]}.
 }
 \description{
 Register a boundary-length relation between planning units. Boundary relations represent

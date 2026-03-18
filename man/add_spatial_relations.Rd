@@ -15,7 +15,7 @@ add_spatial_relations(
 )
 }
 \arguments{
-\item{x}{A \linkS4class{data} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
+\item{x}{A \linkS4class{problem} object created with \code{\link[=inputData]{inputData()}} or \code{\link[=inputDataSpatial]{inputDataSpatial()}}.}
 
 \item{relations}{A \code{data.frame} describing edges. Must contain either:
 \itemize{
@@ -38,10 +38,10 @@ One of \code{"sum"}, \code{"max"}, \code{"min"}, \code{"mean"}.}
 off-diagonal edges in both directions. Default \code{FALSE}.}
 }
 \value{
-Updated \linkS4class{data} object with \code{x$data$spatial_relations[[name]]}.
+Updated \linkS4class{problem} object with \code{x$data$spatial_relations[[name]]}.
 }
 \description{
-Register an externally computed spatial relation inside a \code{Data} object using the unified
+Register an externally computed spatial relation inside a \code{Problem} object using the unified
 internal representation. Most users should prefer the convenience wrappers:
 \code{\link{add_spatial_boundary}}, \code{\link{add_spatial_rook}}, \code{\link{add_spatial_queen}},
 \code{\link{add_spatial_knn}}, or \code{\link{add_spatial_distance}}.

@@ -14,7 +14,7 @@ add_area_max_constraint(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{area_max}{Numeric scalar \eqn{\ge 0}. Maximum area to select.}
 
@@ -27,7 +27,7 @@ add_area_max_constraint(
 \item{overwrite}{Logical. Replace existing stored area_max constraint if present.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Store a maximum selected area constraint to be applied later by the model builder.

@@ -84,13 +84,13 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 # -------------------------------------------------------------------------
-# Promote Data -> MOProblem (internal; never exposed to user)
+# Promote Problem -> MOProblem (internal; never exposed to user)
 # -------------------------------------------------------------------------
 
 .pamo_as_mo <- function(x) {
   if (inherits(x, "MOProblem")) return(x)
 
-  if (inherits(x, "Data")) {
+  if (inherits(x, "Problem")) {
     obj <- pproto(NULL, MOProblem, base = x)
 
     # fuerza clase S3 para que UseMethod("solve") encuentre solve.MOProblem
@@ -101,12 +101,12 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
     return(obj)
   }
 
-  stop("Expected a Data or a MOProblem.", call. = FALSE)
+  stop("Expected a Problem or a MOProblem.", call. = FALSE)
 }
 
 
 # -------------------------------------------------------------------------
-# Atomic objective registry accessors (stored in mosap::Data)
+# Atomic objective registry accessors (stored in mosap::Problem)
 # Registry: x$base$data$objectives[[alias]] = list(...)
 # -------------------------------------------------------------------------
 
@@ -189,7 +189,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 # - objective_id, objective_args: to be able to re-activate the objective in a single-objective model
 # -------------------------------------------------------------------------
 .pamo_objvec_action_boundary_cut <- function(base_superset, term) {
-  stopifnot(inherits(base_superset, "Data"))
+  stopifnot(inherits(base_superset, "Problem"))
 
   op <- base_superset$data$model_ptr
   if (is.null(op)) {
@@ -439,7 +439,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 }
 
 .pamo_objective_to_ir <- function(x, spec) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   stopifnot(is.list(spec), !is.null(spec$objective_id))
 
   id <- as.character(spec$objective_id)[1]
@@ -731,7 +731,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 }
 
 # -------------------------------------------------------------------------
-# Cloning base Data safely for MO runs
+# Cloning base Problem safely for MO runs
 # (Avoid copying externalptr / built model pointer)
 # -------------------------------------------------------------------------
 
@@ -741,7 +741,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 }
 
 .pamo_clone_base <- function(base) {
-  stopifnot(inherits(base, "Data"))
+  stopifnot(inherits(base, "Problem"))
 
   b <- pproto(NULL, base)
   b$data <- .pamo_deepcopy_data(base$data)
@@ -758,12 +758,12 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 }
 
 # -------------------------------------------------------------------------
-# Activate an IR as a single-objective config in mosap::Data
+# Activate an IR as a single-objective config in mosap::Problem
 # (Used by the "rebuild + pad" objective vector strategy)
 # -------------------------------------------------------------------------
 
 .pamo_activate_ir_as_single_objective <- function(x, ir) {
-  stopifnot(inherits(x, "Data"))
+  stopifnot(inherits(x, "Problem"))
   stopifnot(is.list(ir), !is.null(ir$objective_id))
 
   id <- as.character(ir$objective_id)[1]
@@ -837,7 +837,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 }
 
 .pamo_prepare_superset_model <- function(base, ir_list) {
-  stopifnot(inherits(base, "Data"))
+  stopifnot(inherits(base, "Problem"))
   stopifnot(is.list(ir_list), length(ir_list) > 0)
 
   spec <- .pamo_compile_superset_spec(base, ir_list)
@@ -918,8 +918,8 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
 
 .pamo_model_obj_length <- function(x) {
-  stopifnot(inherits(x, "Data"))
-  if (is.null(x$data$model_ptr)) stop("Data has no model_ptr; build model first.", call. = FALSE)
+  stopifnot(inherits(x, "Problem"))
+  if (is.null(x$data$model_ptr)) stop("Problem has no model_ptr; build model first.", call. = FALSE)
 
   m <- .pa_model_from_ptr(
     x$data$model_ptr,
@@ -1448,7 +1448,7 @@ add_objective <- function(x, objective) {
 
 
 .pamo_objvec_from_ir <- function(base_superset, ir) {
-  stopifnot(inherits(base_superset, "Data"))
+  stopifnot(inherits(base_superset, "Problem"))
 
   op <- base_superset$data$model_ptr
   if (is.null(op)) {
@@ -1847,7 +1847,7 @@ add_objective <- function(x, objective) {
 
 
 .pamo_apply_weighted_objective <- function(base, ir_list, weights, normalize = FALSE) {
-  stopifnot(inherits(base, "Data"))
+  stopifnot(inherits(base, "Problem"))
   stopifnot(is.list(ir_list), length(ir_list) > 0)
   weights <- as.numeric(weights)
   if (length(weights) != length(ir_list)) {
@@ -1975,7 +1975,7 @@ add_objective <- function(x, objective) {
 .pamo_solve_one <- function(x, spec) {
 
   if (!inherits(x, "MOProblem")) stop(".pamo_solve_one expects MOProblem.", call. = FALSE)
-  if (!inherits(x$base, "Data")) stop("MOProblem$base must be a Data.", call. = FALSE)
+  if (!inherits(x$base, "Problem")) stop("MOProblem$base must be a Problem.", call. = FALSE)
 
   base <- .pamo_clone_base(x$base)
 
@@ -2065,7 +2065,7 @@ add_objective <- function(x, objective) {
 
 .pamo_apply_epsilon_constraint <- function(base, ir, eps, sense = c("min","max"),
                                            name = "", block_name = "epsilon_constraint", tag = "") {
-  stopifnot(inherits(base, "Data"))
+  stopifnot(inherits(base, "Problem"))
   sense <- match.arg(sense)
 
   if (is.null(base$data$model_ptr)) stop("Model not built (model_ptr is NULL).", call. = FALSE)
@@ -2377,7 +2377,7 @@ add_objective <- function(x, objective) {
 }
 
 .pamo_add_alias_upper_bound_constraint <- function(base_eval, x, alias, rhs, tol = 0, name = NULL) {
-  stopifnot(inherits(base_eval, "Data"))
+  stopifnot(inherits(base_eval, "Problem"))
   stopifnot(inherits(x, "MOProblem"))
 
   alias <- as.character(alias)[1]
@@ -2504,7 +2504,7 @@ add_objective <- function(x, objective) {
 
 .pamo_solve_on_prebuilt_model <- function(x, base_eval, primary_alias, gap_limit = NULL, time_limit = NULL) {
   stopifnot(inherits(x, "MOProblem"))
-  stopifnot(inherits(base_eval, "Data"))
+  stopifnot(inherits(base_eval, "Problem"))
 
   spec <- .pamo_get_objective_spec(x, primary_alias)
   ir   <- .pamo_objective_to_ir(x$base, spec)
@@ -2525,7 +2525,7 @@ add_objective <- function(x, objective) {
 }
 
 .pamo_set_ir_as_active_objective <- function(base_eval, ir) {
-  stopifnot(inherits(base_eval, "Data"))
+  stopifnot(inherits(base_eval, "Problem"))
 
   obj_vec <- .pamo_objvec_from_ir(base_eval, ir)
 
@@ -2751,7 +2751,7 @@ add_objective <- function(x, objective) {
 
 
 .pamo_compile_superset_spec <- function(base, ir_list) {
-  stopifnot(inherits(base, "Data"))
+  stopifnot(inherits(base, "Problem"))
   stopifnot(is.list(ir_list), length(ir_list) > 0)
 
   all_terms <- unlist(
@@ -2865,7 +2865,7 @@ add_objective <- function(x, objective) {
 
 
 .pamo_apply_single_objective <- function(base, ir, sense = c("min", "max")) {
-  stopifnot(inherits(base, "Data"))
+  stopifnot(inherits(base, "Problem"))
   sense <- match.arg(sense)
 
   if (is.null(base$data$model_ptr)) {

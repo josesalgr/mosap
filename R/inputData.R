@@ -4,7 +4,7 @@ NULL
 #' Create a planning problem input object
 #'
 #' @description
-#' Builds a `Data` object from either tabular inputs or spatial inputs.
+#' Builds a `Problem` object from either tabular inputs or spatial inputs.
 #' This is the entry point for the **mosap** workflow.
 #'
 #' The function supports three input styles:
@@ -61,7 +61,7 @@ NULL
 #'   Either `"mean"` or `"sum"`.
 #' @param ... Additional arguments forwarded to internal builders.
 #'
-#' @return A `Data` object used by downstream functions (`add_*()`, `set_solver()`, `solve()`, etc.).
+#' @return A `Problem` object used by downstream functions (`add_*()`, `set_solver()`, `solve()`, etc.).
 #'
 #' @examples
 #' \dontrun{

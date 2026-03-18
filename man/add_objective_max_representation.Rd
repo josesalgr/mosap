@@ -12,7 +12,7 @@ add_objective_max_representation(
 )
 }
 \arguments{
-\item{x}{A \code{Data} object.}
+\item{x}{A \code{Problem} object.}
 
 \item{amount_col}{Character. Column in \code{dist_features} containing amounts.}
 
@@ -22,7 +22,7 @@ add_objective_max_representation(
 \item{alias}{Optional identifier for multi-objective workflows.}
 }
 \value{
-Updated \code{Data} object.
+Updated \code{Problem} object.
 }
 \description{
 Specify an objective that maximizes total representation across a subset of features.
