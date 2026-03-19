@@ -162,7 +162,7 @@ set_method_weighted <- function(x,
                                 normalize = FALSE) {
 
   # ---- promote (handles both Problem and MOProblem)
-  x <- .pamo_as_mo(x)
+  #x <- .pamo_as_mo(x)
 
   # ---- validate aliases
   if (!is.character(aliases) || length(aliases) == 0L || anyNA(aliases)) {
@@ -206,13 +206,11 @@ set_method_weighted <- function(x,
   .pamo_get_objective_specs(x, aliases)
 
   # ---- store method configuration
-  x$method <- list(
+  x$data$method <- list(
     name = "weighted",
-    params = list(
-      aliases = aliases,
-      weights = weights,
-      normalize = normalize
-    )
+    aliases = aliases,
+    weights = weights,
+    normalize = normalize
   )
 
   x

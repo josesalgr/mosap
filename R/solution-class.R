@@ -1,144 +1,270 @@
 #' @include internal.R
-
+#'
 #' @export
 if (!methods::isClass("Solution")) methods::setOldClass("Solution")
 NULL
 
 #' Solution class
 #'
-#' This class is used to represent the solution of the MIP (Mixed-Integer Programming) model.
-#' This includes several methods
-#' to obtain information about both the optimization process and the solution associated with
-#' the planning units and actions. It is created using the [solve()]
-#' function.
+#' @description
+#' The `Solution` class stores the output of solving a `Problem` object in
+#' `mosap`. It contains the optimization status, objective value, solver
+#' metadata, decoded decision vectors, and human-readable result tables.
+#'
+#' Objects of this class are typically created with [solve()].
 #'
 #' @section Fields:
 #' \describe{
-#' \item{$data}{
-#' `list`. Object containing data on the results of the optimization process.}
+#'   \item{data}{A named `list` containing optimization outputs, such as the
+#'   objective value, raw solution vector, optimality gap, runtime, solver
+#'   arguments, decoded decision vectors, and result tables.}
+#'   \item{Problem}{The `Problem` object used to generate the solution.}
 #' }
 #'
 #' @section Methods:
 #' \describe{
-#' \item{print()}{
-#' Print basic information of the model solution.}
-#'
-#' \item{show()}{
-#' Call print method.}
-#'
+#'   \item{print()}{Print a concise summary of the solution, including solver
+#'   status, objective value, runtime, selection summary, and target fulfillment.}
+#'   \item{show()}{Alias of `print()`.}
+#'   \item{repr()}{Returns a short string representation.}
 #' }
+#'
 #' @return No return value.
 #'
-#' @examples
-#' \donttest{
-#' # set seed for reproducibility
-#' set.seed(14)
-#'
-#' ## Load data
-#' data(sim_pu_data, sim_features_data, sim_dist_features_data,
-#' sim_threats_data, sim_dist_threats_data, sim_sensitivity_data,
-#' sim_boundary_data)
-#'
-#' ## Create data instance
-#' problem_data <- inputData(
-#'   pu = sim_pu_data, features = sim_features_data, dist_features = sim_dist_features_data,
-#'   threats = sim_threats_data, dist_threats = sim_dist_threats_data,
-#'   sensitivity = sim_sensitivity_data, boundary = sim_boundary_data
-#' )
-#'
-#' ## Create optimization model
-#' problem_model <- problem(x = problem_data, blm = 1)
-#'
-#' ## Solve the optimization model
-#' s <- solve(a = problem_model, time_limit = 5, output_file = FALSE, cores = 2)
-#'
-#' ## Use class methods
-#'
-#' s$print()
-#' }
-#'
 #' @name solution-class
-#'
 #' @aliases Solution
 NULL
 
-#' @export
+# internal helper
+.pa_solution_status_class <- function(status_txt) {
+  status_txt <- as.character(status_txt %||% "unknown")[1]
+
+  if (status_txt %in% c("optimal")) {
+    return("ok")
+  }
+
+  if (status_txt %in% c("time_limit_feasible", "solution_limit")) {
+    return("warn")
+  }
+
+  if (status_txt %in% c("infeasible_or_unbounded", "time_limit_no_solution", "unknown")) {
+    return("bad")
+  }
+
+  "muted"
+}
+
+# internal helper
+.pa_solution_status_inline <- function(status_txt) {
+  cls <- .pa_solution_status_class(status_txt)
+  paste0("{.", cls, " ", status_txt, "}")
+}
+
+# internal helper
+.pa_pct_text <- function(x, digits = 3) {
+  if (!is.numeric(x) || length(x) == 0 || is.na(x) || !is.finite(x)) {
+    return("NA")
+  }
+  paste0(round(100 * x, digits), "%")
+}
+
+# internal helper
+.pa_num_text <- function(x, digits = 6) {
+  if (!is.numeric(x) || length(x) == 0 || is.na(x) || !is.finite(x)) {
+    return("NA")
+  }
+  format(round(x, digits), trim = TRUE, scientific = FALSE)
+}
+
+# internal helper
+.pa_n_of_total_text <- function(n, total) {
+  if (is.null(n) || length(n) == 0 || is.na(n)) n <- 0L
+  if (is.null(total) || length(total) == 0 || is.na(total)) {
+    return(as.character(n))
+  }
+  paste0(n, " of ", total)
+}
+
+# internal helper
+.pa_solution_alias_values_summary <- function(self, max_show = 6L) {
+  av <- self$data$alias_values %||% NULL
+
+  if (is.null(av) || length(av) == 0) {
+    return(NULL)
+  }
+
+  av <- unlist(av, use.names = TRUE)
+  nm <- names(av) %||% rep("objective", length(av))
+
+  if (length(av) > max_show) {
+    keep <- seq_len(max_show)
+    txt <- paste0(
+      nm[keep], ": ", vapply(av[keep], .pa_num_text, character(1)),
+      collapse = ", "
+    )
+    txt <- paste0(txt, ", ...")
+  } else {
+    txt <- paste0(
+      nm, ": ", vapply(av, .pa_num_text, character(1)),
+      collapse = ", "
+    )
+  }
+
+  txt
+}
+
 #' @export
 Solution <- pproto(
   "Solution",
   data = list(),
-  Problem = NULL,   # en vez de OptimizationClass
+  Problem = NULL,
   name = "sol",
 
   print = function(self) {
-    if (!requireNamespace("cli", quietly = TRUE)) {
-      message(
-        "Solution overview",
-        "\n  name: ", self$name,
-        "\n  objective value: ", round(self$data$objval, 3),
-        "\n  gap: ", if (is.numeric(self$data$gap)) paste0(round(self$data$gap * 100, 3), "%") else self$data$gap,
-        "\n  status: ", getStatus(self),
-        "\n  runtime: ", paste0(round(self$data$runtime, 3), " sec")
-      )
-      return(invisible(TRUE))
-    }
-
     ch <- .pa_cli_box_chars()
     div_id <- cli::cli_div(theme = .pa_cli_theme())
 
-    cli::cli_text("{.h Solution} ({.code {self$name}})")
+    cli::cli_text("A mosap solution ({.cls Solution})")
 
-    # --- core metrics
-    obj <- self$data$objval
-    gap <- self$data$gap
-    rt  <- self$data$runtime
+    obj <- self$data$objval %||% NA_real_
+    gap <- self$data$gap %||% NA_real_
+    rt  <- self$data$runtime %||% NA_real_
     st  <- getStatus(self)
 
-    cli::cli_text("{ch$j}{ch$b}{.h optimization}")
-    cli::cli_text("{ch$v}{ch$j}{ch$b}status:        {.strong {st}}")
-    cli::cli_text("{ch$v}{ch$j}{ch$b}objective:     {round(obj, 6)}")
-    cli::cli_text("{ch$v}{ch$j}{ch$b}gap:           {if (is.numeric(gap)) paste0(round(gap*100,3),'%') else gap}")
-    cli::cli_text("{ch$v}{ch$l}{ch$b}runtime:       {round(rt, 3)} sec")
-
-    # --- solver info
+    tb <- self$data$tables %||% list()
     sa <- self$data$args %||% list()
-    cli::cli_text("{ch$l}{ch$b}{.h solver}")
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}name:          {.code {sa$solver %||% 'unknown'}}")
-    cli::cli_text(" {ch$v}{ch$j}{ch$b}cores:         {sa$cores %||% NA}")
-    cli::cli_text(" {ch$v}{ch$l}{ch$b}time_limit:    {sa$timelimit %||% NA}")
+    pr <- self$Problem %||% NULL
 
-    # --- model meta (if stored)
-    mm <- self$data$model_meta %||% NULL
-    if (!is.null(mm)) {
-      cli::cli_text("{ch$l}{ch$b}{.h model}")
-      cli::cli_text(" {ch$v}{ch$j}{ch$b}type:          {.code {mm$model_type %||% 'unknown'}}")
-      cli::cli_text(" {ch$v}{ch$j}{ch$b}objective_id:  {.code {mm$objective_id %||% 'unknown'}} ({mm$modelsense %||% ''})")
-      cli::cli_text(" {ch$v}{ch$l}{ch$b}dimensions:    {mm$n_constraints %||% NA} cons, {mm$n_variables %||% NA} vars, {mm$nnz %||% NA} nnz")
+    # ---- totals from problem
+    n_pu_total <- if (!is.null(pr) && !is.null(pr$data$pu) && inherits(pr$data$pu, "data.frame")) {
+      nrow(pr$data$pu)
+    } else {
+      NA_integer_
     }
 
-    # --- solution sizes (from decoded tables)
-    tb <- self$data$tables %||% NULL
-    if (!is.null(tb)) {
-      cli::cli_text("{ch$l}{ch$b}{.h solution}")
-      if (!is.null(tb$pu) && "selected" %in% names(tb$pu)) {
-        nsel <- sum(tb$pu$selected %in% 1L, na.rm = TRUE)
-        cli::cli_text(" {ch$v}{ch$j}{ch$b}planning units selected:  {nsel}")
-      }
-      if (!is.null(tb$actions) && "selected" %in% names(tb$actions)) {
-        nsel <- sum(tb$actions$selected %in% 1L, na.rm = TRUE)
-        cli::cli_text(" {ch$v}{ch$j}{ch$b}actions selected:        {nsel}")
-      }
-      if (!is.null(tb$targets) && "gap" %in% names(tb$targets)) {
-        ok <- sum(tb$targets$gap >= 0, na.rm = TRUE)
-        tot <- nrow(tb$targets)
-        cli::cli_text(" {ch$v}{ch$l}{ch$b}targets met:             {ok}/{tot}")
-      }
+    n_act_total <- if (!is.null(pr) && !is.null(pr$data$dist_actions) && inherits(pr$data$dist_actions, "data.frame")) {
+      nrow(pr$data$dist_actions)
+    } else {
+      NA_integer_
     }
+
+    n_tgt_total <- if (!is.null(tb$targets) && inherits(tb$targets, "data.frame")) {
+      nrow(tb$targets)
+    } else {
+      NA_integer_
+    }
+
+    # ---- selected counts
+    n_pu_sel <- if (!is.null(tb$pu) && inherits(tb$pu, "data.frame") && "selected" %in% names(tb$pu)) {
+      sum(tb$pu$selected %in% 1L, na.rm = TRUE)
+    } else {
+      NA_integer_
+    }
+
+    n_act_sel <- if (!is.null(tb$actions) && inherits(tb$actions, "data.frame") && "selected" %in% names(tb$actions)) {
+      sum(tb$actions$selected %in% 1L, na.rm = TRUE)
+    } else {
+      NA_integer_
+    }
+
+    n_tgt_met <- if (!is.null(tb$targets) && inherits(tb$targets, "data.frame") && "gap" %in% names(tb$targets)) {
+      sum(tb$targets$gap >= 0, na.rm = TRUE)
+    } else {
+      NA_integer_
+    }
+
+    alias_txt <- .pa_solution_alias_values_summary(self)
+
+    # ---- RESULT
+    cli::cli_text("{ch$j}{ch$b}{.h result}", .envir = environment())
+    cli::cli_text(
+      "{ch$v}{ch$j}{ch$b}status:          {.eval .pa_solution_status_inline(st)}",
+      .envir = environment()
+    )
+    cli::cli_text(
+      "{ch$v}{ch$j}{ch$b}objective value: {.strong {.val { .pa_num_text(obj) }}}",
+      .envir = environment()
+    )
+    cli::cli_text(
+      "{ch$v}{ch$j}{ch$b}gap:             { .pa_pct_text(gap) }",
+      .envir = environment()
+    )
+    cli::cli_text(
+      "{ch$v}{ch$l}{ch$b}runtime:         { .pa_num_text(rt, digits = 3) } sec",
+      .envir = environment()
+    )
+
+    # ---- SELECTION
+    cli::cli_text("{ch$l}{ch$b}{.h selection}", .envir = environment())
+
+    cli::cli_text(
+      " {ch$v}{ch$j}{ch$b}planning units:  { .pa_n_of_total_text(n_pu_sel, n_pu_total) } selected",
+      .envir = environment()
+    )
+
+    cli::cli_text(
+      " {ch$v}{ch$j}{ch$b}actions:         { .pa_n_of_total_text(n_act_sel, n_act_total) } selected",
+      .envir = environment()
+    )
+
+    if (!is.na(n_tgt_total)) {
+      cli::cli_text(
+        " {ch$v}{ch$l}{ch$b}targets met:     { .pa_n_of_total_text(n_tgt_met, n_tgt_total) }",
+        .envir = environment()
+      )
+    } else {
+      cli::cli_text(
+        " {ch$v}{ch$l}{ch$b}targets met:     {.muted none}",
+        .envir = environment()
+      )
+    }
+
+    # ---- OBJECTIVE VALUES
+    if (!is.null(alias_txt)) {
+      cli::cli_text("{ch$l}{ch$b}{.h objective values}", .envir = environment())
+      cli::cli_text(
+        " {ch$v}{ch$l}{ch$b}{alias_txt}",
+        .envir = environment()
+      )
+    }
+
+    # ---- SOLVER
+    cli::cli_text("{ch$l}{ch$b}{.h solver}", .envir = environment())
+
+    solver_txt <- as.character(sa$solver %||% "unknown")[1]
+    cores_txt  <- as.character(sa$cores %||% NA)[1]
+    tl_txt     <- as.character(sa$timelimit %||% NA)[1]
+
+    cli::cli_text(
+      " {ch$v}{ch$j}{ch$b}name:            {.code {solver_txt}}",
+      .envir = environment()
+    )
+    cli::cli_text(
+      " {ch$v}{ch$j}{ch$b}cores:           {cores_txt}",
+      .envir = environment()
+    )
+    cli::cli_text(
+      " {ch$v}{ch$l}{ch$b}time limit:      {tl_txt}",
+      .envir = environment()
+    )
+
+    info_sym <- cli::symbol$info
+    if (is.function(info_sym)) info_sym <- info_sym()
+    cli::cli_text(
+      cli::col_grey(
+        paste0("# ", info_sym, " Use {.code x$data$tables} to inspect decoded solution tables.")
+      )
+    )
 
     cli::cli_end(div_id)
     invisible(TRUE)
   },
 
   show = function(self) self$print(),
-  repr = function(self) "Solution object"
+
+  repr = function(self) {
+    st <- tryCatch(getStatus(self), error = function(e) "unknown")
+    obj <- self$data$objval %||% NA_real_
+    paste0("<Solution> status=", st, ", objective=", .pa_num_text(obj))
+  }
 )

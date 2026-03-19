@@ -129,8 +129,8 @@ set_method_epsilon_constraint <- function(
     lexicographic = TRUE,
     lexicographic_tol = 1e-8
 ) {
-  x <- .pamo_as_mo(x)
-  stopifnot(inherits(x, "MOProblem"))
+  #x <- .pamo_as_mo(x)
+  stopifnot(inherits(x, "Problem"))
 
   mode <- match.arg(mode)
 
@@ -224,7 +224,7 @@ set_method_epsilon_constraint <- function(
     names(grid) <- paste0("eps_", names(grid))
     grid$run_id <- seq_len(nrow(grid))
 
-    x$method <- list(
+    x$data$method <- list(
       name = "epsilon_constraint",
       mode = "manual",
       primary = primary,
@@ -252,7 +252,7 @@ set_method_epsilon_constraint <- function(
     stop("n_points must be an integer >= 2.", call. = FALSE)
   }
 
-  x$method <- list(
+  x$data$method <- list(
     name = "epsilon_constraint",
     mode = "auto",
     primary = primary,

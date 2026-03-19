@@ -27,8 +27,8 @@ methods::setMethod("show", "Problem",
 #'
 #' @rdname show
 #'
-#' @usage \S4method{show}{MOProblem}(x)
+#' @usage \S4method{show}{SolutionSet}(x)
 #'
-methods::setMethod("show", "MOProblem",
+methods::setMethod("show", "SolutionSet",
                    function(object) object$show())
 

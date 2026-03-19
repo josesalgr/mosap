@@ -4,14 +4,14 @@
 \alias{print}
 \alias{print.Problem}
 \alias{print.Solution}
-\alias{print.MOProblem}
+\alias{print.SolutionSet}
 \title{Print}
 \usage{
 \method{print}{Problem}(x, ...)
 
 \method{print}{Solution}(x, ...)
 
-\method{print}{MOProblem}(x, ...)
+\method{print}{SolutionSet}(x, ...)
 }
 \arguments{
 \item{x}{Any object.}

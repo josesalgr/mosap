@@ -80,9 +80,6 @@ NULL
 #' @name problem-class
 #' @aliases Problem
 NULL
-# -------------------------------------------------------------------------
-# Print helpers
-# -------------------------------------------------------------------------
 
 .pa_data_status_text <- function(self) {
   if (.pa_has_model(self)) {
@@ -195,6 +192,28 @@ NULL
 
   list(
     n = nrow(feats),
+    preview = .pa_preview_text(nm, max_show = max_show, quote = TRUE)
+  )
+}
+
+.pa_actions_summary <- function(self, max_show = 3L) {
+  acts <- self$data$actions
+
+  if (is.null(acts) || !inherits(acts, "data.frame") || nrow(acts) == 0) {
+    return(list(
+      n = 0L,
+      preview = "none"
+    ))
+  }
+
+  nm <- if ("name" %in% names(acts)) {
+    as.character(acts$name)
+  } else {
+    as.character(acts$id)
+  }
+
+  list(
+    n = nrow(acts),
     preview = .pa_preview_text(nm, max_show = max_show, quote = TRUE)
   )
 }
@@ -457,6 +476,7 @@ Problem <- pproto(
     unit_rng <- .pa_safe_range(.pa_get_cost_vec(pu))
 
     feat_sum <- .pa_features_summary(self, max_show = 3L)
+    act_sum <- .pa_actions_summary(self, max_show = 3L)
 
     pu_coords <- self$data$pu_coords
     has_coords <- .pa_has_coords(self)
@@ -511,8 +531,10 @@ Problem <- pproto(
       cli::cli_text(" {ch$v}{ch$j}{ch$b}dist_actions:    {.muted none}",
                     .envir = environment())
     } else {
-      cli::cli_text(" {ch$v}{ch$j}{ch$b}actions:         {n_act} total",
-                    .envir = environment())
+      cli::cli_text(
+        " {ch$v}{ch$j}{ch$b}actions:         {act_sum$n} total ({act_sum$preview})",
+        .envir = environment()
+      )
       cli::cli_text(" {ch$v}{ch$j}{ch$b}dist_actions:    {n_dist_act} feasible rows",
                     .envir = environment())
 

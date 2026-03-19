@@ -10,7 +10,7 @@
 \usage{
 \S4method{show}{Problem}(x)
 
-\S4method{show}{MOProblem}(x)
+\S4method{show}{SolutionSet}(x)
 }
 \arguments{
 \item{x}{Any object.}

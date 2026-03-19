@@ -1,4 +1,3 @@
-#' This is an exact copy of the prioritizr code ------------
 #' No extra arguments
 #'
 #' Check that no additional unused arguments have been supplied to a function
@@ -180,7 +179,6 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 #' ## get status of solution
 #' getStatus(s)
 #'
-
 #' @noRd
 getStatus <- function(x) {
   # x puede ser Solution o list con $data
@@ -342,7 +340,6 @@ available_to_solve <- function(package = ""){
     return(TRUE)
   }
 }
-
 
 
 # -------------------------------------------------------------------------
@@ -746,7 +743,7 @@ available_to_solve <- function(package = ""){
     return(invisible(x))
   }
   if (is.null(x$data$model_ptr)) {
-    stop("No active model pointer found in x$data$model_ptr. Run problem() before applying targets.", call. = FALSE)
+    stop("No active model pointer found in x$data$model_ptr. Run add_targets_*() before applying targets.", call. = FALSE)
   }
 
   t <- x$data$targets
@@ -926,7 +923,9 @@ available_to_solve <- function(package = ""){
 
 
 
-
+# -------------------------------------------------------------------------
+# Internal helpers MATHEMATICAL MODEL
+# -------------------------------------------------------------------------
 .pa_refresh_model_snapshot <- function(x, drop_triplets = TRUE) {
   stopifnot(inherits(x, "Problem"))
 
@@ -1181,15 +1180,6 @@ available_to_solve <- function(package = ""){
 # -------------------------------------------------------------------------
 # Internal helpers CLASS
 # -------------------------------------------------------------------------
-
-# .pa_cli_theme <- function() {
-#   list(
-#     .h     = list("font-weight" = "bold", color = "#569746"),
-#     .cls   = list("font-weight" = "bold", color = "blue"),
-#     .code  = list(color = "green"),
-#     .muted = list(color = "grey60")
-#   )
-# }
 .pa_cli_theme <- function() {
   list(
     .h     = list("font-weight" = "bold", color = "#569746"),
@@ -1261,13 +1251,6 @@ available_to_solve <- function(package = ""){
       "cost" %in% names(self$data$dist_actions)) {
     return(as.numeric(self$data$dist_actions$cost))
   }
-  # legacy field (older mosap)
-  # if (!is.null(self$data$dist_threats) &&
-  #     inherits(self$data$dist_threats, "data.frame") &&
-  #     nrow(self$data$dist_threats) > 0 &&
-  #     "action_cost" %in% names(self$data$dist_threats)) {
-  #   return(as.numeric(self$data$dist_threats$action_cost))
-  # }
   numeric(0)
 }
 
@@ -1316,6 +1299,7 @@ available_to_solve <- function(package = ""){
 
   list(n_con = as.integer(n_con), n_var = as.integer(n_var), nnz = as.integer(nnz))
 }
+
 .pa_model_blocks <- function(self) {
   # Returns list(n_w, n_x, n_z) if index mapping exists; otherwise NULL.
   # This expects you to store something like idx from rcpp_add_base_variables()
@@ -1357,7 +1341,12 @@ available_to_solve <- function(package = ""){
   out
 }
 
+
+# -------------------------------------------------------------------------
+# Internal helpers DATA
+# -------------------------------------------------------------------------
 `%||%` <- function(a, b) if (is.null(a)) b else a
+
 
 # internal helper: detect tabular vs spatial vs invalid mixes
 .pa_detect_input_mode <- function(pu, features, dist_features) {
@@ -1481,8 +1470,6 @@ available_to_solve <- function(package = ""){
 }
 
 
-
-
 # -------------------------------------------------------------------------
 # Internal helpers SOLVER
 # -------------------------------------------------------------------------
@@ -1576,394 +1563,6 @@ available_to_solve <- function(package = ""){
 
   out
 }
-
-# ------------------------------------------------------------
-# Legacy fallback: build 1 action per threat + effects from threats/sensitivity
-# ------------------------------------------------------------
-# .pa_add_actions_default_from_threats <- function(x,
-#                                                  action_prefix = "threat_",
-#                                                  overwrite = FALSE,
-#                                                  benefit_exponent = 1,     # NUEVO
-#                                                  curve_segments = 3L) {
-#   stopifnot(inherits(x, "Problem"))
-#
-#   # already has actions?
-#   if (!overwrite && !is.null(x$data$actions) && inherits(x$data$actions, "data.frame") && nrow(x$data$actions) > 0) {
-#     return(invisible(x))
-#   }
-#
-#   # check legacy inputs exist
-#   if (is.null(x$data$threats) || is.null(x$data$dist_threats)) {
-#     stop("Legacy default actions require x$data$threats and x$data$dist_threats.", call. = FALSE)
-#   }
-#   if (is.null(x$data$pu) || is.null(x$data$features) || is.null(x$data$dist_features)) {
-#     stop("Missing required tables: pu/features/dist_features must exist before building actions.", call. = FALSE)
-#   }
-#
-#   pu <- x$data$pu
-#   threats <- x$data$threats
-#   dist_threats <- x$data$dist_threats
-#   dist_features <- x$data$dist_features
-#
-#   # small util
-#   `%||%` <- function(a, b) if (!is.null(a)) a else b
-#
-#   # ------------------------------------------------------------
-#   # 0) Normalize / validate minimal columns
-#   # ------------------------------------------------------------
-#   if (!all(c("id","internal_id") %in% names(pu))) {
-#     stop("x$data$pu must contain columns: id, internal_id.", call. = FALSE)
-#   }
-#   if (!all(c("id","internal_id") %in% names(x$data$features))) {
-#     stop("x$data$features must contain columns: id, internal_id.", call. = FALSE)
-#   }
-#   if (!all(c("pu","feature","amount","internal_pu","internal_feature") %in% names(dist_features))) {
-#     stop("x$data$dist_features must contain columns: pu, feature, amount, internal_pu, internal_feature.", call. = FALSE)
-#   }
-#
-#   if (!all(c("id") %in% names(threats))) {
-#     stop("x$data$threats must contain column: id.", call. = FALSE)
-#   }
-#   if (!all(c("pu","threat","amount","action_cost") %in% names(dist_threats))) {
-#     stop("x$data$dist_threats must contain columns: pu, threat, amount, action_cost.", call. = FALSE)
-#   }
-#
-#   dist_threats$pu <- as.integer(dist_threats$pu)
-#   dist_threats$threat <- as.integer(dist_threats$threat)
-#   dist_threats$amount <- as.numeric(dist_threats$amount)
-#   dist_threats$action_cost <- as.numeric(dist_threats$action_cost)
-#
-#   if (!("status" %in% names(dist_threats))) dist_threats$status <- 0L
-#   dist_threats$status <- as.integer(dist_threats$status)
-#
-#   # enforce PU locked_out -> all actions there locked_out
-#   if ("locked_out" %in% names(pu) && any(pu$locked_out, na.rm = TRUE)) {
-#     locked_out_pus <- pu$id[isTRUE(pu$locked_out) | (!is.na(pu$locked_out) & pu$locked_out)]
-#     idx2 <- dist_threats$pu %in% locked_out_pus
-#     dist_threats$status[idx2] <- 3L
-#   }
-#
-#   # drop zero threat intensity rows for modeling (consistent with your inputData behavior)
-#   dt_present <- dist_threats[is.finite(dist_threats$amount) & !is.na(dist_threats$amount) & dist_threats$amount > 0, ,
-#                              drop = FALSE]
-#
-#   # ------------------------------------------------------------
-#   # 1) Build actions: one per threat
-#   # ------------------------------------------------------------
-#   threat_ids <- sort(unique(threats$id))
-#   action_ids <- paste0(action_prefix, threat_ids)
-#
-#   actions <- data.frame(
-#     id = as.character(action_ids),
-#     threat = as.integer(threat_ids),
-#     stringsAsFactors = FALSE
-#   )
-#   actions$internal_id <- seq_len(nrow(actions))
-#
-#   action_index <- stats::setNames(actions$internal_id, actions$id)
-#
-#   # ------------------------------------------------------------
-#   # 2) Build dist_actions from dist_threats
-#   # ------------------------------------------------------------
-#   dist_actions <- dist_threats
-#   dist_actions$action <- paste0(action_prefix, dist_actions$threat)
-#   dist_actions$cost <- dist_actions$action_cost
-#
-#   # map internal ids
-#   pu_index <- stats::setNames(pu$internal_id, as.character(pu$id))
-#   dist_actions$internal_pu <- unname(pu_index[as.character(dist_actions$pu)])
-#   dist_actions$internal_action <- unname(action_index[as.character(dist_actions$action)])
-#
-#   # keep model-ready cols
-#   dist_actions <- dist_actions[, c("pu","action","cost","status","internal_pu","internal_action"), drop = FALSE]
-#
-#   # ------------------------------------------------------------
-#   # 3) Build dist_effects (benefit) from legacy rule
-#   #    - binary (0/1): amount_is / (# sensitive threats present)
-#   #    - continuous: amount_is * (resp_var*alpha/sum_alpha)  (your C++)
-#   # ------------------------------------------------------------
-#
-#   # detect binary
-#   # (binary if all amounts in dist_threats are 0/1)
-#   is_binary <- all(dist_threats$amount %in% c(0, 1), na.rm = TRUE)
-#
-#   # sensitivity table
-#   sens <- x$data$sensitivity
-#   if (is.null(sens) || !inherits(sens, "data.frame") || nrow(sens) == 0) {
-#     # default: all features sensitive to all threats
-#     sens <- base::expand.grid(
-#       feature = x$data$features$id,
-#       threat  = threats$id,
-#       KEEP.OUT.ATTRS = FALSE,
-#       stringsAsFactors = FALSE
-#     )
-#   } else {
-#     sens <- unique(sens)
-#   }
-#
-#   if (!all(c("feature","threat") %in% names(sens))) {
-#     stop("x$data$sensitivity must contain columns: feature, threat.", call. = FALSE)
-#   }
-#
-#   # ensure deltas exist with defaults
-#   if (!("delta1" %in% names(sens))) sens$delta1 <- 0
-#   if (!("delta2" %in% names(sens))) sens$delta2 <- NA_real_
-#   if (!("delta3" %in% names(sens))) sens$delta3 <- 0
-#   if (!("delta4" %in% names(sens))) sens$delta4 <- 1
-#
-#   sens$feature <- as.integer(sens$feature)
-#   sens$threat  <- as.integer(sens$threat)
-#   sens$delta1  <- as.numeric(sens$delta1); sens$delta1[is.na(sens$delta1)] <- 0
-#   sens$delta3  <- as.numeric(sens$delta3); sens$delta3[is.na(sens$delta3)] <- 0
-#   sens$delta4  <- as.numeric(sens$delta4); sens$delta4[is.na(sens$delta4)] <- 1
-#   sens$delta2  <- as.numeric(sens$delta2)
-#
-#   # fill delta2 with max intensity per threat (like your old code path)
-#   if (anyNA(sens$delta2)) {
-#     if (nrow(dt_present) > 0) {
-#       max_int <- stats::aggregate(amount ~ threat, data = dt_present[, c("threat","amount")], FUN = max)
-#       names(max_int)[2] <- "max_amount"
-#       sens <- merge(sens, max_int, by = "threat", all.x = TRUE)
-#       sens$delta2[is.na(sens$delta2)] <- sens$max_amount[is.na(sens$delta2)]
-#       sens$max_amount <- NULL
-#     }
-#   }
-#
-#   # helper: response & alpha exactly as legacy C++
-#   .pa_resp_alpha <- function(intensity, a, b, c, d) {
-#     if (intensity <= a) {
-#       resp_const <- d
-#       resp_var   <- 0.0
-#       alpha      <- 1.0 - resp_const
-#     } else if (intensity >= b) {
-#       resp_const <- c
-#       resp_var   <- d - c
-#       alpha      <- 1.0 - resp_const
-#     } else {
-#       resp_const <- (c * (intensity - a) - d * (intensity - b)) / (b - a)
-#       resp_var   <- ((a - intensity) * (c - d)) / (b - a)
-#       alpha      <- 1.0 - resp_const
-#     }
-#     list(resp_var = resp_var, alpha = alpha)
-#   }
-#
-#   # Prepare df_base (feature presence/amount in PU)
-#   df_base <- dist_features[, c("pu","feature","amount","internal_pu","internal_feature"), drop = FALSE]
-#   df_base$pu <- as.integer(df_base$pu)
-#   df_base$feature <- as.integer(df_base$feature)
-#   df_base$amount <- as.numeric(df_base$amount)
-#   df_base <- df_base[is.finite(df_base$amount) & !is.na(df_base$amount) & df_base$amount > 0, , drop = FALSE]
-#
-#   # Prepare threats present with intensity
-#   dtp <- dt_present[, c("pu","threat","amount"), drop = FALSE]
-#   names(dtp)[names(dtp) == "amount"] <- "intensity"
-#
-#   if (nrow(df_base) == 0 || nrow(dtp) == 0) {
-#     de <- data.frame(
-#       pu = integer(0),
-#       action = character(0),
-#       feature = integer(0),
-#       benefit = numeric(0),
-#       internal_pu = integer(0),
-#       internal_action = integer(0),
-#       internal_feature = integer(0),
-#       stringsAsFactors = FALSE
-#     )
-#   } else {
-#
-#     # Join (pu,feature) x (pu,threat) then filter by sensitivity(feature,threat)
-#     pf <- merge(df_base, dtp, by = "pu")                    # adds threat + intensity
-#     pf <- merge(pf, sens, by = c("feature","threat", "internal_feature"))       # keep only sensitive pairs
-#
-#     if (nrow(pf) == 0) {
-#       de <- data.frame(
-#         pu = integer(0),
-#         action = character(0),
-#         feature = integer(0),
-#         benefit = numeric(0),
-#         internal_pu = integer(0),
-#         internal_action = integer(0),
-#         internal_feature = integer(0),
-#         stringsAsFactors = FALSE
-#       )
-#     } else {
-#
-#       if (is_binary) {
-#         # benefit = amount_is / count_sensitive_threats_present
-#         denom <- stats::aggregate(threat ~ pu + feature, data = pf, FUN = function(z) length(unique(z)))
-#         names(denom)[3] <- "d_is"
-#         pf <- merge(pf, denom, by = c("pu","feature"), all.x = TRUE)
-#
-#         pf$action  <- paste0(action_prefix, pf$threat)
-#         pf$benefit <- pf$amount / pf$d_is
-#
-#       } else {
-#         # continuous: amount_is * (resp_var*alpha/sum_alpha)
-#         ra <- mapply(
-#           FUN = function(intensity, a, b, c, d) .pa_resp_alpha(intensity, a, b, c, d),
-#           intensity = pf$intensity,
-#           a = pf$delta1, b = pf$delta2, c = pf$delta3, d = pf$delta4,
-#           SIMPLIFY = FALSE
-#         )
-#         pf$resp_var <- vapply(ra, `[[`, numeric(1), "resp_var")
-#         pf$alpha    <- vapply(ra, `[[`, numeric(1), "alpha")
-#
-#         sum_a <- stats::aggregate(alpha ~ pu + feature, data = pf, FUN = sum)
-#         names(sum_a)[3] <- "sum_alpha"
-#         pf <- merge(pf, sum_a, by = c("pu","feature"), all.x = TRUE)
-#
-#         pf$action <- paste0(action_prefix, pf$threat)
-#         pf$benefit <- 0.0
-#         ok <- is.finite(pf$sum_alpha) & !is.na(pf$sum_alpha) & (pf$sum_alpha > 0)
-#         pf$benefit[ok] <- pf$amount[ok] * (pf$resp_var[ok] * pf$alpha[ok]) / pf$sum_alpha[ok]
-#       }
-#
-#       # map internal_action
-#       pf$internal_action <- unname(action_index[as.character(pf$action)])
-#
-#       # build dist_effects
-#       de <- pf[, c("pu","action","internal_feature","benefit","internal_pu","internal_action"), drop = FALSE]
-#       names(de)[names(de) == "internal_feature"] <- "feature"
-#       de$feature <- as.integer(de$feature)
-#       de$internal_feature <- de$feature
-#       de$benefit <- as.numeric(de$benefit)
-#
-#       de <- de[, c("pu","action","feature","benefit","internal_pu","internal_action","internal_feature"), drop = FALSE]
-#       de <- de[is.finite(de$benefit) & !is.na(de$benefit) & de$benefit != 0, , drop = FALSE]
-#     }
-#   }
-#
-#   # ------------------------------------------------------------
-#   # 4) Store into Problem
-#   # ------------------------------------------------------------
-#   x$data$actions <- actions
-#   x$data$dist_actions <- dist_actions
-#   x$data$dist_effects <- de
-#
-#   # optional compat: keep dist_benefit alias
-#   x$data$dist_benefit <- if (inherits(de, "data.frame") && nrow(de) > 0) de else NULL
-#
-#   # meta for debugging/printing
-#   if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
-#   x$data$meta$actions_generated_from_legacy <- TRUE
-#   x$data$meta$legacy_actions_rule <- "one action per threat"
-#   x$data$meta$effects_rule <- if (is_binary) {
-#     "binary: benefit = amount_is / (# sensitive threats present in PU for feature)"
-#   } else {
-#     "continuous: benefit = amount_is * (resp_var*alpha/sum_alpha) using delta1..delta4"
-#   }
-#
-#   if (is.null(x$data$model_args)) x$data$model_args <- list()
-#
-#   if (is.null(x$data$model_args$benefit_exponent)) {
-#     x$data$model_args$benefit_exponent <- as.numeric(benefit_exponent)[1]
-#   }
-#   if (is.null(x$data$model_args$curve_segments)) {
-#     x$data$model_args$curve_segments <- as.integer(curve_segments)[1]
-#   }
-#
-#   if (is.null(x$data$meta) || !is.list(x$data$meta)) x$data$meta <- list()
-#   x$data$meta$benefit_transform <- list(
-#     type = "power",
-#     exponent = x$data$model_args$benefit_exponent,
-#     segments = x$data$model_args$curve_segments
-#   )
-#
-#   invisible(x)
-# }
-
-
-# ------------------------------------------------------------------------------
-# Legacy adapter: convert features$target_* to x$data$targets (model-ready format)
-# - required cols: feature (INTERNAL feature id), type, target_value
-# - type ∈ {conservation, recovery, mixed}
-# ------------------------------------------------------------------------------
-#
-# .pa_targets_from_features_legacy <- function(x, overwrite = FALSE, warn = TRUE) {
-#
-#   stopifnot(inherits(x, "Problem"))
-#
-#   fmt <- x$data$meta$input_format %||% NA_character_
-#   if (!identical(fmt, "legacy")) {
-#     return(invisible(x))
-#   }
-#
-#   # if already has targets, do nothing unless overwrite=TRUE
-#   if (!is.null(x$data$targets) &&
-#       inherits(x$data$targets, "data.frame") &&
-#       nrow(x$data$targets) > 0 &&
-#       !isTRUE(overwrite)) {
-#     return(invisible(x))
-#   }
-#
-#   feats <- x$data$features
-#   if (is.null(feats) || !inherits(feats, "data.frame") || nrow(feats) == 0) {
-#     stop("Legacy targets: missing x$data$features.", call. = FALSE)
-#   }
-#
-#   # Need internal_id mapping
-#   if (!("internal_id" %in% names(feats))) {
-#     # fall back to index mapping if present
-#     if (is.null(x$data$index$feature)) stop("Legacy targets: missing feature index.", call. = FALSE)
-#     feats$internal_id <- unname(x$data$index$feature[as.character(feats$id)])
-#   }
-#
-#   if (!("target_recovery" %in% names(feats))) {
-#     stop("Legacy targets: features$target_recovery is required in legacy mode.", call. = FALSE)
-#   }
-#   if (!("target_conservation" %in% names(feats))) {
-#     feats$target_conservation <- 0
-#   }
-#
-#   tr <- as.numeric(feats$target_recovery)
-#   tc <- as.numeric(feats$target_conservation)
-#
-#   if (anyNA(feats$internal_id)) {
-#     stop("Legacy targets: some features have missing internal_id.", call. = FALSE)
-#   }
-#
-#   out <- rbind(
-#     data.frame(
-#       feature = as.integer(feats$internal_id),
-#       type = "recovery",
-#       target_value = tr,
-#       stringsAsFactors = FALSE
-#     ),
-#     data.frame(
-#       feature = as.integer(feats$internal_id),
-#       type = "conservation",
-#       target_value = tc,
-#       stringsAsFactors = FALSE
-#     )
-#   )
-#
-#   # drop zeros / NAs
-#   out <- out[is.finite(out$target_value) & !is.na(out$target_value) & out$target_value > 0, , drop = FALSE]
-#
-#   # if nothing to add, keep targets NULL (clean)
-#   if (nrow(out) == 0) {
-#     x$data$targets <- NULL
-#     if (isTRUE(warn)) {
-#       warning("Legacy targets: no positive target_* values found in features; x$data$targets left as NULL.", call. = FALSE, immediate. = TRUE)
-#     }
-#     return(invisible(x))
-#   }
-#
-#   # aggregate (feature,type) just in case
-#   out <- stats::aggregate(target_value ~ feature + type, data = out, FUN = sum)
-#
-#   x$data$targets <- out
-#
-#   if (isTRUE(warn)) {
-#     warning(
-#       "Legacy input: created x$data$targets from features$target_recovery/target_conservation.",
-#       call. = FALSE, immediate. = TRUE
-#     )
-#   }
-#
-#   invisible(x)
-# }
-
 
 
 # -------------------------------------------------------------------------
@@ -2899,16 +2498,6 @@ available_to_solve <- function(package = ""){
     if (anyDuplicated(features$name) != 0) stop("features$name must be unique.", call. = FALSE)
   }
 
-  # legacy-only: require targets
-  # if ((format == "legacy") || (format == "auto" && has_legacy)) {
-  #   if (!("target_recovery" %in% names(features))) {
-  #     stop("Legacy mode requires features$target_recovery.", call. = FALSE)
-  #   }
-  #   assertthat::assert_that(is.numeric(features$target_recovery), assertthat::noNA(features$target_recovery))
-  #   if (!("target_conservation" %in% names(features))) features$target_conservation <- 0
-  #   assertthat::assert_that(is.numeric(features$target_conservation), assertthat::noNA(features$target_conservation))
-  # }
-
   features <- features[, c("id", "name", setdiff(names(features), c("id", "name"))), drop = FALSE]
   features <- features[order(features$id), , drop = FALSE]
 
@@ -3006,169 +2595,6 @@ available_to_solve <- function(package = ""){
       call. = FALSE, immediate. = TRUE
     )
   }
-
-  # # =========================
-  # # LEGACY BLOCK (optional)
-  # # =========================
-  # threats <- NULL
-  # dist_threats <- NULL
-  # sensitivity <- NULL
-  # threat_index <- NULL
-  #
-  # if ((format == "legacy") || (format == "auto" && has_legacy)) {
-  #
-  #   threats <- dots$threats
-  #   dist_threats <- dots$dist_threats
-  #   sensitivity <- dots$sensitivity %||% NULL
-  #
-  #   if (!inherits(threats, "data.frame") || !inherits(dist_threats, "data.frame")) {
-  #     stop("Legacy inputs require `threats` and `dist_threats` as data.frame (passed via ...).", call. = FALSE)
-  #   }
-  #
-  #   # ---- threats
-  #   assertthat::assert_that(
-  #     assertthat::has_name(threats, "id"),
-  #     nrow(threats) > 0,
-  #     assertthat::noNA(threats$id)
-  #   )
-  #   threats$id <- .as_int_id(threats$id, "threats$id")
-  #   if (anyDuplicated(threats$id) != 0) stop("threats$id must be unique.", call. = FALSE)
-  #
-  #   if (!("name" %in% names(threats))) threats$name <- paste0("threat.", seq_len(nrow(threats)))
-  #   threats$name <- as.character(threats$name)
-  #   if (anyDuplicated(threats$name) != 0) stop("threats$name must be unique.", call. = FALSE)
-  #
-  #   if (!("blm_actions" %in% names(threats))) threats$blm_actions <- 0
-  #   assertthat::assert_that(is.numeric(threats$blm_actions), all(threats$blm_actions >= 0))
-  #
-  #   threats <- threats[order(threats$id), , drop = FALSE]
-  #   threats$internal_id <- seq_len(nrow(threats))
-  #   threat_index <- stats::setNames(threats$internal_id, as.character(threats$id))
-  #
-  #   # ---- dist_threats
-  #   assertthat::assert_that(
-  #     assertthat::has_name(dist_threats, "pu"),
-  #     assertthat::has_name(dist_threats, "threat"),
-  #     assertthat::has_name(dist_threats, "amount"),
-  #     assertthat::has_name(dist_threats, "action_cost"),
-  #     nrow(dist_threats) > 0,
-  #     assertthat::noNA(dist_threats$pu),
-  #     assertthat::noNA(dist_threats$threat),
-  #     assertthat::noNA(dist_threats$amount),
-  #     assertthat::noNA(dist_threats$action_cost),
-  #     is.numeric(dist_threats$amount),
-  #     is.numeric(dist_threats$action_cost),
-  #     all(dist_threats$amount >= 0)
-  #   )
-  #
-  #   dist_threats$pu     <- .as_int_id(dist_threats$pu, "dist_threats$pu")
-  #   dist_threats$threat <- .as_int_id(dist_threats$threat, "dist_threats$threat")
-  #
-  #   if (!all(dist_threats$pu %in% pu$id)) {
-  #     bad <- unique(dist_threats$pu[!dist_threats$pu %in% pu$id])
-  #     stop("dist_threats contains unknown PU ids: ", paste(bad, collapse = ", "), call. = FALSE)
-  #   }
-  #   if (!all(dist_threats$threat %in% threats$id)) {
-  #     bad <- unique(dist_threats$threat[!dist_threats$threat %in% threats$id])
-  #     stop("dist_threats contains unknown threat ids: ", paste(bad, collapse = ", "), call. = FALSE)
-  #   }
-  #
-  #   # status handling (optional)
-  #   if ("status" %in% names(dist_threats)) {
-  #     dist_threats$status <- as.integer(dist_threats$status)
-  #     ok <- dist_threats$status %in% c(0L, 2L, 3L)
-  #     if (!all(ok, na.rm = TRUE)) stop("dist_threats$status must be in {0,2,3}.", call. = FALSE)
-  #
-  #     locked_out_pus <- pu$id[pu$locked_out]
-  #     if (length(locked_out_pus)) {
-  #       idx <- dist_threats$pu %in% locked_out_pus & dist_threats$status == 2L
-  #       if (any(idx, na.rm = TRUE)) {
-  #         warning("Some actions were locked-in inside locked-out PU(s); setting them to locked-out.", call. = FALSE, immediate. = TRUE)
-  #         dist_threats$status[idx] <- 3L
-  #       }
-  #       idx2 <- dist_threats$pu %in% locked_out_pus
-  #       dist_threats$status[idx2] <- 3L
-  #     }
-  #   } else {
-  #     dist_threats$status <- 0L
-  #   }
-  #
-  #   dist_threats <- dist_threats[dist_threats$amount != 0, , drop = FALSE]
-  #   key_t <- paste(dist_threats$pu, dist_threats$threat, sep = "||")
-  #   if (anyDuplicated(key_t) != 0) stop("There are duplicate (pu, threat) pairs in dist_threats.", call. = FALSE)
-  #
-  #   dist_threats$internal_pu <- unname(pu_index[as.character(dist_threats$pu)])
-  #   dist_threats$internal_threat <- unname(threat_index[as.character(dist_threats$threat)])
-  #
-  #   # ---- sensitivity
-  #   if (is.null(sensitivity)) {
-  #     sensitivity <- base::expand.grid(feature = features$id, threat = threats$id)
-  #   } else {
-  #     assertthat::assert_that(
-  #       inherits(sensitivity, "data.frame"),
-  #       assertthat::has_name(sensitivity, "feature"),
-  #       assertthat::has_name(sensitivity, "threat"),
-  #       nrow(sensitivity) > 0,
-  #       assertthat::noNA(sensitivity$feature),
-  #       assertthat::noNA(sensitivity$threat)
-  #     )
-  #   }
-  #
-  #   sensitivity$feature <- .as_int_id(sensitivity$feature, "sensitivity$feature")
-  #   sensitivity$threat  <- .as_int_id(sensitivity$threat,  "sensitivity$threat")
-  #
-  #   sensitivity <- sensitivity[sensitivity$feature %in% features$id & sensitivity$threat %in% threats$id, , drop = FALSE]
-  #   if (nrow(sensitivity) == 0) stop("After filtering, sensitivity has 0 valid rows.", call. = FALSE)
-  #
-  #   if (!("delta1" %in% names(sensitivity))) sensitivity$delta1 <- 0
-  #   if (!("delta2" %in% names(sensitivity))) sensitivity$delta2 <- NA
-  #   if (!("delta3" %in% names(sensitivity))) sensitivity$delta3 <- 0
-  #   if (!("delta4" %in% names(sensitivity))) sensitivity$delta4 <- 1
-  #
-  #   sensitivity$delta1[is.na(sensitivity$delta1)] <- 0
-  #   sensitivity$delta3[is.na(sensitivity$delta3)] <- 0
-  #   sensitivity$delta4[is.na(sensitivity$delta4)] <- 1
-  #
-  #   max_int <- stats::aggregate(dist_threats$amount, by = list(threat = dist_threats$threat), FUN = max)
-  #   names(max_int)[2] <- "max_amount"
-  #   idx_map <- match(sensitivity$threat, max_int$threat)
-  #   fill_vals <- max_int$max_amount[idx_map]
-  #   sensitivity$delta2[is.na(sensitivity$delta2)] <- fill_vals[is.na(sensitivity$delta2)]
-  #
-  #   if (!all(sensitivity$delta2 > sensitivity$delta1)) stop("Each delta2 must be > delta1.", call. = FALSE)
-  #   if (!all(sensitivity$delta4 > sensitivity$delta3)) stop("Each delta4 must be > delta3.", call. = FALSE)
-  #
-  #   sensitivity$internal_feature <- unname(feature_index[as.character(sensitivity$feature)])
-  #   sensitivity$internal_threat  <- unname(threat_index[as.character(sensitivity$threat)])
-  #
-  #   # threats$blm_actions <- base::round(threats$blm_actions, 3)
-  #   # dist_threats$amount <- base::round(dist_threats$amount, 3)
-  #   # dist_threats$action_cost <- base::round(dist_threats$action_cost, 3)
-  #   # sensitivity$delta1 <- base::round(sensitivity$delta1, 3)
-  #   # sensitivity$delta2 <- base::round(sensitivity$delta2, 3)
-  #   # sensitivity$delta3 <- base::round(sensitivity$delta3, 3)
-  #   # sensitivity$delta4 <- base::round(sensitivity$delta4, 3)
-  #
-  #   if (isTRUE(dots$warn_legacy %||% TRUE)) {
-  #     if (requireNamespace("lifecycle", quietly = TRUE)) {
-  #       lifecycle::deprecate_warn(
-  #         when = "1.0.1",
-  #         what = "inputData()",
-  #         with = "add_actions()",
-  #         details = paste(
-  #           "Legacy inputs detected (threats/dist_threats/sensitivity).",
-  #           "New workflow example:",
-  #           "inputData(...) %>% add_actions(...) %>% add_effects(...) %>% solve()"
-  #         )
-  #       )
-  #     } else {
-  #       warning(
-  #         "Legacy inputs detected (threats/dist_threats/sensitivity). Consider migrating to the new format.",
-  #         call. = FALSE, immediate. = TRUE
-  #       )
-  #     }
-  #   }
-  # }
 
   # =========================
   # build Problem object (FIXED: assign to x and return it)
@@ -4138,4 +3564,389 @@ NULL
 
   df[[out_col]] <- out
   df
+}
+
+
+
+.pa_solve_single_problem <- function(x, ...) {
+  assertthat::assert_that(inherits(x, "Problem"))
+
+  # ---- gather stored solve args (defaults + stored)
+  dots <- list(...)
+
+  # consideramos “ya configurado” si solve_args existe y tiene al menos un campo no nulo
+  has_stored_args <- !is.null(x$data$solve_args) &&
+    length(x$data$solve_args) > 0 &&
+    any(!vapply(x$data$solve_args, is.null, logical(1)))
+
+  sa <- do.call(.pa_get_solve_args, c(list(x = x), dots))
+
+  solver         <- sa$solver %||% "auto"
+  gap_limit      <- sa$gap_limit
+  time_limit     <- sa$time_limit
+  solution_limit <- sa$solution_limit
+  cores          <- sa$cores
+  verbose        <- sa$verbose
+  name_output_file <- sa$name_output_file
+  output_file    <- sa$output_file
+  solver_params_user <- sa$solver_params %||% list()
+
+  # ---- autodetect solver if requested
+  available_gurobi   <- available_to_solve("gurobi")
+  available_cplex    <- available_to_solve("cplex")
+  available_symphony <- available_to_solve("symphony")
+  available_cbc      <- available_to_solve("cbc")
+
+  if (identical(solver, "auto") || identical(solver, "") || is.null(solver)) {
+    if (requireNamespace("Rcplex", quietly = TRUE) && available_cplex) {
+      solver <- "cplex"
+    } else if (requireNamespace("gurobi", quietly = TRUE) && available_gurobi) {
+      solver <- "gurobi"
+    } else if (requireNamespace("rcbc", quietly = TRUE) && available_cbc) {
+      solver <- "cbc"
+    } else if (requireNamespace("Rsymphony", quietly = TRUE) && available_symphony) {
+      solver <- "symphony"
+    } else {
+      stop("No optimization problem solvers available on this system.", call. = FALSE)
+    }
+  } else {
+    if (!solver %in% c("gurobi", "cbc", "symphony", "cplex")) {
+      stop("Solver not supported: ", solver, call. = FALSE)
+    }
+    if (identical(solver, "gurobi") && (!requireNamespace("gurobi", quietly = TRUE) || !available_gurobi)) {
+      stop("Gurobi solver not available (package/license not found).", call. = FALSE)
+    }
+    if (identical(solver, "cbc") && (!requireNamespace("rcbc", quietly = TRUE) || !available_cbc)) {
+      stop("CBC solver not available (rcbc not installed or CBC not available).", call. = FALSE)
+    }
+    if (identical(solver, "symphony") && (!requireNamespace("Rsymphony", quietly = TRUE) || !available_symphony)) {
+      stop("SYMPHONY solver not available (Rsymphony not installed).", call. = FALSE)
+    }
+    if (identical(solver, "cplex") && (!requireNamespace("Rcplex", quietly = TRUE) || !available_cplex)) {
+      stop("CPLEX solver not available (Rcplex not installed/licensed).", call. = FALSE)
+    }
+  }
+
+
+  # ---- ensure model is built
+  if (is.null(x$data$model_ptr) || !isTRUE(x$data$has_model) || isTRUE(x$data$meta$model_dirty)) {
+    x <- .pa_build_model(x)
+    x$data$meta$model_dirty <- FALSE
+  }
+
+  # ---- model list from pointer
+  model <- .pa_model_from_ptr(
+    x$data$model_ptr,
+    args = x$data$model_args %||% list(),
+    drop_triplets = TRUE
+  )
+
+  # ---- APPLY SUPERSET RUNTIME UPDATES (solver-agnostic)
+  model <- .pa_apply_runtime_updates_to_model(model, x)
+
+  # ---- pack args into Solution metadata
+  solve_args <- list(
+    solver = solver,
+    gap = gap_limit,
+    timelimit = time_limit,
+    cores = cores,
+    verbose = verbose,
+    solution_limit = solution_limit,
+    name_output_file = name_output_file,
+    output_file = output_file,
+    solver_params = solver_params_user
+  )
+
+  # ------------------------------------------------------------
+  # 1) Call solver -> return unified payload:
+  #    objval, solvec, gap, status_code, runtime
+  # ------------------------------------------------------------
+  objval <- NA_real_
+  solvec <- numeric(0)
+  gap    <- NA_real_
+  status_code <- 999L
+  runtime <- NA_real_
+
+  if (solver == "gurobi") {
+
+    model$sense <- replace(model$sense, model$sense == "==", "=")
+    model$lb <- model$bounds$lower$val
+    model$ub <- model$bounds$upper$val
+
+    params <- list(
+      Threads = cores,
+      LogToConsole = as.integer(verbose),
+      NodefileStart = 0.5,
+      MIPGap = gap_limit,
+      TimeLimit = time_limit
+    )
+    if (isTRUE(output_file)) params$LogFile <- paste0(name_output_file, "_log.txt")
+    if (isTRUE(solution_limit)) params$SolutionLimit <- 1
+
+    if (!is.null(model$args$curve) && !is.null(model$args$segments) && model$args$curve != 1) {
+      params$FuncPieces <- 1
+      params$FuncPieceLength <- round(1 / as.numeric(model$args$segments), digits = 1)
+    }
+
+    params <- modifyList(params, solver_params_user)
+
+    sol <- gurobi::gurobi(model, params)
+
+    status_code <- dplyr::case_when(
+      sol$status == "OPTIMAL" ~ 0L,
+      sol$status %in% c("INF_OR_UNBD", "INFEASIBLE", "UNBOUNDED") ~ 1L,
+      (sol$status == "TIME_LIMIT" && !is.null(sol$objval)) ~ 2L,
+      (sol$status == "TIME_LIMIT" && is.null(sol$objval)) ~ 3L,
+      sol$status == "SOLUTION_LIMIT" ~ 4L,
+      TRUE ~ 999L
+    )
+
+    objval  <- sol$objval %||% NA_real_
+    solvec  <- sol$x %||% numeric(0)
+    gap     <- sol$mipgap %||% NA_real_
+    runtime <- sol$runtime %||% NA_real_
+
+  } else if (solver == "cbc") {
+
+    # build row bounds from sense + rhs
+    row_lb <- rep(-Inf, length(model$rhs))
+    row_ub <- rep( Inf, length(model$rhs))
+
+    ii_le <- which(model$sense == "<=")
+    ii_ge <- which(model$sense == ">=")
+    ii_eq <- which(model$sense == "==" | model$sense == "=")
+
+    row_ub[ii_le] <- model$rhs[ii_le]
+    row_lb[ii_ge] <- model$rhs[ii_ge]
+    row_lb[ii_eq] <- model$rhs[ii_eq]
+    row_ub[ii_eq] <- model$rhs[ii_eq]
+
+    cbc_args <- list(
+      threads = cores,
+      log = as.integer(verbose),
+      verbose = 15,
+      ratio = gap_limit,
+      sec = time_limit,
+      timem = "elapsed",
+      heuristicsOnOff = "on"
+    )
+    cbc_args <- modifyList(cbc_args, solver_params_user)
+
+    rt <- system.time({
+      sol_cbc <- rcbc::cbc_solve(
+        obj = model$obj,
+        mat = model$A,
+        is_integer = ifelse(model$vtype == "B", TRUE, FALSE),
+        row_ub = row_ub,
+        row_lb = row_lb,
+        col_lb = model$bounds$lower$val,
+        col_ub = model$bounds$upper$val,
+        max = ifelse(model$modelsense == "min", FALSE, TRUE),
+        cbc_args = cbc_args
+      )
+    })
+
+    runtime <- rt[[3]]
+
+    status_cbc <- rcbc::solution_status(sol_cbc)
+    status_code <- dplyr::case_when(
+      status_cbc == "optimal" ~ 0L,
+      status_cbc == "infeasible" ~ 1L,
+      (status_cbc == "timelimit" && !is.null(sol_cbc$objective_value)) ~ 2L,
+      (status_cbc == "timelimit" && is.null(sol_cbc$objective_value)) ~ 3L,
+      TRUE ~ 999L
+    )
+
+    objval <- sol_cbc$objective_value %||% NA_real_
+    solvec <- sol_cbc$column_solution %||% numeric(0)
+    gap    <- if (isTRUE(status_code == 0L)) gap_limit else NA_real_
+
+
+  } else if (solver == "cplex") {
+
+    model$lb <- model$bounds$lower$val
+    model$ub <- model$bounds$upper$val
+
+    sense <- model$sense
+    sense[sense == ">="] <- "G"
+    sense[sense == "=="] <- "E"
+    sense[sense == "<="] <- "L"
+
+    params <- list(
+      trace = as.integer(verbose),
+      epgap = gap_limit,
+      tilim = time_limit
+    )
+    params <- modifyList(params, solver_params_user)
+
+    if (any(solution_limit, output_file)) {
+      warning(
+        "Options not available with cplex solver via this interface: solution_limit, output_file",
+        call. = FALSE, immediate. = TRUE
+      )
+    }
+
+    rt <- system.time({
+      sol_cplex <- Rcplex::Rcplex(
+        cvec = model$obj,
+        Amat = model$A,
+        bvec = model$rhs,
+        lb = model$lb,
+        ub = model$ub,
+        objsense = model$modelsense,
+        sense = sense,
+        vtype = model$vtype,
+        control = params
+      )
+    })
+
+    runtime <- rt[[3]]
+
+    status_code <- dplyr::case_when(
+      sol_cplex$status %in% c(101L, 1L) ~ 0L,
+      sol_cplex$status %in% c(2L, 3L, 103L, 118L) ~ 1L,
+      sol_cplex$status == 107L ~ 2L,
+      sol_cplex$status == 108L ~ 3L,
+      sol_cplex$status == 232L ~ 4L,
+      TRUE ~ 999L
+    )
+
+    objval <- sol_cplex$obj %||% NA_real_
+    solvec <- sol_cplex$xopt %||% numeric(0)
+    gap    <- 0
+
+  } else if (solver == "symphony") {
+
+    if (isTRUE(output_file)) {
+      warning("It is not possible to export a solver log using symphony solver.", call. = FALSE, immediate. = TRUE)
+    }
+
+    max_flag <- ifelse(model$modelsense == "min", FALSE, TRUE)
+    verbosity <- as.integer(verbose) - 2
+
+    rt <- system.time({
+      sol_sym <- Rsymphony::Rsymphony_solve_LP(
+        obj = model$obj,
+        mat = model$A,
+        dir = model$sense,
+        rhs = model$rhs,
+        bounds = model$bounds,
+        types = model$vtype,
+        max = max_flag,
+        gap_limit = gap_limit,
+        time_limit = time_limit,
+        verbosity = verbosity,
+        first_feasible = solution_limit
+      )
+    })
+
+    runtime <- rt[[3]]
+
+    status_code <- dplyr::case_when(
+      sol_sym$status %in% c(0L, 231L) ~ 0L,
+      sol_sym$status %in% c(226L, 237L) ~ 1L,
+      sol_sym$status %in% c(235L, 228L) ~ 2L,
+      sol_sym$status == 232L ~ 4L,
+      TRUE ~ 999L
+    )
+
+    objval <- sol_sym$objval %||% NA_real_
+    solvec <- sol_sym$solution %||% numeric(0)
+    gap    <- if (isTRUE(status_code == 0L)) gap_limit else NA_real_
+
+  } else {
+    stop("Internal error: unknown solver '", solver, "'.", call. = FALSE)
+  }
+
+  # ------------------------------------------------------------
+  # Hard fail if solver returned no usable solution
+  # ------------------------------------------------------------
+  if (length(solvec) == 0L || all(is.na(solvec))) {
+    msg <- paste0(
+      "Solver returned an empty solution vector.\n",
+      "solver: ", solver, "\n",
+      "status_code: ", status_code, "\n",
+      "objval: ", as.character(objval), "\n",
+      "Possible causes: infeasible model, time limit before first feasible, or solver error.\n",
+      "Tip: try increasing time_limit, relaxing constraints, or inspect solver logs (if available)."
+    )
+    stop(msg, call. = FALSE)
+  }
+
+  # Ensure solution length is consistent with model offsets
+  n_pu_chk <- as.integer(model$n_pu %||% 0L)
+  n_x_chk  <- as.integer(model$n_x  %||% 0L)
+  n_z_chk  <- as.integer(model$n_z  %||% 0L)
+  w0_chk <- as.integer(model$w_offset %||% 0L)
+  x0_chk <- as.integer(model$x_offset %||% 0L)
+  z0_chk <- as.integer(model$z_offset %||% 0L)
+
+  needed_len <- max(
+    w0_chk + n_pu_chk,
+    x0_chk + n_x_chk,
+    z0_chk + n_z_chk,
+    0L
+  )
+
+  if (length(solvec) < needed_len) {
+    stop(
+      "Solver returned a solution vector of length ", length(solvec),
+      " but the model requires at least ", needed_len, " variables ",
+      "(based on offsets + variable counts). ",
+      "This indicates a mismatch between the built model and the decoded metadata.",
+      call. = FALSE
+    )
+  }
+
+  # ------------------------------------------------------------
+  # 2) Minimal decoding using offsets (0-based in C++; +1 in R)
+  # ------------------------------------------------------------
+  n_pu <- as.integer(model$n_pu %||% 0L)
+  n_x  <- as.integer(model$n_x  %||% 0L)
+  n_z  <- as.integer(model$n_z  %||% 0L)
+
+  w0 <- as.integer(model$w_offset %||% 0L)
+  x0 <- as.integer(model$x_offset %||% 0L)
+  z0 <- as.integer(model$z_offset %||% 0L)
+
+  sol_monitoring <- if (n_pu > 0L && length(solvec) >= (w0 + n_pu)) {
+    base::round(solvec[(w0 + 1L):(w0 + n_pu)])
+  } else numeric(0)
+
+  sol_actions <- if (n_x > 0L && length(solvec) >= (x0 + n_x)) {
+    base::round(solvec[(x0 + 1L):(x0 + n_x)])
+  } else numeric(0)
+
+  sol_conservation <- if (n_z > 0L && length(solvec) >= (z0 + n_z)) {
+    solvec[(z0 + 1L):(z0 + n_z)]
+  } else numeric(0)
+
+  # ------------------------------------------------------------
+  # 3) Build human-readable tables (you implement this helper)
+  # ------------------------------------------------------------
+  tables <- .pa_extract_solution_tables(x, solvec)
+
+  x$data$runtime_updates <- NULL
+
+  # ------------------------------------------------------------
+  # 4) Construct Solution ONCE
+  # ------------------------------------------------------------
+  s <- pproto(
+    NULL, Solution,
+    data = list(
+      objval = objval,
+      sol = solvec,
+      gap = gap,
+      status = as.integer(status_code),
+      runtime = runtime,
+      args = solve_args,
+      sol_monitoring = sol_monitoring,
+      sol_actions = sol_actions,
+      sol_conservation = sol_conservation,
+      tables = tables
+    ),
+    Problem = x
+  )
+
+  s
 }

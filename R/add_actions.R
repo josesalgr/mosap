@@ -338,6 +338,15 @@ add_actions <- function(
   actions$id <- as.character(actions$id)
   if (anyDuplicated(actions$id) != 0) stop("actions$id must be unique.", call. = FALSE)
 
+  # ---- action names: optional, but always standardized
+  if (!("name" %in% names(actions))) {
+    actions$name <- as.character(actions$id)
+  } else {
+    actions$name <- as.character(actions$name)
+    if (anyNA(actions$name) || any(!nzchar(actions$name))) {
+      stop("actions$name cannot contain NA or empty strings.", call. = FALSE)
+    }
+  }
   # optional grouping column for downstream target/objective filtering
   if ("action_set" %in% names(actions)) {
     actions$action_set <- as.character(actions$action_set)

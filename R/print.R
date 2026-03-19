@@ -30,6 +30,6 @@ print.Problem <- function(x, ...) x$print()
 print.Solution <- function(x, ...) x$print()
 
 #' @rdname print
-#' @method print MOProblem
+#' @method print SolutionSet
 #' @export
-print.MOProblem <- function(x, ...) x$print()
+print.SolutionSet <- function(x, ...) x$print()

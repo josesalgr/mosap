@@ -1,4 +1,5 @@
-# internal.R (mosap)
+#' @include internal.R
+
 # -------------------------------------------------------------------------
 # Utilities
 # -------------------------------------------------------------------------
@@ -84,42 +85,42 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 # -------------------------------------------------------------------------
-# Promote Problem -> MOProblem (internal; never exposed to user)
+# Promote Problem -> Problem (internal; never exposed to user)
 # -------------------------------------------------------------------------
 
-.pamo_as_mo <- function(x) {
-  if (inherits(x, "MOProblem")) return(x)
-
-  if (inherits(x, "Problem")) {
-    obj <- pproto(NULL, MOProblem, base = x)
-
-    # fuerza clase S3 para que UseMethod("solve") encuentre solve.MOProblem
-    cls <- class(obj)
-    if (is.null(cls)) cls <- character()
-    class(obj) <- unique(c("MOProblem", cls))
-
-    return(obj)
-  }
-
-  stop("Expected a Problem or a MOProblem.", call. = FALSE)
-}
+# .pamo_as_mo <- function(x) {
+#   if (inherits(x, "Problem")) return(x)
+#
+#   if (inherits(x, "Problem")) {
+#     obj <- pproto(NULL, Problem, base = x)
+#
+#     # fuerza clase S3 para que UseMethod("solve") encuentre solve.Problem
+#     cls <- class(obj)
+#     if (is.null(cls)) cls <- character()
+#     class(obj) <- unique(c("Problem", cls))
+#
+#     return(obj)
+#   }
+#
+#   stop("Expected a Problem or a Problem.", call. = FALSE)
+# }
 
 
 # -------------------------------------------------------------------------
 # Atomic objective registry accessors (stored in mosap::Problem)
-# Registry: x$base$data$objectives[[alias]] = list(...)
+# Registry: x$data$objectives[[alias]] = list(...)
 # -------------------------------------------------------------------------
 
 .pamo_get_specs <- function(x) {
-  stopifnot(inherits(x, "MOProblem"))
-  specs <- x$base$data$objectives %||% list()
+  stopifnot(inherits(x, "Problem"))
+  specs <- x$data$objectives %||% list()
   if (!is.list(specs)) specs <- list()
   specs
 }
 
 # internal: get ONE atomic objective spec by alias
 .pamo_get_objective_spec <- function(x, alias) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
   alias <- as.character(alias)[1]
 
   if (is.na(alias) || !nzchar(alias)) {
@@ -146,7 +147,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
 # internal: get MANY objective specs in order (and validate duplicates)
 .pamo_get_objective_specs <- function(x, aliases) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
   aliases <- as.character(aliases)
   if (length(aliases) == 0L) stop("aliases must have length > 0.", call. = FALSE)
@@ -167,7 +168,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
 # internal: validate registry sanity
 .pamo_validate_objectives <- function(x) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
   specs <- .pamo_get_specs(x)
   if (length(specs) == 0) {
@@ -966,11 +967,13 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 # Internal: solve weighted
 # ---------------------------------------------------------
 .pamo_solve_weighted <- function(x, ...) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
-  aliases   <- x$method$params$aliases
-  w         <- x$method$params$weights
-  normalize <- isTRUE(x$method$params$normalize)
+  data <- x$data %||% list()
+  method <- x$data$method %||% list()
+  aliases   <- as.character(method$aliases %||% character(0))
+  w         <- as.numeric(method$weights %||% numeric(0))
+  normalize <- isTRUE(method$normalize)
 
   if (is.null(aliases) || length(aliases) == 0L) {
     stop("Weighted method: missing aliases.", call. = FALSE)
@@ -1066,8 +1069,9 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   )
 
   pproto(
-    NULL, SolutionMO,
-    method = x$method,
+    NULL, SolutionSet,
+    data = data,
+    method = method,
     design = design_df,
     runs = runs,
     solutions = solutions,
@@ -1080,13 +1084,14 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
 .pamo_solve_epsilon_constraint <- function(x, ...) {
 
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
-  method <- x$method %||% NULL
+  method <- x$data$method %||% NULL
   if (is.null(method) || !is.list(method)) {
-    stop("epsilon_constraint: x$method is missing or invalid.", call. = FALSE)
+    stop("epsilon_constraint: x$data$method is missing or invalid.", call. = FALSE)
   }
 
+  data <- x$data %||% list()
   primary     <- as.character(method$primary %||% NA_character_)[1]
   aliases     <- as.character(method$aliases %||% character(0))
   constrained <- as.character(method$constrained %||% character(0))
@@ -1121,7 +1126,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
     design_df <- method$runs
 
     if (is.null(design_df) || !inherits(design_df, "data.frame") || nrow(design_df) == 0L) {
-      stop("epsilon_constraint (manual): x$method$runs is missing/empty.", call. = FALSE)
+      stop("epsilon_constraint (manual): x$data$method$runs is missing/empty.", call. = FALSE)
     }
 
   } else {
@@ -1141,7 +1146,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
       stop("epsilon_constraint (auto): generated epsilon runs are empty.", call. = FALSE)
     }
 
-    x$method$runs <- design_df
+    x$data$method$runs <- design_df
   }
 
   if (!("run_id" %in% names(design_df))) {
@@ -1258,8 +1263,9 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
   }
 
   pproto(
-    NULL, SolutionMO,
-    method = x$method,
+    NULL, SolutionSet,
+    data = data,
+    method = method,
     design = design_df,
     runs = runs,
     solutions = solutions,
@@ -1271,9 +1277,9 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 }
 
 .pamo_build_auto_epsilon_runs <- function(x) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
-  method <- x$method %||% list()
+  method <- x$data$method %||% list()
 
   primary          <- as.character(method$primary %||% NA_character_)[1]
   aliases          <- as.character(method$aliases %||% character(0))
@@ -1375,26 +1381,6 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 
 
 
-# ---------------------------------------------------------
-# Internal: extract (minimal) results from mosap Solution
-# ---------------------------------------------------------
-# .pamo_extract_solution <- function(out) {
-#   # out is expected to be a mosap::Solution (pproto)
-#   # We'll be defensive: if slots are missing, keep NA.
-#   objval <- tryCatch(out$data$objval, error = function(e) NA_real_)
-#   gap    <- tryCatch(out$data$gap,    error = function(e) NA_real_)
-#   runtime <- tryCatch(out$data$runtime, error = function(e) NA_real_)
-#   status <- tryCatch(out$data$status, error = function(e) "ok")
-#
-#   list(
-#     solution = out,
-#     status = status,
-#     runtime = runtime,
-#     gap = gap,
-#     objval = objval
-#   )
-# }
-
 
 # -------------------------------------------------------------------------
 # "Custom objectives" (DEV/advanced) constructor + registry add
@@ -1416,21 +1402,22 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 }
 
 add_objective <- function(x, objective) {
-  x <- .pamo_as_mo(x)
+  #x <- .pamo_as_mo(x)
+  x <- .pa_clone_data(x)
 
   if (!inherits(objective, "pa_objective")) {
     stop("add_objective() expects an objective of class 'pa_objective'.", call. = FALSE)
   }
 
   # store it as an atomic spec in the mosap registry
-  if (is.null(x$base$data$objectives) || !is.list(x$base$data$objectives)) {
-    x$base$data$objectives <- list()
+  if (is.null(x$data$objectives) || !is.list(x$data$objectives)) {
+    x$data$objectives <- list()
   }
-  if (!is.null(x$base$data$objectives[[objective$alias]])) {
+  if (!is.null(x$data$objectives[[objective$alias]])) {
     stop("Objective alias already exists: '", objective$alias, "'.", call. = FALSE)
   }
 
-  x$base$data$objectives[[objective$alias]] <- list(
+  x$data$objectives[[objective$alias]] <- list(
     alias = objective$alias,
     objective_id = "custom",
     model_type = "custom",
@@ -1904,80 +1891,13 @@ add_objective <- function(x, objective) {
 }
 
 # ---------------------------------------------------------
-# Internal: solve weighted
-# ---------------------------------------------------------
-# .pamo_solve_weighted <- function(x, ...) {
-#   aliases <- x$method$params$aliases
-#   w <- x$method$params$weights
-#   normalize <- isTRUE(x$method$params$normalize)
-#
-#   if (is.null(w)) {
-#     stop("Weighted method: missing weights. Provide them in set_method_weighted().", call. = FALSE)
-#   }
-#
-#   # build a single run specification (later: grid of weights)
-#   run_df <- data.frame(run_id = 1L, stringsAsFactors = FALSE)
-#   for (i in seq_along(aliases)) {
-#     run_df[[paste0("w_", aliases[i])]] <- w[i]
-#   }
-#
-#   solutions <- vector("list", nrow(run_df))
-#   obj_vals  <- matrix(NA_real_, nrow(run_df), length(aliases))
-#   colnames(obj_vals) <- paste0("obj_", aliases)
-#
-#   status <- character(nrow(run_df))
-#   runtime <- numeric(nrow(run_df))
-#   gap <- numeric(nrow(run_df))
-#
-#   for (r in seq_len(nrow(run_df))) {
-#     w_r <- as.numeric(run_df[r, paste0("w_", aliases), drop = TRUE])
-#
-#     one <- .pamo_solve_one(
-#       x = x,
-#       spec = list(
-#         type = "weighted",
-#         aliases = aliases,
-#         weights = w_r,
-#         normalize = normalize
-#       )
-#     )
-#
-#     solutions[[r]] <- one$solution
-#     status[r] <- one$status
-#     runtime[r] <- one$runtime
-#     gap[r] <- one$gap
-#
-#     # TODO: objective evaluation (optional, later)
-#     # For now, keep NA_real_ (doesn't break, keeps schema stable)
-#     obj_vals[r, ] <- rep(NA_real_, length(aliases))
-#   }
-#
-#   runs <- cbind(
-#     run_df,
-#     data.frame(status = status, runtime = runtime, gap = gap, stringsAsFactors = FALSE),
-#     as.data.frame(obj_vals, stringsAsFactors = FALSE)
-#   )
-#
-#   pproto(
-#     NULL, MOProblem,
-#     runs = runs,
-#     solutions = solutions,
-#     meta = list(
-#       method = x$method,
-#       call = match.call()
-#     )
-#   )
-# }
-
-# ---------------------------------------------------------
 # Internal: solve a single run using mosap as engine
 # ---------------------------------------------------------
 .pamo_solve_one <- function(x, spec) {
 
-  if (!inherits(x, "MOProblem")) stop(".pamo_solve_one expects MOProblem.", call. = FALSE)
-  if (!inherits(x$base, "Problem")) stop("MOProblem$base must be a Problem.", call. = FALSE)
+  if (!inherits(x, "Problem")) stop("Problem$base must be a Problem.", call. = FALSE)
 
-  base <- .pamo_clone_base(x$base)
+  base <- .pamo_clone_base(x)
 
   if (identical(spec$type, "weighted")) {
 
@@ -2055,11 +1975,16 @@ add_objective <- function(x, objective) {
   gap_limit  <- spec$gap_limit %||% NULL
   time_limit <- spec$time_limit %||% NULL
 
-  out <- solve(
+  # base$data$method <- NULL
+  # base$data$results <- NULL
+  # base$data$runtime_updates <- NULL
+
+  out <- .pa_solve_single_problem(
     base,
     gap_limit = gap_limit,
     time_limit = time_limit
   )
+
   .pamo_extract_solution(out)
 }
 
@@ -2135,12 +2060,12 @@ add_objective <- function(x, objective) {
   # Case 1: already a Solution
   if (inherits(x, "Solution")) return(x)
 
-  # Case 2: MOProblem -> x$results$solutions
-  if (inherits(x, "MOProblem")) {
+  # Case 2: Problem -> x$results$solutions
+  if (inherits(x, "Problem")) {
     r <- x$results %||% NULL
-    if (is.null(r)) .mo_abort("MOProblem has no results (x$results is NULL).")
+    if (is.null(r)) .mo_abort("Problem has no results (x$results is NULL).")
     sols <- r$solutions %||% NULL
-    if (is.null(sols)) .mo_abort("MOProblem results has no solutions (x$results$solutions is NULL).")
+    if (is.null(sols)) .mo_abort("Problem results has no solutions (x$results$solutions is NULL).")
 
     run <- as.integer(run)[1]
     if (!is.finite(run) || run < 1L) .mo_abort("run must be a positive integer (1-based).")
@@ -2169,7 +2094,7 @@ add_objective <- function(x, objective) {
     return(x[[run]])
   }
 
-  .mo_abort("Unsupported object. Expected Solution, MOProblem, or MOResults-like with $solutions.")
+  .mo_abort("Unsupported object. Expected Solution, Problem, or MOResults-like with $solutions.")
 }
 
 
@@ -2208,10 +2133,10 @@ add_objective <- function(x, objective) {
 
 
 .pamo_eval_boundary_cut_on_solution <- function(x, solution, term) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
   rel_name <- as.character(term$relation_name %||% "boundary")[1]
-  rel <- x$base$data$spatial_relations[[rel_name]] %||% NULL
+  rel <- x$data$spatial_relations[[rel_name]] %||% NULL
 
   if (is.null(rel) || !inherits(rel, "data.frame")) {
     stop("Missing spatial relation '", rel_name, "' while evaluating boundary_cut.", call. = FALSE)
@@ -2225,7 +2150,7 @@ add_objective <- function(x, objective) {
 
   sol_vec <- .pamo_get_solution_vector(solution)
 
-  n_pu <- nrow(x$base$data$pu)
+  n_pu <- nrow(x$data$pu)
   if (!is.finite(n_pu) || is.na(n_pu) || n_pu <= 0L) {
     stop("Could not determine n_pu while evaluating boundary_cut.", call. = FALSE)
   }
@@ -2316,12 +2241,12 @@ add_objective <- function(x, objective) {
 # -------------------------------------------------------------------------
 
 .pamo_get_alias_value_from_solution <- function(x, solution, alias) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
   .pamo_eval_alias_on_solution(x, solution, alias)
 }
 
 .pamo_eval_alias_on_solution <- function(x, solution, alias) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
   alias <- as.character(alias)[1]
   if (is.na(alias) || !nzchar(alias)) {
@@ -2329,7 +2254,7 @@ add_objective <- function(x, objective) {
   }
 
   spec <- .pamo_get_objective_spec(x, alias)
-  ir   <- .pamo_objective_to_ir(x$base, spec)
+  ir   <- .pamo_objective_to_ir(x, spec)
 
   terms <- ir$terms %||% list()
 
@@ -2352,7 +2277,7 @@ add_objective <- function(x, objective) {
   # }
 
   # resto de objetivos: evaluación por objvec
-  base_eval <- .pamo_prepare_superset_model(x$base, list(ir))
+  base_eval <- .pamo_prepare_superset_model(x, list(ir))
 
   obj_vec <- .pamo_objvec_from_ir(base_eval, ir)
   sol_vec <- .pamo_get_solution_vector(solution)
@@ -2378,7 +2303,7 @@ add_objective <- function(x, objective) {
 
 .pamo_add_alias_upper_bound_constraint <- function(base_eval, x, alias, rhs, tol = 0, name = NULL) {
   stopifnot(inherits(base_eval, "Problem"))
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
   alias <- as.character(alias)[1]
   rhs   <- as.numeric(rhs)[1]
@@ -2392,7 +2317,7 @@ add_objective <- function(x, objective) {
   }
 
   spec <- .pamo_get_objective_spec(x, alias)
-  ir   <- .pamo_objective_to_ir(x$base, spec)
+  ir   <- .pamo_objective_to_ir(x, spec)
 
   obj_vec <- .pamo_objvec_from_ir(base_eval, ir)
 
@@ -2434,14 +2359,14 @@ add_objective <- function(x, objective) {
 
 
 .pamo_solve_lexicographic_extreme_2obj <- function(x, first, second, gap_limit = NULL, time_limit = NULL) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
-  method <- x$method %||% list()
+  method <- x$data$method %||% list()
   tol <- as.numeric(method$lexicographic_tol %||% 0)[1]
   if (!is.finite(tol) || tol < 0) tol <- 0
 
-  ir_first  <- .pamo_objective_to_ir(x$base, .pamo_get_objective_spec(x, first))
-  ir_second <- .pamo_objective_to_ir(x$base, .pamo_get_objective_spec(x, second))
+  ir_first  <- .pamo_objective_to_ir(x, .pamo_get_objective_spec(x, first))
+  ir_second <- .pamo_objective_to_ir(x, .pamo_get_objective_spec(x, second))
 
   # 1) resolver el primer objetivo
   sol_first <- .pamo_solve_one(
@@ -2456,7 +2381,7 @@ add_objective <- function(x, objective) {
   first_star <- .pamo_get_alias_value_from_solution(x, sol_first$solution, first)
 
   # 2) construir un superset para ambos objetivos
-  base_eval <- .pamo_prepare_superset_model(x$base, list(ir_first, ir_second))
+  base_eval <- .pamo_prepare_superset_model(x, list(ir_first, ir_second))
 
   # 3) restringir el primer objetivo en su óptimo
   base_eval <- .pamo_add_alias_upper_bound_constraint(
@@ -2503,11 +2428,11 @@ add_objective <- function(x, objective) {
 }
 
 .pamo_solve_on_prebuilt_model <- function(x, base_eval, primary_alias, gap_limit = NULL, time_limit = NULL) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
   stopifnot(inherits(base_eval, "Problem"))
 
   spec <- .pamo_get_objective_spec(x, primary_alias)
-  ir   <- .pamo_objective_to_ir(x$base, spec)
+  ir   <- .pamo_objective_to_ir(x, spec)
 
   # reset objetivo del modelo preconstruido
   base_eval <- .pamo_set_ir_as_active_objective(base_eval, ir)
@@ -2563,9 +2488,9 @@ add_objective <- function(x, objective) {
 # - secondary_max
 # -------------------------------------------------------------------------
 .pamo_compute_epsilon_extremes_2obj <- function(x, primary, secondary, gap_limit = NULL, time_limit = NULL) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
-  method <- x$method %||% list()
+  method <- x$data$method %||% list()
   do_lexi <- isTRUE(method$lexicographic)
   lexi_tol <- as.numeric(method$lexicographic_tol %||% 0)[1]
   if (!is.finite(lexi_tol) || lexi_tol < 0) lexi_tol <- 0
@@ -2905,15 +2830,15 @@ add_objective <- function(x, objective) {
 
 
 .pamo_eval_action_boundary_cut_on_solution <- function(x, solution, term) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
   rel_name <- as.character(term$relation_name %||% "boundary")[1]
   sol_data <- solution$data %||% list()
 
   rel <- sol_data$spatial_relations_model[[rel_name]] %||%
     sol_data$spatial_relations[[rel_name]] %||%
-    x$base$data$spatial_relations_model[[rel_name]] %||%
-    x$base$data$spatial_relations[[rel_name]] %||%
+    x$data$spatial_relations_model[[rel_name]] %||%
+    x$data$spatial_relations[[rel_name]] %||%
     NULL
 
   if (is.null(rel) || !inherits(rel, "data.frame")) {
@@ -2928,8 +2853,8 @@ add_objective <- function(x, objective) {
 
   da <- sol_data$dist_actions_model %||%
     sol_data$dist_actions %||%
-    x$base$data$dist_actions_model %||%
-    x$base$data$dist_actions %||%
+    x$data$dist_actions_model %||%
+    x$data$dist_actions %||%
     NULL
 
   if (is.null(da) || !inherits(da, "data.frame")) {
@@ -2944,9 +2869,9 @@ add_objective <- function(x, objective) {
 
   sol_vec <- .pamo_get_solution_vector(solution)
 
-  ml <- sol_data$model_list %||% x$base$data$model_list %||% NULL
+  ml <- sol_data$model_list %||% x$data$model_list %||% NULL
 
-  n_pu <- as.integer(ml$n_pu %||% nrow(x$base$data$pu))
+  n_pu <- as.integer(ml$n_pu %||% nrow(x$data$pu))
   if (!is.finite(n_pu) || is.na(n_pu) || n_pu <= 0L) {
     stop("Could not determine n_pu while evaluating action_boundary_cut.", call. = FALSE)
   }
@@ -3120,13 +3045,13 @@ add_objective <- function(x, objective) {
 
 
 .pamo_eval_intervention_impact_on_solution <- function(x, solution, term) {
-  stopifnot(inherits(x, "MOProblem"))
+  stopifnot(inherits(x, "Problem"))
 
   icol <- as.character(term$impact_col %||% "amount")[1]
   feats <- as.character(term$features %||% character(0))
   acts  <- as.character(term$actions %||% character(0))
 
-  distf <- x$base$data$dist_features %||% NULL
+  distf <- x$data$dist_features %||% NULL
   if (is.null(distf) || !inherits(distf, "data.frame") || nrow(distf) == 0) {
     stop("dist_features is missing or empty while evaluating intervention_impact.", call. = FALSE)
   }
@@ -3137,7 +3062,7 @@ add_objective <- function(x, objective) {
 
   # filtrar features si corresponde
   if (length(feats) > 0) {
-    feat_subset <- .pa_resolve_feature_subset(x$base, features = feats)
+    feat_subset <- .pa_resolve_feature_subset(x, features = feats)
     feat_ids <- unique(as.character(feat_subset$id))
     distf <- distf[as.character(distf$feature) %in% feat_ids, , drop = FALSE]
   }
@@ -3145,7 +3070,7 @@ add_objective <- function(x, objective) {
   if (nrow(distf) == 0) return(0)
 
   # resolver subset de acciones
-  act_subset <- .pa_resolve_action_subset(x$base, subset = acts)
+  act_subset <- .pa_resolve_action_subset(x, subset = acts)
   if (!inherits(act_subset, "data.frame") || nrow(act_subset) == 0) {
     stop("intervention_impact resolved to zero actions.", call. = FALSE)
   }
