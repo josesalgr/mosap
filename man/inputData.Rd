@@ -13,9 +13,6 @@ inputData(
   dist_features,
   cost = NULL,
   pu_id_col = "id",
-  locked_in_col = "locked_in",
-  locked_out_col = "locked_out",
-  pu_status = NULL,
   cost_aggregation = c("mean", "sum"),
   ...
 )
@@ -26,9 +23,6 @@ inputData(
   dist_features,
   cost = NULL,
   pu_id_col = "id",
-  locked_in_col = "locked_in",
-  locked_out_col = "locked_out",
-  pu_status = NULL,
   cost_aggregation = c("mean", "sum"),
   ...
 )
@@ -39,9 +33,6 @@ inputData(
   dist_features,
   cost = NULL,
   pu_id_col = "id",
-  locked_in_col = "locked_in",
-  locked_out_col = "locked_out",
-  pu_status = NULL,
   cost_aggregation = c("mean", "sum"),
   ...
 )
@@ -52,9 +43,6 @@ inputData(
   dist_features,
   cost = NULL,
   pu_id_col = "id",
-  locked_in_col = "locked_in",
-  locked_out_col = "locked_out",
-  pu_status = NULL,
   cost_aggregation = c("mean", "sum"),
   ...
 )
@@ -82,13 +70,6 @@ and \code{amount}. If missing or \code{NULL}, spatial workflows derive it automa
 cells with \code{cost <= 0} or \code{NA} are excluded (no PU is created).}
 
 \item{pu_id_col}{For vector-PU mode, the name of the id column in the PU layer.}
-
-\item{locked_in_col}{For vector-PU mode, the name of a logical column indicating locked-in PUs.}
-
-\item{locked_out_col}{For vector-PU mode, the name of a logical column indicating locked-out PUs.}
-
-\item{pu_status}{Optional (vector-PU or raster-cell) status input. Either a column name or a raster/file path.
-Values \code{2} mark locked-in and \code{3} mark locked-out (Marxan-style).}
 
 \item{cost_aggregation}{In vector-PU mode, how to aggregate raster cell costs to polygons when \code{cost} is a raster.
 Either \code{"mean"} or \code{"sum"}.}
@@ -130,6 +111,16 @@ after \code{inputData()} using \code{add_spatial_boundary()}, \code{add_spatial_
 
 In raster-cell mode you typically build relations from coordinates with
 \code{add_spatial_knn()} or \code{add_spatial_distance()}.
+
+\strong{Locks are not read automatically.}
+This function does not interpret locked planning units, even if the input data
+contain columns such as \code{locked_in}, \code{locked_out}, or Marxan-style status codes.
+Those should be handled later using a dedicated function such as
+\code{add_locked_pu()}.
+
+In spatial vector mode, the original planning-unit attributes are preserved in
+\code{x$data$pu_data_raw}, aligned by \code{id}, so that downstream functions can read
+lock columns or other metadata from the original source.
 }
 \examples{
 \dontrun{
@@ -146,31 +137,22 @@ dist_features <- data.frame(
 
 x <- inputData(pu = pu, features = features, dist_features = dist_features)
 
-# Optional: register a spatial relation later (if you need spatial objectives)
-rel <- data.frame(pu1 = 1, pu2 = 2, weight = 1)
-x <- add_spatial_relations(x, rel, name = "rook_like")
-
-
 # ------------------------------------------------------
 # 2) Raster-cell fast mode (1 PU per valid cell)
 # ------------------------------------------------------
 library(terra)
-pu_mask <- rast("pu_mask.tif")           # NA outside study area
-cost_r  <- rast("cost.tif")              # cost per cell
-feat_r  <- rast(c("sp1.tif", "sp2.tif")) # layers = features
+pu_mask <- rast("pu_mask.tif")
+cost_r  <- rast("cost.tif")
+feat_r  <- rast(c("sp1.tif", "sp2.tif"))
 
 x <- inputData(pu = pu_mask, features = feat_r, cost = cost_r)
-
-# Optional: add spatial relations after inputData (e.g., kNN)
-x <- add_spatial_knn(x, k = 8, name = "knn8", weight_fn = "inverse")
-
 
 # ------------------------------------------------------
 # 3) Vector-PU spatial mode (polygons + raster features)
 # ------------------------------------------------------
-pu_v   <- vect("pus.gpkg")               # polygon PUs
-feat_r <- rast(c("sp1.tif", "sp2.tif"))  # features as raster layers
-cost_r <- rast("cost.tif")               # raster cost (aggregated to polygons)
+pu_v   <- vect("pus.gpkg")
+feat_r <- rast(c("sp1.tif", "sp2.tif"))
+cost_r <- rast("cost.tif")
 
 x <- inputData(
   pu = pu_v,
@@ -180,8 +162,8 @@ x <- inputData(
   cost_aggregation = "mean"
 )
 
-# Add boundary-length relation explicitly (requires sf)
-x <- add_spatial_boundary(x, pu_sf = x$data$pu_sf, name = "boundary")
+# Original PU attributes are preserved for later use
+# x$data$pu_data_raw
 }
 
 }

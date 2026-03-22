@@ -76,6 +76,8 @@ Collate:
     'add_actions.R'
     'add_area_constraints.R'
     'add_effects.R'
+    'add_locked_actions.R'
+    'add_locked_pu.R'
     'add_objectives.R'
     'add_profit.R'
     'add_spatial_relations.R'

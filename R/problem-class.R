@@ -452,9 +452,15 @@ NULL
   }
 
   if (sm$n_y_interventions > 0) {
-    cli::cli_text(" {ch$v}{ch$l}{ch$b}y_interventions:{sm$n_y_interventions} vars", .envir = environment())
+    cli::cli_text(
+      " {ch$v}{ch$l}{ch$b}y_interventions: {sm$n_y_interventions} vars",
+      .envir = environment()
+    )
   } else {
-    cli::cli_text(" {ch$v}{ch$l}{ch$b}y_interventions:{.muted none}", .envir = environment())
+    cli::cli_text(
+      " {ch$v}{ch$l}{ch$b}y_interventions: {.muted none}",
+      .envir = environment()
+    )
   }
 
   invisible(NULL)
@@ -643,34 +649,60 @@ Problem <- pproto(
     cli::cli_text("{ch$l}{ch$b}{.h targets and constraints}", .envir = environment())
 
     if (tgt_sum$n_targets == 0L) {
-      cli::cli_text(" {ch$v}{ch$j}{ch$b}targets:         {.muted none}", .envir = environment())
+      cli::cli_text(
+        " {ch$v}{ch$j}{ch$b}targets:          {.muted none}",
+        .envir = environment()
+      )
     } else {
-      cli::cli_text(" {ch$v}{ch$j}{ch$b}targets:         {tgt_sum$n_targets} rows",
-                    .envir = environment())
+      cli::cli_text(
+        " {ch$v}{ch$j}{ch$b}targets:          {tgt_sum$n_targets} rows",
+        .envir = environment()
+      )
 
       if (!is.null(tgt_sum$preview) && length(tgt_sum$preview) > 0) {
         prev_txt <- paste(tgt_sum$preview, collapse = ", ")
-        cli::cli_text(" {ch$v}{ch$j}{ch$b}target preview:  {prev_txt}",
-                      .envir = environment())
+        cli::cli_text(
+          " {ch$v}{ch$j}{ch$b}target preview:   {prev_txt}",
+          .envir = environment()
+        )
       }
     }
 
     if (cons_sum$area_constraints > 0) {
-      cli::cli_text(" {ch$v}{ch$j}{ch$b}area constraints:{cons_sum$area_constraints}",
-                    .envir = environment())
+      cli::cli_text(
+        " {ch$v}{ch$j}{ch$b}area constraints: {cons_sum$area_constraints}",
+        .envir = environment()
+      )
     } else {
-      cli::cli_text(" {ch$v}{ch$j}{ch$b}area constraints:{.muted none}",
-                    .envir = environment())
+      cli::cli_text(
+        " {ch$v}{ch$j}{ch$b}area constraints: {.muted none}",
+        .envir = environment()
+      )
     }
 
-    cli::cli_text(
-      " {ch$v}{ch$j}{ch$b}pu_locks:        {if (isTRUE(cons_sum$pu_locks)) 'present' else '{.muted none}'}",
-      .envir = environment()
-    )
-    cli::cli_text(
-      " {ch$v}{ch$l}{ch$b}action_locks:    {if (isTRUE(cons_sum$action_locks)) 'present' else '{.muted none}'}",
-      .envir = environment()
-    )
+    if (isTRUE(cons_sum$pu_locks)) {
+      cli::cli_text(
+        " {ch$v}{ch$j}{ch$b}pu_locks:         present",
+        .envir = environment()
+      )
+    } else {
+      cli::cli_text(
+        " {ch$v}{ch$j}{ch$b}pu_locks:         {.muted none}",
+        .envir = environment()
+      )
+    }
+
+    if (isTRUE(cons_sum$action_locks)) {
+      cli::cli_text(
+        " {ch$v}{ch$l}{ch$b}action_locks:     present",
+        .envir = environment()
+      )
+    } else {
+      cli::cli_text(
+        " {ch$v}{ch$l}{ch$b}action_locks:     {.muted none}",
+        .envir = environment()
+      )
+    }
 
     # ---- MODEL SECTION
     .pa_print_model_section(self, ch)

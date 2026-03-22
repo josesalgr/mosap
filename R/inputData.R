@@ -35,6 +35,16 @@ NULL
 #' In raster-cell mode you typically build relations from coordinates with
 #' `add_spatial_knn()` or `add_spatial_distance()`.
 #'
+#' \strong{Locks are not read automatically.}
+#' This function does not interpret locked planning units, even if the input data
+#' contain columns such as `locked_in`, `locked_out`, or Marxan-style status codes.
+#' Those should be handled later using a dedicated function such as
+#' `add_locked_pu()`.
+#'
+#' In spatial vector mode, the original planning-unit attributes are preserved in
+#' `x$data$pu_data_raw`, aligned by `id`, so that downstream functions can read
+#' lock columns or other metadata from the original source.
+#'
 #' @param pu Planning units input. Either:
 #' \itemize{
 #' \item a `data.frame` with an `id` column (tabular mode),
@@ -53,10 +63,6 @@ NULL
 #'   (vector-PU mode) or a raster/file path (vector-PU or raster-cell mode). In raster-cell mode,
 #'   cells with `cost <= 0` or `NA` are excluded (no PU is created).
 #' @param pu_id_col For vector-PU mode, the name of the id column in the PU layer.
-#' @param locked_in_col For vector-PU mode, the name of a logical column indicating locked-in PUs.
-#' @param locked_out_col For vector-PU mode, the name of a logical column indicating locked-out PUs.
-#' @param pu_status Optional (vector-PU or raster-cell) status input. Either a column name or a raster/file path.
-#'   Values `2` mark locked-in and `3` mark locked-out (Marxan-style).
 #' @param cost_aggregation In vector-PU mode, how to aggregate raster cell costs to polygons when `cost` is a raster.
 #'   Either `"mean"` or `"sum"`.
 #' @param ... Additional arguments forwarded to internal builders.
@@ -78,31 +84,22 @@ NULL
 #'
 #' x <- inputData(pu = pu, features = features, dist_features = dist_features)
 #'
-#' # Optional: register a spatial relation later (if you need spatial objectives)
-#' rel <- data.frame(pu1 = 1, pu2 = 2, weight = 1)
-#' x <- add_spatial_relations(x, rel, name = "rook_like")
-#'
-#'
 #' # ------------------------------------------------------
 #' # 2) Raster-cell fast mode (1 PU per valid cell)
 #' # ------------------------------------------------------
 #' library(terra)
-#' pu_mask <- rast("pu_mask.tif")           # NA outside study area
-#' cost_r  <- rast("cost.tif")              # cost per cell
-#' feat_r  <- rast(c("sp1.tif", "sp2.tif")) # layers = features
+#' pu_mask <- rast("pu_mask.tif")
+#' cost_r  <- rast("cost.tif")
+#' feat_r  <- rast(c("sp1.tif", "sp2.tif"))
 #'
 #' x <- inputData(pu = pu_mask, features = feat_r, cost = cost_r)
-#'
-#' # Optional: add spatial relations after inputData (e.g., kNN)
-#' x <- add_spatial_knn(x, k = 8, name = "knn8", weight_fn = "inverse")
-#'
 #'
 #' # ------------------------------------------------------
 #' # 3) Vector-PU spatial mode (polygons + raster features)
 #' # ------------------------------------------------------
-#' pu_v   <- vect("pus.gpkg")               # polygon PUs
-#' feat_r <- rast(c("sp1.tif", "sp2.tif"))  # features as raster layers
-#' cost_r <- rast("cost.tif")               # raster cost (aggregated to polygons)
+#' pu_v   <- vect("pus.gpkg")
+#' feat_r <- rast(c("sp1.tif", "sp2.tif"))
+#' cost_r <- rast("cost.tif")
 #'
 #' x <- inputData(
 #'   pu = pu_v,
@@ -112,8 +109,8 @@ NULL
 #'   cost_aggregation = "mean"
 #' )
 #'
-#' # Add boundary-length relation explicitly (requires sf)
-#' x <- add_spatial_boundary(x, pu_sf = x$data$pu_sf, name = "boundary")
+#' # Original PU attributes are preserved for later use
+#' # x$data$pu_data_raw
 #' }
 #'
 #' @name inputData
@@ -130,9 +127,6 @@ methods::setGeneric(
     dist_features,
     cost = NULL,
     pu_id_col = "id",
-    locked_in_col = "locked_in",
-    locked_out_col = "locked_out",
-    pu_status = NULL,
     cost_aggregation = c("mean", "sum"),
     ...
   ) {
@@ -186,7 +180,6 @@ methods::setGeneric(
     pu,
     features,
     cost,
-    pu_status = NULL,
     ...
 ) {
   if (!requireNamespace("terra", quietly = TRUE)) {
@@ -227,22 +220,6 @@ methods::setGeneric(
     locked_out = FALSE,
     stringsAsFactors = FALSE
   )
-
-  if (!is.null(pu_status)) {
-    st_r <- .pa_read_rast(pu_status)
-    if (is.null(st_r) || terra::nlyr(st_r) != 1) {
-      stop("In raster-cell mode, `pu_status` must be a single-layer SpatRaster or raster file path.", call. = FALSE)
-    }
-    if (!terra::compareGeom(pu_r, st_r, stopOnError = FALSE)) {
-      stop("`pu_status` raster must match `pu` geometry.", call. = FALSE)
-    }
-    st <- terra::values(st_r, mat = FALSE)[idx_cells]
-    pu_df$locked_in  <- st == 2
-    pu_df$locked_out <- st == 3
-    if (any(pu_df$locked_in & pu_df$locked_out, na.rm = TRUE)) {
-      stop("Some cells are both locked_in and locked_out (status raster inconsistent).", call. = FALSE)
-    }
-  }
 
   xy <- terra::xyFromCell(cost_r, idx_cells)
   pu_coords <- data.frame(id = pu_df$id, x = xy[, 1], y = xy[, 2], stringsAsFactors = FALSE)
@@ -305,9 +282,6 @@ methods::setMethod(
     dist_features,
     cost = NULL,
     pu_id_col = "id",
-    locked_in_col = "locked_in",
-    locked_out_col = "locked_out",
-    pu_status = NULL,
     cost_aggregation = c("mean", "sum"),
     ...
   ) {
@@ -318,6 +292,10 @@ methods::setMethod(
       boundary = NULL,
       ...
     )
+
+    # preserve raw PU attributes for downstream helpers such as add_locked_pu()
+    x$data$pu_data_raw <- pu
+
     x
   }
 )
@@ -336,9 +314,6 @@ methods::setMethod(
     dist_features,
     cost = NULL,
     pu_id_col = "id",
-    locked_in_col = "locked_in",
-    locked_out_col = "locked_out",
-    pu_status = NULL,
     cost_aggregation = c("mean", "sum"),
     ...
   ) {
@@ -363,7 +338,6 @@ methods::setMethod(
         pu = pu,
         features = features,
         cost = cost,
-        pu_status = pu_status,
         ...
       ))
     }
@@ -401,10 +375,12 @@ methods::setMethod(
       }
     }
 
-    pu_df <- terra::as.data.frame(pu_v)
-    pu_df$row_id <- seq_len(nrow(pu_df))
-    names(pu_df)[names(pu_df) == pu_id_col] <- "id"
-    pu_df$id <- as.integer(round(pu_df$id))
+    pu_df_raw <- terra::as.data.frame(pu_v)
+    pu_df_raw$row_id <- seq_len(nrow(pu_df_raw))
+    names(pu_df_raw)[names(pu_df_raw) == pu_id_col] <- "id"
+    pu_df_raw$id <- as.integer(round(pu_df_raw$id))
+
+    pu_df <- pu_df_raw
 
     if (is.character(cost) && (cost %in% names(pu_df))) {
       pu_df$cost <- pu_df[[cost]]
@@ -416,29 +392,6 @@ methods::setMethod(
       cost_ex <- terra::extract(cost_r, pu_v, fun = fun_cost, na.rm = TRUE)
       idx <- match(pu_df$row_id, cost_ex[[1]])
       pu_df$cost <- cost_ex[[2]][idx]
-    }
-
-    pu_df$locked_in  <- if (locked_in_col %in% names(pu_df))  as.logical(pu_df[[locked_in_col]])  else FALSE
-    pu_df$locked_out <- if (locked_out_col %in% names(pu_df)) as.logical(pu_df[[locked_out_col]]) else FALSE
-
-    if (!is.null(pu_status) &&
-        !(locked_in_col %in% names(pu_df)) &&
-        !(locked_out_col %in% names(pu_df))) {
-
-      if (is.character(pu_status) && (pu_status %in% names(pu_df))) {
-        st <- pu_df[[pu_status]]
-      } else {
-        st_r <- .pa_read_rast(pu_status)
-        if (is.null(st_r)) stop("pu_status must be a column name or a raster/file path.", call. = FALSE)
-        st_ex <- terra::extract(st_r, pu_v, fun = terra::modal, na.rm = TRUE)
-        st <- st_ex[[2]]
-      }
-      pu_df$locked_in  <- st == 2
-      pu_df$locked_out <- st == 3
-    }
-
-    if (any(pu_df$locked_in & pu_df$locked_out, na.rm = TRUE)) {
-      stop("Some planning units are both locked_in and locked_out. Please fix your inputs.", call. = FALSE)
     }
 
     ctr <- terra::centroids(pu_v)
@@ -475,10 +428,13 @@ methods::setMethod(
 
     ord <- order(pu_df$id)
     pu_df     <- pu_df[ord, , drop = FALSE]
+    pu_df_raw <- pu_df_raw[ord, , drop = FALSE]
     feat_mat  <- feat_mat[ord, , drop = FALSE]
     pu_coords <- pu_coords[ord, , drop = FALSE]
 
-    pu_df_out <- pu_df[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
+    pu_df_out <- pu_df[, c("id", "cost"), drop = FALSE]
+    pu_df_out$locked_in <- FALSE
+    pu_df_out$locked_out <- FALSE
 
     dist_features_df <- data.frame(
       pu      = rep(pu_df_out$id, times = terra::nlyr(feat_r)),
@@ -500,6 +456,7 @@ methods::setMethod(
     )
 
     x$data$pu_coords <- pu_coords
+    x$data$pu_data_raw <- pu_df_raw
 
     if (is.null(x$data$spatial_relations) || !is.list(x$data$spatial_relations)) {
       x$data$spatial_relations <- list()
@@ -544,9 +501,6 @@ methods::setMethod(
     dist_features,
     cost = NULL,
     pu_id_col = "id",
-    locked_in_col = "locked_in",
-    locked_out_col = "locked_out",
-    pu_status = NULL,
     cost_aggregation = c("mean", "sum"),
     ...
   ) {
@@ -555,9 +509,6 @@ methods::setMethod(
       features = features,
       cost = cost,
       pu_id_col = pu_id_col,
-      locked_in_col = locked_in_col,
-      locked_out_col = locked_out_col,
-      pu_status = pu_status,
       cost_aggregation = cost_aggregation,
       ...
     )

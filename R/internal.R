@@ -2387,24 +2387,7 @@ available_to_solve <- function(package = ""){
   dots <- list(...)
   `%||%` <- function(a, b) if (!is.null(a)) a else b
 
-  # -------------------------
-  # Detect legacy inputs
-  # -------------------------
-  # has_legacy <- !is.null(dots$threats) || !is.null(dots$dist_threats) || !is.null(dots$sensitivity)
-  #
-  # format <- dots$format %||% "auto"
-  # if (!format %in% c("auto", "new", "legacy")) {
-  #   stop("`format` must be one of: 'auto', 'new', 'legacy'.", call. = FALSE)
-  # }
-  # if (format == "new" && has_legacy) {
-  #   stop("You provided legacy inputs (threats/dist_threats/sensitivity) but format='new'.", call. = FALSE)
-  # }
-  # if (format == "legacy" && (!is.data.frame(dots$threats) || !is.data.frame(dots$dist_threats))) {
-  #   stop("format='legacy' requires `threats` and `dist_threats` (data.frame) in ...", call. = FALSE)
-  # }
-
   pu_coords <- NULL
-
 
   # helper: coerce ids to integer safely
   .as_int_id <- function(x, what) {
@@ -2420,6 +2403,9 @@ available_to_solve <- function(package = ""){
     if (anyNA(x)) stop(what, " contains NA after coercion to integer.", call. = FALSE)
     x
   }
+
+  # keep raw PU table for downstream helpers such as add_locked_pu()
+  pu_raw <- pu
 
   # =========================
   # PU: validate + normalize
@@ -2444,21 +2430,17 @@ available_to_solve <- function(package = ""){
     stop("pu must contain either a 'cost' column or a 'monitoring_cost' column.", call. = FALSE)
   }
 
-  # locks: accept locked_in/locked_out or status (Marxan style)
-  has_locked_cols <- ("locked_in" %in% names(pu)) || ("locked_out" %in% names(pu))
-  if (has_locked_cols) {
-    if (!("locked_in" %in% names(pu))) pu$locked_in <- FALSE
-    if (!("locked_out" %in% names(pu))) pu$locked_out <- FALSE
-    pu$locked_in  <- as.logical(pu$locked_in)
-    pu$locked_out <- as.logical(pu$locked_out)
-  } else if ("status" %in% names(pu)) {
-    pu$status <- as.integer(pu$status)
-    pu$locked_in  <- pu$status == 2L
-    pu$locked_out <- pu$status == 3L
-  } else {
-    pu$locked_in  <- FALSE
-    pu$locked_out <- FALSE
-  }
+  # IMPORTANT:
+  # internal contract: pu always carries locked_in / locked_out,
+  # defaulting to FALSE when they are not provided.
+  if (!("locked_in" %in% names(pu)))  pu$locked_in  <- FALSE
+  if (!("locked_out" %in% names(pu))) pu$locked_out <- FALSE
+
+  pu$locked_in  <- as.logical(pu$locked_in)
+  pu$locked_out <- as.logical(pu$locked_out)
+
+  pu$locked_in[is.na(pu$locked_in)] <- FALSE
+  pu$locked_out[is.na(pu$locked_out)] <- FALSE
 
   if (any(pu$locked_in & pu$locked_out, na.rm = TRUE)) {
     stop("Some planning units are both locked_in and locked_out. Please fix pu input.", call. = FALSE)
@@ -2477,9 +2459,13 @@ available_to_solve <- function(package = ""){
     }
   }
 
-
+  # internal PU table keeps the core fields needed by the model
   pu <- pu[, c("id", "cost", "locked_in", "locked_out"), drop = FALSE]
   pu <- pu[order(pu$id), , drop = FALSE]
+
+  # raw PU table aligned to normalized id order
+  pu_raw$id <- .as_int_id(pu_raw$id, "pu_raw$id")
+  pu_raw <- pu_raw[match(pu$id, pu_raw$id), , drop = FALSE]
 
   # internal ids + lookup
   pu$internal_id <- seq_len(nrow(pu))
@@ -2568,7 +2554,6 @@ available_to_solve <- function(package = ""){
 
     boundary$id1 <- .as_int_id(boundary$id1, "boundary$id1")
     boundary$id2 <- .as_int_id(boundary$id2, "boundary$id2")
-    # boundary$boundary <- base::round(as.numeric(boundary$boundary), 3)
 
     if (!all(boundary$id1 %in% pu$id) || !all(boundary$id2 %in% pu$id)) {
       warning("boundary contains PU ids not present in pu; they will be removed.", call. = FALSE, immediate. = TRUE)
@@ -2578,12 +2563,6 @@ available_to_solve <- function(package = ""){
 
     if (nrow(boundary) == 0) boundary <- NULL
   }
-
-  # =========================
-  # rounding
-  # =========================
-  # pu$cost <- base::round(pu$cost, 3)
-  # dist_features$amount <- base::round(dist_features$amount, 3)
 
   # =========================
   # useful warnings
@@ -2605,38 +2584,32 @@ available_to_solve <- function(package = ""){
   }
 
   # =========================
-  # build Problem object (FIXED: assign to x and return it)
+  # build Problem object
   # =========================
   x <- pproto(
     NULL, Problem,
     data = list(
       pu = pu,
+      pu_data_raw = pu_raw,
       features = features,
       dist_features = dist_features,
 
-      # ---- NEW: spatial storage
+      # ---- spatial / auxiliary storage
       pu_coords = pu_coords,
       spatial_relations = list(),
-
-      # # legacy (optional)
-      # threats = threats,
-      # dist_threats = dist_threats,
-      # sensitivity = sensitivity,
 
       index = list(
         pu = pu_index,
         feature = feature_index,
-        #threat = threat_index,
         feature_name_to_id = stats::setNames(features$id, features$name)
       ),
 
       meta = list(
-        # input_format = if ((format == "legacy") || (format == "auto" && has_legacy)) "legacy" else "new",
         dist_features_meaning = "baseline_amount",
         dist_benefit_meaning  = "delta_by_default"
       ),
 
-      # new workflow placeholders
+      # workflow placeholders
       actions = NULL,
       dist_actions = NULL,
       dist_benefit = NULL,
@@ -2647,7 +2620,6 @@ available_to_solve <- function(package = ""){
       solver = NULL
     )
   )
-
 
   # =========================
   # boundary -> spatial relation ("boundary")
@@ -2662,7 +2634,6 @@ available_to_solve <- function(package = ""){
       stringsAsFactors = FALSE
     )
 
-    # por si acaso (aunque ya filtraste ids), chequeo defensivo:
     if (anyNA(rel$internal_pu1) || anyNA(rel$internal_pu2)) {
       stop("boundary contains PU ids not present in pu (after filtering).", call. = FALSE)
     }
@@ -2678,8 +2649,6 @@ available_to_solve <- function(package = ""){
 
   x
 }
-
-
 
 # -------------------------------------------------------------------------
 # Internal helpers objective relations

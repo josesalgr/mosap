@@ -4,8 +4,7 @@
 #'
 #' @description
 #' Define the set of management actions, where they can be implemented
-#' (feasibility), their costs, and optional decision locks per
-#' \code{(pu, action)} pair.
+#' (feasibility), and their costs.
 #'
 #' The function stores the action catalogue in \code{x$data$actions} and the
 #' feasible action distribution in \code{x$data$dist_actions}.
@@ -20,12 +19,6 @@
 #'   removed from the feasible set.
 #' }
 #'
-#' Decision fixing is controlled via \code{locked_in} / \code{locked_out}:
-#' \itemize{
-#'   \item \code{locked_in}: feasible \code{(pu, action)} pairs that must be selected.
-#'   \item \code{locked_out}: feasible \code{(pu, action)} pairs that must not be selected.
-#' }
-#'
 #' @details
 #' \strong{Action catalogue.}
 #' The \code{actions} table must contain an \code{id} column with unique action
@@ -33,8 +26,7 @@
 #' \code{x$data$actions}. Users may optionally provide an \code{action_set}
 #' column to define action groups.
 #'
-#' \strong{Accepted formats for \code{include}, \code{exclude},
-#' \code{locked_in}, and \code{locked_out}:}
+#' \strong{Accepted formats for \code{include} and \code{exclude}:}
 #' \itemize{
 #'   \item \code{NULL}
 #'   \item A \code{data.frame} with columns \code{pu} and \code{action}. An
@@ -50,8 +42,7 @@
 #' \itemize{
 #'   \item \code{include}/\code{exclude} control whether a \code{(pu, action)}
 #'   pair exists in the model.
-#'   \item \code{locked_in}/\code{locked_out} control whether an existing
-#'   feasible pair is fixed to 1 or 0.
+#'   \item Decision fixing must be applied later with \code{add_locked_actions()}.
 #' }
 #'
 #' \strong{Spatial feasibility:} when these specifications are provided as
@@ -62,12 +53,7 @@
 #' action id, or a \code{data.frame} providing costs by action
 #' (\code{action, cost}) or by pair (\code{pu, action, cost}).
 #'
-#' \strong{Locks:} internally, \code{x$data$dist_actions$status} stores:
-#' \itemize{
-#'   \item \code{0}: free
-#'   \item \code{2}: locked-in
-#'   \item \code{3}: locked-out
-#' }
+#' Internally, feasible pairs are initialized with \code{status = 0} (free).
 #' If \code{x$data$pu$locked_out} exists, then all action pairs in those planning
 #' units are forced to \code{status = 3}.
 #'
@@ -82,10 +68,6 @@
 #'   set.
 #' @param cost Optional cost specification for feasible \code{(pu, action)}
 #'   pairs.
-#' @param locked_in Optional specification of feasible \code{(pu, action)} pairs
-#'   that must be selected.
-#' @param locked_out Optional specification of feasible \code{(pu, action)}
-#'   pairs that must not be selected.
 #' @param feasible_default Logical. If \code{include} is \code{NULL}, should all
 #'   actions be feasible in all planning units?
 #' @param na_is_infeasible Logical. Only relevant when a specification is
@@ -109,8 +91,6 @@ add_actions <- function(
     include = NULL,
     exclude = NULL,
     cost = NULL,
-    locked_in = NULL,
-    locked_out = NULL,
     feasible_default = TRUE,
     na_is_infeasible = TRUE,
     sort_actions = TRUE
@@ -287,27 +267,6 @@ add_actions <- function(
     stop("Unsupported type for '", what, "'. Use NULL, data.frame, or a named list.", call. = FALSE)
   }
 
-  .validate_lock_pairs_exist <- function(lock_pairs, dist_actions, what) {
-    if (is.null(lock_pairs) || nrow(lock_pairs) == 0) return(invisible(TRUE))
-
-    key_da <- paste(dist_actions$pu, dist_actions$action)
-    key_lk <- paste(lock_pairs$pu, lock_pairs$action)
-
-    miss <- !(key_lk %in% key_da)
-    if (any(miss)) {
-      bad <- lock_pairs[miss, , drop = FALSE]
-      ex <- utils::head(paste0("(", bad$pu, ", ", bad$action, ")"), 8)
-      stop(
-        what, " contains pairs that are not feasible after applying include/exclude.\n",
-        "Examples: ", paste(ex, collapse = ", "),
-        if (nrow(bad) > 8) paste0(" ... (", nrow(bad), " total)") else "",
-        call. = FALSE
-      )
-    }
-
-    invisible(TRUE)
-  }
-
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
   assertthat::assert_that(!is.null(x$data), msg = "x does not look like a prioriactions Problem object")
@@ -381,7 +340,7 @@ add_actions <- function(
   x$data$index$pu <- pu_index
   x$data$index$action <- action_index
 
-  # ---- build feasible pairs (model universe) via include/exclude
+  # ---- build feasible pairs
   pu_sf <- x$data$pu_sf
   include_pairs <- .spec_to_pairs(include, "include", action_ids, pu_ids, pu_sf, .as_int_id)
   exclude_pairs <- .spec_to_pairs(exclude, "exclude", action_ids, pu_ids, pu_sf, .as_int_id)
@@ -488,46 +447,10 @@ add_actions <- function(
     stop("Action costs must be non-negative.", call. = FALSE)
   }
 
-  # ---- locks on feasible pairs
-  locked_in_pairs <- .spec_to_pairs(locked_in, "locked_in", action_ids, pu_ids, pu_sf, .as_int_id)
-  locked_out_pairs <- .spec_to_pairs(locked_out, "locked_out", action_ids, pu_ids, pu_sf, .as_int_id)
-
-  .validate_lock_pairs_exist(locked_in_pairs, dist_actions, "locked_in")
-  .validate_lock_pairs_exist(locked_out_pairs, dist_actions, "locked_out")
-
-  if (!is.null(locked_in_pairs) && !is.null(locked_out_pairs) &&
-      nrow(locked_in_pairs) > 0 && nrow(locked_out_pairs) > 0) {
-    key_li <- paste(locked_in_pairs$pu, locked_in_pairs$action)
-    key_lo <- paste(locked_out_pairs$pu, locked_out_pairs$action)
-    overlap <- intersect(key_li, key_lo)
-    if (length(overlap) > 0) {
-      ex <- utils::head(overlap, 8)
-      stop(
-        "Some (pu, action) pairs are simultaneously locked_in and locked_out.\n",
-        "Examples: ", paste(ex, collapse = ", "),
-        if (length(overlap) > 8) paste0(" ... (", length(overlap), " total)") else "",
-        call. = FALSE
-      )
-    }
-  }
-
+  # ---- initialize status as free
   dist_actions$status <- 0L
 
-  if (!is.null(locked_in_pairs) && nrow(locked_in_pairs) > 0) {
-    key_da <- paste(dist_actions$pu, dist_actions$action)
-    key_li <- paste(locked_in_pairs$pu, locked_in_pairs$action)
-    idx_li <- key_da %in% key_li
-    dist_actions$status[idx_li] <- 2L
-  }
-
-  if (!is.null(locked_out_pairs) && nrow(locked_out_pairs) > 0) {
-    key_da <- paste(dist_actions$pu, dist_actions$action)
-    key_lo <- paste(locked_out_pairs$pu, locked_out_pairs$action)
-    idx_lo <- key_da %in% key_lo
-    dist_actions$status[idx_lo] <- 3L
-  }
-
-  # ---- enforce PU locked_out: all actions in locked_out PUs become status=3
+  # ---- enforce PU locked_out
   if ("locked_out" %in% names(x$data$pu)) {
     pu_locked_out <- x$data$pu$locked_out
     pu_locked_out[is.na(pu_locked_out)] <- FALSE
@@ -537,18 +460,6 @@ add_actions <- function(
 
     if (length(locked_out_pus) > 0) {
       idx_pu_lo <- dist_actions$pu %in% locked_out_pus
-
-      if (any(idx_pu_lo & dist_actions$status == 2L, na.rm = TRUE)) {
-        bad <- dist_actions[idx_pu_lo & dist_actions$status == 2L, c("pu", "action"), drop = FALSE]
-        ex <- utils::head(paste0("(", bad$pu, ", ", bad$action, ")"), 8)
-        stop(
-          "Some actions are locked_in inside planning units that are locked_out.\n",
-          "Examples: ", paste(ex, collapse = ", "),
-          if (nrow(bad) > 8) paste0(" ... (", nrow(bad), " total)") else "",
-          call. = FALSE
-        )
-      }
-
       dist_actions$status[idx_pu_lo] <- 3L
     }
   }

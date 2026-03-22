@@ -10,93 +10,76 @@ add_actions(
   include = NULL,
   exclude = NULL,
   cost = NULL,
-  status = NULL,
   feasible_default = TRUE,
   na_is_infeasible = TRUE,
   sort_actions = TRUE
 )
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}} or \code{\link{inputDataSpatial}}.
-Must contain at least \code{x$data$pu}, \code{x$data$features}, and \code{x$data$dist_features}.}
+\item{x}{A \code{Problem} object created with \code{\link{inputData}} or
+\code{\link{inputDataSpatial}}.}
 
-\item{actions}{A \code{data.frame} defining the action catalogue. Must contain a unique
-\code{id} column (action identifiers). For backwards compatibility, a column named
-\code{action} is also accepted and will be renamed to \code{id}. Additional columns are kept.
-Optionally, users may include an \code{action_set} column to define action groups for
-downstream filtering.}
+\item{actions}{A \code{data.frame} defining the action catalogue. Must
+contain a unique \code{id} column. A column named \code{action} is also
+accepted and renamed to \code{id}.}
 
-\item{include}{Optional feasibility specification. If provided, only these \code{(pu, action)}
-pairs are feasible. Accepts \code{NULL}, a \code{data.frame}, or a named list (see Details).}
+\item{include}{Optional feasibility specification. Only these
+\code{(pu, action)} pairs are feasible.}
 
-\item{exclude}{Optional infeasibility specification. Removed from the feasible set defined by
-\code{include} (or from the full set if \code{include} is \code{NULL} and
-\code{feasible_default = TRUE}). Accepts the same formats as \code{include}.}
+\item{exclude}{Optional infeasibility specification. Removed from the feasible
+set.}
 
-\item{cost}{Optional cost specification for feasible \code{(pu, action)} pairs. Accepts:
-\itemize{
-\item \code{NULL}: default cost = 1 for all pairs,
-\item a single numeric scalar,
-\item a named numeric vector (names = action ids),
-\item a \code{data.frame(action, cost)} or \code{data.frame(pu, action, cost)}.
-}}
+\item{cost}{Optional cost specification for feasible \code{(pu, action)}
+pairs.}
 
-\item{status}{Optional \code{data.frame} with columns \code{pu}, \code{action}, and \code{status}
-specifying lock status for feasible pairs. Status must be in \code{\{0, 2, 3\}}.}
+\item{feasible_default}{Logical. If \code{include} is \code{NULL}, should all
+actions be feasible in all planning units?}
 
-\item{feasible_default}{Logical. If \code{include} is \code{NULL}, should all actions be feasible
-in all planning units? If \code{FALSE} and \code{include} is \code{NULL}, the function errors.}
+\item{na_is_infeasible}{Logical. Only relevant when a specification is
+provided as a \code{data.frame} with a \code{feasible} column.}
 
-\item{na_is_infeasible}{Logical. Only relevant when \code{include}/\code{exclude} are provided as
-\code{data.frame}s with a \code{feasible} column. If \code{TRUE}, treat \code{NA} as \code{FALSE}.}
-
-\item{sort_actions}{Logical. If \code{TRUE}, sort \code{actions} by \code{id} before assigning
-internal ids.}
+\item{sort_actions}{Logical. If \code{TRUE}, sort \code{actions} by
+\code{id}.}
 }
 \value{
 The updated \code{Problem} object with:
 \itemize{
 \item \code{x$data$actions}: action catalogue including \code{internal_id},
-\item \code{x$data$dist_actions}: feasible \code{(pu, action)} pairs with columns
-\code{pu}, \code{action}, \code{cost}, \code{status}, \code{internal_pu}, and \code{internal_action},
+\item \code{x$data$dist_actions}: feasible \code{(pu, action)} pairs with
+columns \code{pu}, \code{action}, \code{cost}, \code{status},
+\code{internal_pu}, and \code{internal_action},
 \item \code{x$data$index$pu} and \code{x$data$index$action}: id-to-internal-id mappings.
 }
-
-The updated \linkS4class{problem} object.
 }
 \description{
-Define the set of management actions, where they can be implemented (feasibility),
-their costs, and optional lock status per \code{(pu, action)} pair. The function stores
-the action catalogue in \code{x$data$actions} and the feasible action distribution in
-\code{x$data$dist_actions}.
+Define the set of management actions, where they can be implemented
+(feasibility), and their costs.
+
+The function stores the action catalogue in \code{x$data$actions} and the
+feasible action distribution in \code{x$data$dist_actions}.
 
 Feasibility is controlled via \code{include} / \code{exclude}:
 \itemize{
-\item If \code{include} is \code{NULL} and \code{feasible_default = TRUE}, all
-\code{(pu, action)} pairs are feasible.
-\item If \code{include} is provided, only those \code{(pu, action)} pairs are feasible.
-\item If \code{exclude} is provided, those \code{(pu, action)} pairs are removed from the
-feasible set (either the full set or \code{include}).
+\item If \code{include} is \code{NULL} and \code{feasible_default = TRUE},
+all \code{(pu, action)} pairs are feasible.
+\item If \code{include} is provided, only those \code{(pu, action)} pairs
+are feasible.
+\item If \code{exclude} is provided, those \code{(pu, action)} pairs are
+removed from the feasible set.
 }
 }
 \details{
 \strong{Action catalogue.}
-The \code{actions} table must contain an \code{id} column with unique action identifiers.
-Additional columns are preserved and stored in \code{x$data$actions}. This makes it possible
-to attach metadata to actions, such as categories or grouping variables. In particular,
-users may optionally provide a column named \code{action_set} to define action groups
-(e.g. \code{"conservation"}, \code{"recovery"}, \code{"production"}), which can later be
-used to filter subsets of actions in targets, objectives, or reporting.
+The \code{actions} table must contain an \code{id} column with unique action
+identifiers. Additional columns are preserved and stored in
+\code{x$data$actions}. Users may optionally provide an \code{action_set}
+column to define action groups.
 
 \strong{Accepted formats for \code{include} and \code{exclude}:}
 \itemize{
-\item \code{NULL}: no restriction (only valid for \code{include} when
-\code{feasible_default = TRUE}).
-\item A \code{data.frame} with columns \code{pu} and \code{action}. An optional
-\code{feasible} column is supported as a filter (only rows with \code{feasible == TRUE}
-are used). If \code{na_is_infeasible = TRUE}, \code{NA} values in \code{feasible} are treated
-as \code{FALSE}. Action ids must match \code{actions$id}, and PU ids must match
-\code{x$data$pu$id}.
+\item \code{NULL}
+\item A \code{data.frame} with columns \code{pu} and \code{action}. An
+optional \code{feasible} column is supported as a filter.
 \item A named list with names equal to action ids. Each element can be:
 \itemize{
 \item an integer vector of PU ids, or
@@ -104,63 +87,22 @@ as \code{FALSE}. Action ids must match \code{actions$id}, and PU ids must match
 }
 }
 
-\strong{Spatial feasibility:} when \code{include}/\code{exclude} are provided as \code{sf} layers,
-feasibility is computed using spatial predicates (no geometries are cut). Specifically,
-planning units in \code{x$data$pu_sf} are matched to zones via \code{sf::st_intersects()}.
-This procedure does not create new planning unit geometries.
-
-\strong{Costs:} costs can be specified as a single scalar applied to all feasible pairs,
-a named numeric vector by action id, or a \code{data.frame} providing costs by action
-(\code{action, cost}) or by pair (\code{pu, action, cost}). Costs must be finite and non-negative.
-
-\strong{Locks:} \code{status} can set the lock status for specific feasible pairs.
-Status must be one of \code{0} (free), \code{2} (locked-in), or \code{3} (locked-out).
-If \code{x$data$pu} contains a logical \code{locked_out} column, then all action pairs in those
-PUs are forced to \code{status = 3}.
-}
-\examples{
-\dontrun{
-# Action catalogue
-actions_df <- data.frame(id = c("harvest", "sustainable", "restoration"))
-
-# 1) Full feasibility (all actions everywhere), constant cost
-p <- add_actions(p, actions = actions_df, cost = 10)
-
-# 2) Only allow some pairs (include)
-include_df <- data.frame(
-  pu = c(1, 2, 10),
-  action = c("harvest", "harvest", "restoration")
-)
-p <- add_actions(p, actions = actions_df, include = include_df, cost = 10)
-
-# 3) Allow everything except some impossible pairs (exclude)
-exclude_df <- data.frame(pu = c(1, 2, 3, 5), action = "harvest")
-p <- add_actions(p, actions = actions_df, exclude = exclude_df, cost = 10)
-
-# 4) Feasibility as a named list (PU ids per action)
-include_list <- list(
-  harvest = c(1, 2, 3),
-  restoration = c(10, 11)
-)
-p <- add_actions(p, actions = actions_df, include = include_list)
-
-# 5) Action-specific costs (named vector)
-costs <- c(harvest = 5, sustainable = 2, restoration = 8)
-p <- add_actions(p, actions = actions_df, cost = costs)
-
-# 6) Lock status for specific pairs
-st <- data.frame(pu = c(1, 10), action = c("harvest", "restoration"), status = c(3L, 2L))
-p <- add_actions(p, actions = actions_df, status = st)
-
-# 7) Add optional action groups
-actions_df <- data.frame(
-  id = c("conservation", "restoration", "production"),
-  action_set = c("conservation", "recovery", "production")
-)
-p <- add_actions(p, actions = actions_df, cost = 1)
+\strong{Important distinction:}
+\itemize{
+\item \code{include}/\code{exclude} control whether a \code{(pu, action)}
+pair exists in the model.
+\item Decision fixing must be applied later with \code{add_locked_actions()}.
 }
 
-}
-\seealso{
-\code{\link{inputData}}, \code{\link{inputDataSpatial}}
+\strong{Spatial feasibility:} when these specifications are provided as
+\code{sf} layers, planning units in \code{x$data$pu_sf} are matched to zones
+via \code{sf::st_intersects()}.
+
+\strong{Costs:} costs can be specified as a scalar, a named numeric vector by
+action id, or a \code{data.frame} providing costs by action
+(\code{action, cost}) or by pair (\code{pu, action, cost}).
+
+Internally, feasible pairs are initialized with \code{status = 0} (free).
+If \code{x$data$pu$locked_out} exists, then all action pairs in those planning
+units are forced to \code{status = 3}.
 }
