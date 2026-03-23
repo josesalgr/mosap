@@ -563,24 +563,23 @@
   }
 
   # ------------------------------------------------------------------
-  # min_intervention_fragmentation
+  # min_loss
   # ------------------------------------------------------------------
-  if (identical(id, "min_intervention_fragmentation")) {
-    rel     <- .c1(a$relation_name, "boundary")
-    mul     <- .n1(a$weight_multiplier, 1)
+  if (identical(id, "min_loss")) {
+    lcol    <- .c1(a$loss_col, "loss")
     actions <- .chr(a$actions)
+    feats   <- .chr(a$features)
 
-    a$relation_name     <- rel
-    a$weight_multiplier <- mul
-    a$actions           <- actions
+    a$loss_col <- lcol
+    a$actions  <- actions
+    a$features <- feats
 
     return(list(
       sense = "min",
       terms = list(list(
-        type = "intervention_boundary_cut",
-        relation_name = rel,
-        weight_multiplier = mul,
-        actions = actions
+        type = "loss",
+        actions = actions,
+        features = feats
       )),
       objective_id = id,
       objective_args = a
@@ -612,41 +611,6 @@
     ))
   }
 
-  # ------------------------------------------------------------------
-  # max_representation
-  # ------------------------------------------------------------------
-  if (identical(id, "max_representation")) {
-    acol  <- .c1(a$amount_col, "amount")
-    feats <- .chr(a$features)
-
-    a$amount_col <- acol
-    a$features   <- feats
-
-    return(list(
-      sense = "max",
-      terms = list(list(
-        type = "representation",
-        amount_col = acol,
-        features = feats
-      )),
-      objective_id = id,
-      objective_args = a
-    ))
-  }
-
-  # ------------------------------------------------------------------
-  # custom
-  # ------------------------------------------------------------------
-  if (identical(id, "custom")) {
-    if (is.na(sense)) sense <- "min"
-
-    return(list(
-      sense = sense,
-      terms = list(list(type = "custom")),
-      objective_id = id,
-      objective_args = a
-    ))
-  }
 
   stop("Unknown objective_id in .pamo_objective_to_ir(): ", id, call. = FALSE)
 }
@@ -694,11 +658,10 @@
     min_cost = "minimizeCosts",
     max_benefit = "maximizeBenefits",
     max_profit = "maximizeProfit",
+    min_loss = "minimizeLosses",
     max_net_profit = "maximizeNetProfit",
-    max_representation = "maximizeRepresentation",
     min_fragmentation = "minimizeFragmentation",
     min_action_fragmentation = "minimizeActionFragmentation",
-    min_intervention_fragmentation = "minimizeInterventionFragmentation",
     min_intervention_impact = "minimizeInterventionImpact",
     custom = "custom"
   )
@@ -891,15 +854,26 @@
 
   data <- x$data %||% list()
   method <- x$data$method %||% list()
-  aliases   <- as.character(method$aliases %||% character(0))
-  w         <- as.numeric(method$weights %||% numeric(0))
-  normalize <- isTRUE(method$normalize)
+  aliases <- as.character(method$aliases %||% character(0))
+  w <- as.numeric(method$weights %||% numeric(0))
+  normalize_weights <- isTRUE(method$normalize_weights)
+  objective_scaling <- isTRUE(method$objective_scaling)
 
-  if (is.null(aliases) || length(aliases) == 0L) {
+  dots <- list(...)
+  verbose <- .pamo_cli_enabled(x, dots)
+
+  # pass-through solver controls
+  gap_limit  <- dots$gap_limit %||% NULL
+  time_limit <- dots$time_limit %||% NULL
+
+  .pamo_cli_header("Weighted method", verbose = verbose)
+  .pamo_cli_step("Preparing weighted design.", verbose = verbose)
+
+  if (length(aliases) == 0L) {
     stop("Weighted method: missing aliases.", call. = FALSE)
   }
 
-  if (is.null(w)) {
+  if (length(w) == 0L) {
     stop("Weighted method: missing weights. Provide them in set_method_weighted().", call. = FALSE)
   }
 
@@ -919,6 +893,27 @@
 
   n_runs <- nrow(design_df)
 
+  .pamo_cli_step(
+    "Design contains {.val {n_runs}} run{?s}.",
+    verbose = verbose
+  )
+
+  scales <- NULL
+  if (objective_scaling) {
+    .pamo_cli_step(
+      "Computing payoff ranges for {.field objective_scaling = TRUE}.",
+      verbose = verbose
+    )
+
+    scales <- .pamo_compute_weighted_ranges(
+      x = x,
+      aliases = aliases,
+      verbose = verbose,
+      gap_limit = gap_limit,
+      time_limit = time_limit
+    )
+  }
+
   solutions <- vector("list", n_runs)
 
   value_mat <- matrix(NA_real_, n_runs, length(aliases))
@@ -927,11 +922,6 @@
   status  <- character(n_runs)
   runtime <- numeric(n_runs)
   gap     <- numeric(n_runs)
-
-  # pass-through solver controls
-  dots <- list(...)
-  gap_limit  <- dots$gap_limit %||% NULL
-  time_limit <- dots$time_limit %||% NULL
 
   for (r in seq_len(n_runs)) {
     w_r <- as.numeric(design_df[r, paste0("weight_", aliases), drop = TRUE])
@@ -942,7 +932,9 @@
         type = "weighted",
         aliases = aliases,
         weights = w_r,
-        normalize = normalize,
+        normalize_weights = normalize_weights,
+        objective_scaling = objective_scaling,
+        scales = scales,
         gap_limit = gap_limit,
         time_limit = time_limit
       )
@@ -993,6 +985,8 @@
     run_ids = design_df$run_id
   )
 
+  .pamo_cli_done("Weighted solve finished.", verbose = verbose)
+
   pproto(
     NULL, SolutionSet,
     problem = x,
@@ -1018,6 +1012,7 @@
   )
 }
 
+
 .pamo_solve_epsilon_constraint <- function(x, ...) {
 
   stopifnot(inherits(x, "Problem"))
@@ -1033,6 +1028,18 @@
   constrained <- as.character(method$constrained %||% character(0))
   mode        <- as.character(method$mode %||% "manual")[1]
 
+  # pass-through solver controls / progress / verbosity
+  dots <- list(...)
+  gap_limit  <- dots$gap_limit %||% NULL
+  time_limit <- dots$time_limit %||% NULL
+  verbose <- .pamo_cli_enabled(x, dots)
+
+  # progress control
+  progress <- dots$progress %||% dots$verbose %||% interactive()
+  progress <- isTRUE(progress)
+
+  .pamo_cli_header("Epsilon-constraint method", verbose = verbose)
+
   if (is.na(primary) || !nzchar(primary)) {
     stop("epsilon_constraint: missing primary objective.", call. = FALSE)
   }
@@ -1046,19 +1053,17 @@
     stop("epsilon_constraint: unknown mode '", mode, "'.", call. = FALSE)
   }
 
-  # pass-through solver controls
-  dots <- list(...)
-  gap_limit  <- dots$gap_limit %||% NULL
-  time_limit <- dots$time_limit %||% NULL
-
-  # progress control
-  progress <- dots$progress %||% dots$verbose %||% interactive()
-  progress <- isTRUE(progress)
+  .pamo_cli_step(
+    "Primary objective: {.val {primary}}. Secondary objectives: {.val {paste(constrained, collapse = ', ')}}.",
+    verbose = verbose
+  )
 
   # ---------------------------------------------------------
   # Build or recover epsilon design
   # ---------------------------------------------------------
   if (identical(mode, "manual")) {
+    .pamo_cli_step("Using user-supplied epsilon grid.", verbose = verbose)
+
     design_df <- method$runs
 
     if (is.null(design_df) || !inherits(design_df, "data.frame") || nrow(design_df) == 0L) {
@@ -1066,6 +1071,8 @@
     }
 
   } else {
+    .pamo_cli_step("Building automatic epsilon grid.", verbose = verbose)
+
     if (!exists(".pamo_build_auto_epsilon_runs", mode = "function")) {
       stop(
         "epsilon_constraint (auto): missing internal helper .pamo_build_auto_epsilon_runs().",
@@ -1075,7 +1082,12 @@
 
     design_df <- method$runs %||% NULL
     if (is.null(design_df)) {
-      design_df <- .pamo_build_auto_epsilon_runs(x)
+      design_df <- .pamo_build_auto_epsilon_runs(
+        x,
+        gap_limit = gap_limit,
+        time_limit = time_limit,
+        verbose = verbose
+      )
     }
 
     if (is.null(design_df) || !inherits(design_df, "data.frame") || nrow(design_df) == 0L) {
@@ -1099,6 +1111,11 @@
     )
   }
 
+  .pamo_cli_step(
+    "Grid ready with {.val {nrow(design_df)}} run{?s}.",
+    verbose = verbose
+  )
+
   # ---------------------------------------------------------
   # Solve runs
   # ---------------------------------------------------------
@@ -1113,10 +1130,17 @@
   runtime <- numeric(n_runs)
   gap     <- numeric(n_runs)
 
-  pb <- NULL
+  progress_id <- NULL
   if (progress && n_runs > 1L) {
-    pb <- utils::txtProgressBar(min = 0, max = n_runs, style = 3)
-    on.exit(close(pb), add = TRUE)
+    progress_id <- NULL
+    if (progress && n_runs > 1L) {
+      progress_id <- cli::cli_progress_bar(
+        name = "Solving runs",
+        total = n_runs,
+        clear = FALSE,
+        format = "{cli::pb_name}{cli::pb_bar} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
+      )
+    }
   }
 
   for (r in seq_len(n_runs)) {
@@ -1162,9 +1186,13 @@
       )
     }
 
-    if (!is.null(pb)) {
-      utils::setTxtProgressBar(pb, r)
+    if (!is.null(progress_id)) {
+      cli::cli_progress_update(id = progress_id, set = r)
     }
+  }
+
+  if (!is.null(progress_id)) {
+    cli::cli_progress_done(id = progress_id)
   }
 
   # ---------------------------------------------------------
@@ -1203,6 +1231,8 @@
     run_ids = design_df$run_id
   )
 
+  .pamo_cli_done("Epsilon-constraint solve finished.", verbose = verbose)
+
   pproto(
     NULL, SolutionSet,
     problem = x,
@@ -1231,7 +1261,11 @@
   )
 }
 
-.pamo_build_auto_epsilon_runs <- function(x) {
+
+.pamo_build_auto_epsilon_runs <- function(x,
+                                          gap_limit = NULL,
+                                          time_limit = NULL,
+                                          verbose = FALSE) {
   stopifnot(inherits(x, "Problem"))
 
   method <- x$data$method %||% list()
@@ -1281,10 +1315,17 @@
 
   secondary <- constrained[1]
 
+  .pamo_cli_step(
+    "Computing automatic epsilon bounds for {.val {secondary}} against {.val {primary}}.",
+    verbose = verbose
+  )
+
   ext <- .pamo_compute_epsilon_extremes_2obj(
     x = x,
     primary = primary,
-    secondary = secondary
+    secondary = secondary,
+    gap_limit = gap_limit,
+    time_limit = time_limit
   )
 
   sec_min <- as.numeric(ext$secondary_min)[1]
@@ -1299,6 +1340,11 @@
     sec_min <- sec_max
     sec_max <- tmp
   }
+
+  .pamo_cli_step(
+    "Secondary range: [{.val {format(sec_min, digits = 6)}}, {.val {format(sec_max, digits = 6)}}].",
+    verbose = verbose
+  )
 
   eps_vals <- seq(from = sec_min, to = sec_max, length.out = n_points)
 
@@ -1330,11 +1376,13 @@
   attr(design_df, "include_extremes") <- include_extremes
   attr(design_df, "n_points_requested") <- n_points
 
+  .pamo_cli_done(
+    "Automatic epsilon grid built with {.val {nrow(design_df)}} run{?s}.",
+    verbose = verbose
+  )
+
   design_df
 }
-
-
-
 
 
 # -------------------------------------------------------------------------
@@ -1595,20 +1643,6 @@ add_objective <- function(x, objective) {
         op,
         relation_data = rel_model,
         weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1]
-      )
-
-    } else if (identical(type, "representation")) {
-
-      acol <- as.character(t$amount_col %||% "amount")[1]
-      feat_int <- .resolve_feature_internal(t$features)
-
-      rcpp_add_objective_max_representation(
-        op,
-        dist_features_data = base_superset$data$dist_features,
-        amount_col = acol,
-        features_to_use = as.integer(feat_int),
-        internal_feature_col = "internal_feature",
-        weight = 1.0
       )
 
     } else if (identical(type, "benefit")) {
@@ -1878,7 +1912,11 @@ add_objective <- function(x, objective) {
 
 
 
-.pamo_apply_weighted_objective <- function(base, ir_list, weights, normalize = FALSE) {
+.pamo_apply_weighted_objective <- function(base,
+                                           ir_list,
+                                           weights,
+                                           objective_scaling = FALSE,
+                                           scales = NULL) {
   stopifnot(inherits(base, "Problem"))
   stopifnot(is.list(ir_list), length(ir_list) > 0)
   weights <- as.numeric(weights)
@@ -1901,13 +1939,28 @@ add_objective <- function(x, objective) {
     objvecs[[i]] <- v
   }
 
-  # 3) normalización (provisional pero estable)
-  if (isTRUE(normalize)) {
-    objvecs <- lapply(objvecs, function(v) {
-      s <- max(abs(v), na.rm = TRUE)
-      if (!is.finite(s) || s <= 0) return(v)
-      v / s
-    })
+  # 3) objective scaling by payoff range
+  if (isTRUE(objective_scaling)) {
+    if (is.null(scales) || length(scales) != length(objvecs)) {
+      stop(
+        "objective_scaling = TRUE requires one positive scale per objective.",
+        call. = FALSE
+      )
+    }
+
+    objvecs <- Map(
+      function(v, s) {
+        s <- as.numeric(s)[1]
+        if (!is.finite(s) || s <= 0) {
+          warning("Encountered non-positive scale in weighted objective scaling; leaving objective unscaled.",
+                  call. = FALSE)
+          return(v)
+        }
+        v / s
+      },
+      objvecs,
+      as.list(scales)
+    )
   }
 
   # 4) combinar pesos -> objetivo final
@@ -1927,7 +1980,8 @@ add_objective <- function(x, objective) {
   base2$data$mo_cache <- list(
     ir_list = ir_list,
     weights = weights,
-    normalize = normalize,
+    objective_scaling = objective_scaling,
+    scales = scales,
     objvecs = objvecs,
     obj_weighted = obj_w
   )
@@ -1948,7 +2002,8 @@ add_objective <- function(x, objective) {
 
     aliases <- as.character(spec$aliases)
     weights <- as.numeric(spec$weights)
-    normalize <- isTRUE(spec$normalize)
+    objective_scaling <- isTRUE(spec$objective_scaling)
+    scales <- spec$scales %||% NULL
 
     specs <- .pamo_get_objective_specs(x, aliases)
     ir_list <- lapply(specs, function(sp) .pamo_objective_to_ir(base, sp))
@@ -1957,7 +2012,8 @@ add_objective <- function(x, objective) {
       base = base,
       ir_list = ir_list,
       weights = weights,
-      normalize = normalize
+      objective_scaling = objective_scaling,
+      scales = scales
     )
 
   } else if (identical(spec$type, "epsilon_constraint")) {
@@ -2013,7 +2069,74 @@ add_objective <- function(x, objective) {
       sense = as.character(sp_primary$sense %||% "min")[1]
     )
 
-  } else {
+  } else if (identical(spec$type, "augmecon")) {
+
+    primary     <- as.character(spec$primary)[1]
+    eps_list    <- spec$eps %||% list()
+    eps_tol     <- spec$eps_tol %||% list()
+    augmentation <- as.numeric(spec$augmentation %||% NA_real_)[1]
+    sec_aliases <- names(eps_list)
+
+    if (is.na(primary) || !nzchar(primary)) {
+      stop("augmecon: primary is invalid.", call. = FALSE)
+    }
+    if (length(sec_aliases) == 0L) {
+      stop("augmecon: eps list is empty.", call. = FALSE)
+    }
+    if (!is.finite(augmentation) || augmentation <= 0) {
+      stop("augmecon: augmentation must be a finite positive number.", call. = FALSE)
+    }
+
+    # ---- build IRs for primary + secondary objectives
+    all_aliases <- unique(c(primary, sec_aliases))
+    specs_all <- .pamo_get_objective_specs(x, all_aliases)
+    ir_all <- lapply(specs_all, function(sp) .pamo_objective_to_ir(base, sp))
+
+    # ---- build one superset
+    base <- .pamo_prepare_superset_model(base, ir_all)
+
+    # ---- add epsilon constraints for all secondaries
+    for (a in sec_aliases) {
+      sp_sec <- specs_all[[a]]
+      ir_sec <- ir_all[[a]]
+
+      eps_val <- as.numeric(eps_list[[a]])[1]
+      if (!is.finite(eps_val)) {
+        stop("augmecon: eps for '", a, "' must be finite.", call. = FALSE)
+      }
+
+      tol_a <- as.numeric(eps_tol[[a]] %||% 0)[1]
+      if (!is.finite(tol_a) || tol_a < 0) {
+        stop("augmecon: eps_tol for '", a, "' must be finite and >= 0.", call. = FALSE)
+      }
+
+      base <- .pamo_apply_epsilon_constraint(
+        base = base,
+        ir = ir_sec,
+        eps = eps_val + tol_a,
+        sense = as.character(sp_sec$sense %||% "min")[1],
+        name = paste0("eps_", a),
+        block_name = "augmecon_constraint"
+      )
+    }
+
+    # ---- build scales for secondary objectives (simple payoff-based scaling)
+    sec_scales <- spec$secondary_scales %||% rep(1, length(sec_aliases))
+
+    # ---- set augmented objective
+    sp_primary <- specs_all[[primary]]
+    ir_primary <- ir_all[[primary]]
+
+    ir_secondary <- ir_all[sec_aliases]
+
+    base <- .pamo_apply_augmecon_objective(
+      base = base,
+      ir_primary = ir_primary,
+      ir_secondary = ir_secondary,
+      secondary_scales = sec_scales,
+      augmentation = augmentation
+    )
+  }else {
     stop("Unsupported spec$type in .pamo_solve_one: ", spec$type, call. = FALSE)
   }
 
@@ -2444,9 +2567,9 @@ add_objective <- function(x, objective) {
         type = "weighted",
         aliases = primary,
         weights = 1,
-        normalize = FALSE,
-        gap_limit = gap_limit,
-        time_limit = time_limit
+        objective_scaling = FALSE,
+        scales = NULL,
+        ...
       )
     )
 
@@ -3096,4 +3219,896 @@ add_objective <- function(x, objective) {
     features = bind_one("features"),
     targets = bind_one("targets")
   )
+}
+
+
+.pamo_eval_alias_canonical_on_solution <- function(x, solution, alias) {
+  stopifnot(inherits(x, "Problem"))
+
+  alias <- as.character(alias)[1]
+  if (is.na(alias) || !nzchar(alias)) {
+    stop("alias must be a non-empty string.", call. = FALSE)
+  }
+
+  val <- .pamo_eval_alias_on_solution(x, solution, alias)
+  spec <- .pamo_get_objective_spec(x, alias)
+
+  sense <- as.character(spec$sense %||% NA_character_)[1]
+  if (!sense %in% c("min", "max")) {
+    stop("Objective alias '", alias, "' has invalid sense.", call. = FALSE)
+  }
+
+  if (identical(sense, "max")) {
+    return(as.numeric(-val))
+  }
+
+  as.numeric(val)
+}
+
+
+.pamo_compute_weighted_ranges <- function(x,
+                                          aliases,
+                                          tol = 1e-9,
+                                          verbose = FALSE,
+                                          gap_limit = NULL,
+                                          time_limit = NULL) {
+  stopifnot(inherits(x, "Problem"))
+
+  aliases <- as.character(aliases)
+  if (length(aliases) == 0L) {
+    stop("aliases must be non-empty in .pamo_compute_weighted_ranges().", call. = FALSE)
+  }
+
+  .pamo_cli_step(
+    "Computing payoff table for {.val {length(aliases)}} objective{?s}.",
+    verbose = verbose
+  )
+
+  payoff <- matrix(
+    NA_real_,
+    nrow = length(aliases),
+    ncol = length(aliases),
+    dimnames = list(aliases, aliases)
+  )
+
+  for (i in seq_along(aliases)) {
+    a_i <- aliases[i]
+
+    .pamo_cli_step(
+      "Anchor {.val {i}}/{.val {length(aliases)}}: optimizing {.val {a_i}}.",
+      verbose = verbose
+    )
+
+    one <- .pamo_solve_one(
+      x = x,
+      spec = list(
+        type = "weighted",
+        aliases = a_i,
+        weights = 1,
+        objective_scaling = FALSE,
+        scales = NULL,
+        gap_limit = gap_limit,
+        time_limit = time_limit
+      )
+    )
+
+    sol_i <- one$solution
+    if (is.null(sol_i) || !inherits(sol_i, "Solution")) {
+      stop(
+        "Failed to compute scaling range anchor for objective '", a_i, "'.",
+        call. = FALSE
+      )
+    }
+
+    vals_i <- vapply(
+      aliases,
+      function(a_j) .pamo_eval_alias_canonical_on_solution(x, sol_i, a_j),
+      numeric(1)
+    )
+
+    payoff[i, ] <- vals_i
+  }
+
+  ideal <- apply(payoff, 2, min, na.rm = TRUE)
+  nadir <- apply(payoff, 2, max, na.rm = TRUE)
+  ranges <- nadir - ideal
+  names(ranges) <- aliases
+
+  bad <- !is.finite(ranges) | (ranges <= tol)
+  if (any(bad)) {
+    .pamo_cli_warn(
+      "Some objectives had near-zero payoff range: {.val {paste(names(ranges)[bad], collapse = ', ')}}. Using scale = 1.",
+      verbose = verbose
+    )
+    ranges[bad] <- 1
+  }
+
+  .pamo_cli_done("Payoff ranges computed.", verbose = verbose)
+
+  ranges
+}
+
+
+################################################################################
+######## AUGMECON ##############################################################
+################################################################################
+
+.pamo_apply_augmecon_objective <- function(base,
+                                           ir_primary,
+                                           ir_secondary,
+                                           secondary_scales = NULL,
+                                           augmentation = 1e-3) {
+  stopifnot(inherits(base, "Problem"))
+
+  augmentation <- as.numeric(augmentation)[1]
+  if (!is.finite(augmentation) || augmentation <= 0) {
+    stop("augmentation must be a single finite positive number.", call. = FALSE)
+  }
+
+  v_primary <- .pamo_objvec_from_ir(base, ir_primary)
+  if (identical(ir_primary$sense, "max")) {
+    v_primary <- -v_primary
+  }
+
+  if (length(ir_secondary) == 0L) {
+    obj <- as.numeric(v_primary)
+  } else {
+    sec_vecs <- vector("list", length(ir_secondary))
+
+    for (i in seq_along(ir_secondary)) {
+      v <- .pamo_objvec_from_ir(base, ir_secondary[[i]])
+      if (identical(ir_secondary[[i]]$sense, "max")) {
+        v <- -v
+      }
+      sec_vecs[[i]] <- as.numeric(v)
+    }
+
+    if (is.null(secondary_scales)) {
+      secondary_scales <- rep(1, length(sec_vecs))
+    }
+
+    if (length(secondary_scales) != length(sec_vecs)) {
+      stop(
+        "secondary_scales length must match the number of secondary objectives.",
+        call. = FALSE
+      )
+    }
+
+    sec_vecs <- Map(
+      function(v, s) {
+        s <- as.numeric(s)[1]
+        if (!is.finite(s) || s <= 0) s <- 1
+        v / s
+      },
+      sec_vecs,
+      as.list(secondary_scales)
+    )
+
+    aug_term <- Reduce(`+`, sec_vecs)
+    obj <- as.numeric(v_primary + augmentation * aug_term)
+  }
+
+  base$data$runtime_updates <- list(
+    obj = obj,
+    modelsense = "min"
+  )
+
+  base$data$meta <- base$data$meta %||% list()
+  base$data$meta$model_dirty <- FALSE
+  base$data$has_model <- TRUE
+
+  base$data$mo_cache <- list(
+    type = "augmecon",
+    ir_primary = ir_primary,
+    ir_secondary = ir_secondary,
+    secondary_scales = secondary_scales,
+    augmentation = augmentation,
+    obj_augmented = obj
+  )
+
+  base
+}
+
+
+
+.pamo_solve_augmecon <- function(x, ...) {
+  stopifnot(inherits(x, "Problem"))
+
+  method <- x$data$method %||% NULL
+  if (is.null(method) || !is.list(method)) {
+    stop("augmecon: x$data$method is missing or invalid.", call. = FALSE)
+  }
+
+  primary      <- as.character(method$primary %||% NA_character_)[1]
+  aliases      <- as.character(method$aliases %||% character(0))
+  secondary    <- as.character(method$secondary %||% character(0))
+  grid         <- method$grid %||% NULL
+  n_points     <- as.integer(method$n_points %||% NA_integer_)[1]
+  augmentation <- as.numeric(method$augmentation %||% NA_real_)[1]
+
+  dots <- list(...)
+  gap_limit  <- dots$gap_limit %||% NULL
+  time_limit <- dots$time_limit %||% NULL
+  verbose <- .pamo_cli_enabled(x, dots)
+
+  progress <- dots$progress %||% dots$verbose %||% interactive()
+  progress <- isTRUE(progress)
+
+  .pamo_cli_header("AUGMECON method", verbose = verbose)
+
+  if (is.na(primary) || !nzchar(primary)) {
+    stop("augmecon: missing primary objective.", call. = FALSE)
+  }
+  if (length(aliases) == 0L) {
+    stop("augmecon: aliases are missing.", call. = FALSE)
+  }
+  if (length(secondary) == 0L) {
+    stop("augmecon: secondary objectives are missing.", call. = FALSE)
+  }
+  if (!is.finite(augmentation) || is.na(augmentation) || augmentation <= 0) {
+    stop("augmecon: augmentation must be a finite positive number.", call. = FALSE)
+  }
+
+  .pamo_cli_step(
+    "Primary objective: {.val {primary}}. Secondary objectives: {.val {paste(secondary, collapse = ', ')}}.",
+    verbose = verbose
+  )
+
+  # design
+  design_df <- method$runs %||% NULL
+  if (is.null(design_df)) {
+    if (is.null(grid)) {
+      .pamo_cli_step("Building automatic epsilon grid.", verbose = verbose)
+
+      design_df <- .pamo_build_auto_augmecon_runs(
+        x = x,
+        gap_limit = gap_limit,
+        time_limit = time_limit,
+        verbose = verbose
+      )
+    } else {
+      .pamo_cli_step("Using user-supplied epsilon grid.", verbose = verbose)
+
+      design_df <- .pamo_build_manual_augmecon_runs(
+        x = x,
+        verbose = verbose
+      )
+    }
+    x$data$method$runs <- design_df
+  }
+
+  if (!("run_id" %in% names(design_df))) {
+    design_df$run_id <- seq_len(nrow(design_df))
+  }
+
+  eps_cols <- paste0("eps_", secondary)
+  miss_cols <- setdiff(eps_cols, names(design_df))
+  if (length(miss_cols) > 0L) {
+    stop(
+      "augmecon: design is missing epsilon columns: ",
+      paste(miss_cols, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  .pamo_cli_step(
+    "Design ready with {.val {nrow(design_df)}} run{?s}. Augmentation = {.val {augmentation}}.",
+    verbose = verbose
+  )
+
+  n_runs <- nrow(design_df)
+  solutions <- vector("list", n_runs)
+
+  value_mat <- matrix(NA_real_, n_runs, length(aliases))
+  colnames(value_mat) <- paste0("value_", aliases)
+
+  status  <- character(n_runs)
+  runtime <- numeric(n_runs)
+  gap     <- numeric(n_runs)
+
+  progress_id <- NULL
+  if (progress && n_runs > 1L) {
+    progress_id <- NULL
+    if (progress && n_runs > 1L) {
+      progress_id <- cli::cli_progress_bar(
+        name = "Solving runs",
+        total = n_runs,
+        clear = FALSE,
+        format = "{cli::pb_name}{cli::pb_bar} {cli::pb_current}/{cli::pb_total} | ETA: {cli::pb_eta}"
+      )
+    }
+  }
+
+  secondary_scales <- vapply(
+    secondary,
+    function(a) {
+      rr <- .pamo_compute_secondary_range_against_primary(
+        x = x,
+        primary = primary,
+        secondary = a,
+        gap_limit = gap_limit,
+        time_limit = time_limit
+      )
+      rng <- as.numeric(rr$secondary_max)[1] - as.numeric(rr$secondary_min)[1]
+      if (!is.finite(rng) || rng <= 0) rng <- 1
+      rng
+    },
+    numeric(1)
+  )
+
+  for (r in seq_len(n_runs)) {
+    eps_r <- as.list(design_df[r, eps_cols, drop = FALSE])
+    names(eps_r) <- secondary
+
+    one <- .pamo_solve_one(
+      x = x,
+      spec = list(
+        type = "augmecon",
+        primary = primary,
+        eps = eps_r,
+        eps_tol = ...,
+        augmentation = augmentation,
+        secondary_scales = secondary_scales,
+        gap_limit = gap_limit,
+        time_limit = time_limit
+      )
+    )
+
+    solutions[[r]] <- one$solution
+    status[r]  <- as.character(one$status %||% NA_character_)
+    runtime[r] <- as.numeric(one$runtime %||% NA_real_)
+    gap[r]     <- as.numeric(one$gap %||% NA_real_)
+
+    alias_values <- setNames(
+      vapply(
+        aliases,
+        function(a) .pamo_eval_alias_on_solution(x, one$solution, a),
+        numeric(1)
+      ),
+      aliases
+    )
+
+    if (!is.null(solutions[[r]]) && inherits(solutions[[r]], "Solution")) {
+      solutions[[r]]$solution$alias_values <- alias_values
+      solutions[[r]]$meta$run_id <- design_df$run_id[r]
+      solutions[[r]]$method$type <- "augmecon"
+      solutions[[r]]$method$primary_alias <- primary
+      solutions[[r]]$method$eps <- stats::setNames(
+        as.numeric(design_df[r, eps_cols, drop = TRUE]),
+        secondary
+      )
+      solutions[[r]]$method$augmentation <- augmentation
+    }
+
+    value_mat[r, ] <- unname(as.numeric(alias_values))
+
+    if (!is.null(progress_id)) {
+      cli::cli_progress_update(id = progress_id, set = r)
+    }
+  }
+
+  if (!is.null(progress_id)) {
+    cli::cli_progress_done(id = progress_id)
+  }
+
+  runs <- data.frame(
+    run_id = design_df$run_id,
+    status = status,
+    runtime = runtime,
+    gap = gap,
+    stringsAsFactors = FALSE
+  )
+
+  runs <- cbind(runs, as.data.frame(value_mat, stringsAsFactors = FALSE))
+
+  summary_set <- .pamo_bind_solution_summaries(
+    solutions = solutions,
+    run_ids = design_df$run_id
+  )
+
+  .pamo_cli_done("AUGMECON solve finished.", verbose = verbose)
+
+  pproto(
+    NULL, SolutionSet,
+    problem = x,
+    solution = list(
+      design = design_df,
+      runs = runs,
+      solutions = solutions
+    ),
+    summary = summary_set,
+    diagnostics = list(
+      n_design = nrow(design_df),
+      n_runs = nrow(runs),
+      n_solutions = length(solutions),
+      status_summary = .pa_solutionset_status_summary(runs),
+      runtime_range = if ("runtime" %in% names(runs)) .pa_solutionset_range_text(runs$runtime, digits = 3) else "none",
+      gap_range = if ("gap" %in% names(runs)) .pa_solutionset_range_text(runs$gap, digits = 4) else "none"
+    ),
+    method = method,
+    meta = list(
+      call = match.call(),
+      augmecon_grid = design_df
+    ),
+    name = "solset"
+  )
+}
+
+
+.pamo_compute_secondary_range_against_primary <- function(
+    x,
+    primary,
+    secondary,
+    gap_limit = NULL,
+    time_limit = NULL
+) {
+  stopifnot(inherits(x, "Problem"))
+
+  method <- x$data$method %||% list()
+  do_lexi <- isTRUE(method$lexicographic)
+  lexi_tol <- as.numeric(method$lexicographic_tol %||% 0)[1]
+  if (!is.finite(lexi_tol) || lexi_tol < 0) lexi_tol <- 0
+
+  primary <- as.character(primary)[1]
+  secondary <- as.character(secondary)[1]
+
+  if (is.na(primary) || !nzchar(primary)) {
+    stop("`primary` must be a non-empty string.", call. = FALSE)
+  }
+  if (is.na(secondary) || !nzchar(secondary)) {
+    stop("`secondary` must be a non-empty string.", call. = FALSE)
+  }
+  if (identical(primary, secondary)) {
+    stop("`primary` and `secondary` must be different aliases.", call. = FALSE)
+  }
+
+  specs_all <- .pamo_get_specs(x)
+  obj_alias <- names(specs_all)
+
+  if (!primary %in% obj_alias) {
+    stop("Primary alias not found: '", primary, "'.", call. = FALSE)
+  }
+  if (!secondary %in% obj_alias) {
+    stop("Secondary alias not found: '", secondary, "'.", call. = FALSE)
+  }
+
+  # ------------------------------------------------------------
+  # Case 1: non-lexicographic anchors
+  # ------------------------------------------------------------
+  if (!isTRUE(do_lexi)) {
+
+    # Anchor A: optimize primary
+    sol_primary <- .pamo_solve_one(
+      x = x,
+      spec = list(
+        type = "weighted",
+        aliases = primary,
+        weights = 1,
+        objective_scaling = FALSE,
+        scales = NULL
+      )
+    )
+
+    if (is.null(sol_primary$solution) || !inherits(sol_primary$solution, "Solution")) {
+      stop("Failed to compute primary anchor solution for '", primary, "'.", call. = FALSE)
+    }
+
+    primary_at_primary <- .pamo_eval_alias_on_solution(x, sol_primary$solution, primary)
+    secondary_at_primary <- .pamo_eval_alias_on_solution(x, sol_primary$solution, secondary)
+
+    # Anchor B: optimize secondary
+    sol_secondary <- .pamo_solve_one(
+      x = x,
+      spec = list(
+        type = "weighted",
+        aliases = secondary,
+        weights = 1,
+        objective_scaling = FALSE,
+        scales = NULL
+      )
+    )
+
+    if (is.null(sol_secondary$solution) || !inherits(sol_secondary$solution, "Solution")) {
+      stop("Failed to compute secondary anchor solution for '", secondary, "'.", call. = FALSE)
+    }
+
+    primary_at_secondary <- .pamo_eval_alias_on_solution(x, sol_secondary$solution, primary)
+    secondary_at_secondary <- .pamo_eval_alias_on_solution(x, sol_secondary$solution, secondary)
+
+    vals_secondary <- c(secondary_at_primary, secondary_at_secondary)
+
+    if (any(!is.finite(vals_secondary))) {
+      stop(
+        "Could not compute finite anchor values for secondary objective '", secondary, "'.\n",
+        "secondary_at_primary = ", secondary_at_primary, "\n",
+        "secondary_at_secondary = ", secondary_at_secondary,
+        call. = FALSE
+      )
+    }
+
+    return(list(
+      primary = primary,
+      secondary = secondary,
+
+      primary_at_primary = as.numeric(primary_at_primary),
+      secondary_at_primary = as.numeric(secondary_at_primary),
+
+      primary_at_secondary = as.numeric(primary_at_secondary),
+      secondary_at_secondary = as.numeric(secondary_at_secondary),
+
+      secondary_min = min(vals_secondary),
+      secondary_max = max(vals_secondary),
+
+      solution_primary = sol_primary$solution,
+      solution_secondary = sol_secondary$solution,
+
+      meta = list(
+        lexicographic = FALSE,
+        lexicographic_tol = 0
+      )
+    ))
+  }
+
+  # ------------------------------------------------------------
+  # Case 2: lexicographic anchors
+  # ------------------------------------------------------------
+
+  # Stage 1A: optimize primary
+  sol_primary_stage1 <- .pamo_solve_one(
+    x = x,
+    spec = list(
+      type = "weighted",
+      aliases = primary,
+      weights = 1,
+      objective_scaling = FALSE,
+      scales = NULL
+    )
+  )
+
+  if (is.null(sol_primary_stage1$solution) || !inherits(sol_primary_stage1$solution, "Solution")) {
+    stop("Failed to compute stage-1 primary solution for '", primary, "'.", call. = FALSE)
+  }
+
+  primary_star <- .pamo_eval_alias_on_solution(x, sol_primary_stage1$solution, primary)
+
+  # Stage 2A: optimize secondary subject to primary <= primary_star + tol
+  sol_primary_lexi <- .pamo_solve_one(
+    x = x,
+    spec = list(
+      type = "epsilon_constraint",
+      primary = secondary,
+      eps = stats::setNames(list(primary_star), primary),
+      eps_tol = stats::setNames(list(lexi_tol), primary)
+    )
+  )
+
+  if (is.null(sol_primary_lexi$solution) || !inherits(sol_primary_lexi$solution, "Solution")) {
+    stop("Failed to compute lexicographic primary anchor for '", primary, "'.", call. = FALSE)
+  }
+
+  primary_at_primary <- .pamo_eval_alias_on_solution(x, sol_primary_lexi$solution, primary)
+  secondary_at_primary <- .pamo_eval_alias_on_solution(x, sol_primary_lexi$solution, secondary)
+
+  # Stage 1B: optimize secondary
+  sol_secondary_stage1 <- .pamo_solve_one(
+    x = x,
+    spec = list(
+      type = "weighted",
+      aliases = secondary,
+      weights = 1,
+      objective_scaling = FALSE,
+      scales = NULL
+    )
+  )
+
+  if (is.null(sol_secondary_stage1$solution) || !inherits(sol_secondary_stage1$solution, "Solution")) {
+    stop("Failed to compute stage-1 secondary solution for '", secondary, "'.", call. = FALSE)
+  }
+
+  secondary_star <- .pamo_eval_alias_on_solution(x, sol_secondary_stage1$solution, secondary)
+
+  # Stage 2B: optimize primary subject to secondary <= secondary_star + tol
+  sol_secondary_lexi <- .pamo_solve_one(
+    x = x,
+    spec = list(
+      type = "epsilon_constraint",
+      primary = primary,
+      eps = stats::setNames(list(secondary_star), secondary),
+      eps_tol = stats::setNames(list(lexi_tol), secondary)
+    )
+  )
+
+  if (is.null(sol_secondary_lexi$solution) || !inherits(sol_secondary_lexi$solution, "Solution")) {
+    stop("Failed to compute lexicographic secondary anchor for '", secondary, "'.", call. = FALSE)
+  }
+
+  primary_at_secondary <- .pamo_eval_alias_on_solution(x, sol_secondary_lexi$solution, primary)
+  secondary_at_secondary <- .pamo_eval_alias_on_solution(x, sol_secondary_lexi$solution, secondary)
+
+  vals_secondary <- c(secondary_at_primary, secondary_at_secondary)
+
+  if (any(!is.finite(vals_secondary))) {
+    stop(
+      "Could not compute finite anchor values for secondary objective '", secondary, "'.\n",
+      "secondary_at_primary = ", secondary_at_primary, "\n",
+      "secondary_at_secondary = ", secondary_at_secondary,
+      call. = FALSE
+    )
+  }
+
+  list(
+    primary = primary,
+    secondary = secondary,
+
+    primary_at_primary = as.numeric(primary_at_primary),
+    secondary_at_primary = as.numeric(secondary_at_primary),
+
+    primary_at_secondary = as.numeric(primary_at_secondary),
+    secondary_at_secondary = as.numeric(secondary_at_secondary),
+
+    secondary_min = min(vals_secondary),
+    secondary_max = max(vals_secondary),
+
+    solution_primary = sol_primary_lexi$solution,
+    solution_secondary = sol_secondary_lexi$solution,
+
+    meta = list(
+      lexicographic = TRUE,
+      lexicographic_tol = lexi_tol,
+      stage1_primary_solution = sol_primary_stage1$solution,
+      stage1_secondary_solution = sol_secondary_stage1$solution
+    )
+  )
+}
+
+
+
+.pamo_build_auto_augmecon_runs <- function(x,
+                                           gap_limit = NULL,
+                                           time_limit = NULL,
+                                           verbose = FALSE) {
+  stopifnot(inherits(x, "Problem"))
+
+  method <- x$data$method %||% list()
+
+  primary          <- as.character(method$primary %||% NA_character_)[1]
+  aliases          <- as.character(method$aliases %||% character(0))
+  secondary        <- as.character(method$secondary %||% character(0))
+  n_points         <- as.integer(method$n_points %||% NA_integer_)[1]
+  include_extremes <- isTRUE(method$include_extremes)
+
+  if (is.na(primary) || !nzchar(primary)) {
+    stop("Auto AUGMECON mode: missing primary objective.", call. = FALSE)
+  }
+
+  if (length(aliases) == 0L) {
+    stop("Auto AUGMECON mode: aliases are missing.", call. = FALSE)
+  }
+
+  if (!primary %in% aliases) {
+    stop("Auto AUGMECON mode: primary must be included in aliases.", call. = FALSE)
+  }
+
+  if (length(secondary) == 0L) {
+    stop("Auto AUGMECON mode requires at least one secondary objective.", call. = FALSE)
+  }
+
+  if (!all(secondary %in% aliases)) {
+    stop(
+      "Auto AUGMECON mode: all secondary objectives must be included in aliases.\n",
+      "Missing: ",
+      paste(setdiff(secondary, aliases), collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  if (!is.finite(n_points) || is.na(n_points) || n_points < 2L) {
+    stop("Auto AUGMECON mode requires n_points >= 2.", call. = FALSE)
+  }
+
+  .pamo_cli_step(
+    "Computing automatic ranges for {.val {length(secondary)}} secondary objective{?s}.",
+    verbose = verbose
+  )
+
+  # ------------------------------------------------------------
+  # build one epsilon sequence per secondary objective
+  # ------------------------------------------------------------
+  grid_list <- vector("list", length(secondary))
+  names(grid_list) <- secondary
+
+  extremes <- vector("list", length(secondary))
+  names(extremes) <- secondary
+
+  for (i in seq_along(secondary)) {
+    s <- secondary[i]
+
+    .pamo_cli_step(
+      "Secondary {.val {i}}/{.val {length(secondary)}}: {.val {s}}.",
+      verbose = verbose
+    )
+
+    ext_s <- .pamo_compute_secondary_range_against_primary(
+      x = x,
+      primary = primary,
+      secondary = s,
+      gap_limit = gap_limit,
+      time_limit = time_limit
+    )
+
+    s_min <- as.numeric(ext_s$secondary_min)[1]
+    s_max <- as.numeric(ext_s$secondary_max)[1]
+
+    if (!is.finite(s_min) || !is.finite(s_max)) {
+      stop(
+        "Auto AUGMECON mode: computed non-finite bounds for secondary objective '", s, "'.",
+        call. = FALSE
+      )
+    }
+
+    if (s_min > s_max) {
+      tmp <- s_min
+      s_min <- s_max
+      s_max <- tmp
+    }
+
+    .pamo_cli_step(
+      "Range for {.val {s}}: [{.val {format(s_min, digits = 6)}}, {.val {format(s_max, digits = 6)}}].",
+      verbose = verbose
+    )
+
+    vals <- seq(from = s_min, to = s_max, length.out = n_points)
+
+    if (!isTRUE(include_extremes)) {
+      if (length(vals) <= 2L) {
+        stop(
+          "include_extremes = FALSE requires n_points >= 3.",
+          call. = FALSE
+        )
+      }
+      vals <- vals[2:(length(vals) - 1L)]
+    }
+
+    if (length(vals) == 0L) {
+      stop(
+        "Auto AUGMECON mode produced an empty grid for secondary objective '", s, "'.",
+        call. = FALSE
+      )
+    }
+
+    grid_list[[s]] <- as.numeric(vals)
+    extremes[[s]] <- ext_s
+  }
+
+  # ------------------------------------------------------------
+  # Cartesian product of epsilon levels
+  # ------------------------------------------------------------
+  design_df <- expand.grid(
+    grid_list,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  names(design_df) <- paste0("eps_", names(grid_list))
+  design_df$run_id <- seq_len(nrow(design_df))
+
+  # reorder columns: run_id first
+  design_df <- design_df[, c("run_id", setdiff(names(design_df), "run_id")), drop = FALSE]
+
+  attr(design_df, "extremes") <- extremes
+  attr(design_df, "primary_alias") <- primary
+  attr(design_df, "secondary_aliases") <- secondary
+  attr(design_df, "include_extremes") <- include_extremes
+  attr(design_df, "n_points_requested") <- n_points
+
+  .pamo_cli_done(
+    "Automatic AUGMECON grid built with {.val {nrow(design_df)}} run{?s}.",
+    verbose = verbose
+  )
+
+  design_df
+}
+
+
+
+.pamo_build_manual_augmecon_runs <- function(x, verbose = FALSE) {
+  stopifnot(inherits(x, "Problem"))
+
+  method <- x$data$method %||% list()
+  grid <- method$grid %||% NULL
+  secondary <- as.character(method$secondary %||% character(0))
+
+  if (is.null(grid) || !is.list(grid) || length(grid) == 0L) {
+    stop("Manual AUGMECON mode requires a non-empty named grid list.", call. = FALSE)
+  }
+
+  if (length(secondary) == 0L) {
+    stop("Manual AUGMECON mode: secondary objectives are missing.", call. = FALSE)
+  }
+
+  if (!all(secondary %in% names(grid))) {
+    stop(
+      "Manual AUGMECON mode: grid is missing secondary objectives: ",
+      paste(setdiff(secondary, names(grid)), collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  .pamo_cli_step(
+    "Building manual AUGMECON grid for {.val {length(secondary)}} secondary objective{?s}.",
+    verbose = verbose
+  )
+
+  grid <- grid[secondary]
+
+  for (i in seq_along(secondary)) {
+    s <- secondary[i]
+    vals <- grid[[s]]
+
+    .pamo_cli_step(
+      "Secondary {.val {i}}/{.val {length(secondary)}}: {.val {s}} with {.val {length(vals)}} epsilon level{?s}.",
+      verbose = verbose
+    )
+  }
+
+  design_df <- expand.grid(
+    grid,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  names(design_df) <- paste0("eps_", secondary)
+  design_df$run_id <- seq_len(nrow(design_df))
+  design_df <- design_df[, c("run_id", setdiff(names(design_df), "run_id")), drop = FALSE]
+
+  attr(design_df, "primary_alias") <- as.character(method$primary %||% NA_character_)[1]
+  attr(design_df, "secondary_aliases") <- secondary
+  attr(design_df, "manual_grid") <- TRUE
+
+  .pamo_cli_done(
+    "Manual AUGMECON grid built with {.val {nrow(design_df)}} run{?s}.",
+    verbose = verbose
+  )
+
+  design_df
+}
+
+
+
+
+.pamo_cli_enabled <- function(x, dots = list()) {
+  # prioridad:
+  # 1) verbose pasado a solve(...)
+  # 2) solver verbose si existe
+  # 3) interactive()
+  v <- dots$verbose %||%
+    x$data$solver$verbose %||%
+    x$data$solver_args$verbose %||%
+    interactive()
+
+  isTRUE(v)
+}
+
+.pamo_cli_header <- function(..., verbose = TRUE) {
+  if (isTRUE(verbose)) {
+    cli::cli_h2(..., .envir = parent.frame())
+  }
+}
+
+.pamo_cli_step <- function(..., verbose = TRUE) {
+  if (isTRUE(verbose)) {
+    cli::cli_alert_info(..., .envir = parent.frame())
+  }
+}
+
+.pamo_cli_done <- function(..., verbose = TRUE) {
+  if (isTRUE(verbose)) {
+    cli::cli_alert_success(..., .envir = parent.frame())
+  }
+}
+
+.pamo_cli_warn <- function(..., verbose = TRUE) {
+  if (isTRUE(verbose)) {
+    cli::cli_alert_warning(..., .envir = parent.frame())
+  }
 }

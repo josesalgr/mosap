@@ -91,6 +91,7 @@ Collate:
     'presolve.R'
     'print.R'
     'problem-class.R'
+    'set_method_augmecon.R'
     'set_method_epsilon_constraint.R'
     'set_method_weighted.R'
     'set_solver.R'

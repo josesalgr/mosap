@@ -159,7 +159,8 @@
 set_method_weighted <- function(x,
                                 aliases,
                                 weights,
-                                normalize = FALSE) {
+                                normalize_weights = FALSE,
+                                objective_scaling = FALSE) {
 
   # ---- promote (handles both Problem and MOProblem)
   #x <- .pamo_as_mo(x)
@@ -187,16 +188,22 @@ set_method_weighted <- function(x,
   if (any(!is.finite(weights))) stop("`weights` must be finite.", call. = FALSE)
   #if (any(weights < 0)) stop("`weights` must be non-negative.", call. = FALSE)
 
-  # ---- normalize flag
-  if (!is.logical(normalize) || length(normalize) != 1L || is.na(normalize)) {
-    stop("`normalize` must be TRUE or FALSE.", call. = FALSE)
+  # ---- normalize_weights flag
+  if (!is.logical(normalize_weights) || length(normalize_weights) != 1L || is.na(normalize_weights)) {
+    stop("`normalize_weights` must be TRUE or FALSE.", call. = FALSE)
   }
-  normalize <- isTRUE(normalize)
+  normalize_weights <- isTRUE(normalize_weights)
 
-  if (normalize) {
+  # ---- objective_scaling flag
+  if (!is.logical(objective_scaling) || length(objective_scaling) != 1L || is.na(objective_scaling)) {
+    stop("`objective_scaling` must be TRUE or FALSE.", call. = FALSE)
+  }
+  objective_scaling <- isTRUE(objective_scaling)
+
+  if (normalize_weights) {
     s <- sum(weights)
     if (!is.finite(s) || s <= 0) {
-      stop("`normalize = TRUE` requires sum(weights) > 0.", call. = FALSE)
+      stop("`normalize_weights = TRUE` requires sum(weights) > 0.", call. = FALSE)
     }
     weights <- weights / s
   }
@@ -210,7 +217,8 @@ set_method_weighted <- function(x,
     name = "weighted",
     aliases = aliases,
     weights = weights,
-    normalize = normalize
+    normalize_weights = normalize_weights,
+    objective_scaling = objective_scaling
   )
 
   x

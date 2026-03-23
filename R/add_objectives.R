@@ -471,49 +471,6 @@ add_objective_min_action_fragmentation <- function(
   )
 }
 
-
-#' @title Add objective: maximize representation
-#'
-#' @description
-#' Specify an objective that maximizes total representation across a subset of features.
-#'
-#' @param x A `Problem` object.
-#' @param amount_col Character. Column in `dist_features` containing amounts.
-#' @param features Optional subset of features to include. Values may match
-#'   `features$id` and, if present, `features$name`.
-#' @param alias Optional identifier for multi-objective workflows.
-#'
-#' @return Updated `Problem` object.
-#' @export
-add_objective_max_representation <- function(
-    x,
-    amount_col = "amount",
-    features = NULL,
-    alias = NULL
-) {
-  stopifnot(inherits(x, "Problem"))
-
-  feature_subset <- NULL
-  if (!is.null(features)) {
-    feature_subset <- .pa_resolve_feature_subset(x, features)
-  }
-
-  args <- list(
-    amount_col = as.character(amount_col)[1],
-    features = if (is.null(feature_subset)) NULL else feature_subset$id
-  )
-
-  .pa_set_active_and_register_objective(
-    x = x,
-    model_type = "maximizeRepresentation",
-    objective_id = "max_representation",
-    objective_args = args,
-    sense = "max",
-    alias = alias
-  )
-}
-
-
 #' @title Add objective: minimize intervention impact
 #'
 #' @description

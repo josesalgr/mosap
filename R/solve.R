@@ -41,6 +41,7 @@ solve.Problem <- function(x, ...) {
       method_name,
       weighted = .pamo_solve_weighted(x, ...),
       epsilon_constraint = .pamo_solve_epsilon_constraint(x, ...),
+      augmecon = .pamo_solve_augmecon(x, ...),
       stop("Unknown/unsupported multi-objective method: '", method_name, "'.", call. = FALSE)
     )
 

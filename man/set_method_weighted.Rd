@@ -4,7 +4,13 @@
 \alias{set_method_weighted}
 \title{Set multi-objective method: weighted sum}
 \usage{
-set_method_weighted(x, aliases, weights, normalize = FALSE)
+set_method_weighted(
+  x,
+  aliases,
+  weights,
+  normalize_weights = FALSE,
+  objective_scaling = FALSE
+)
 }
 \arguments{
 \item{x}{A planning object (\code{Problem}) or an existing \code{"MOProblem"}.

@@ -3734,11 +3734,11 @@ NULL
     row_ub[ii_eq] <- model$rhs[ii_eq]
 
     cbc_args <- list(
-      threads = cores,
+      threads = as.character(cores),
       log = as.integer(verbose),
       verbose = 15,
-      ratio = gap_limit,
-      sec = time_limit,
+      ratio = as.character(gap_limit),
+      sec = as.character(time_limit),
       timem = "elapsed",
       heuristicsOnOff = "on"
     )
