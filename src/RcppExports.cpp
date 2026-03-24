@@ -405,6 +405,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_model_add_columns
+Rcpp::List rcpp_model_add_columns(SEXP x, Rcpp::NumericVector obj, Rcpp::NumericVector lb, Rcpp::NumericVector ub, Rcpp::CharacterVector vtype, Rcpp::CharacterVector names, std::string block_name, std::string tag);
+RcppExport SEXP _mosap_rcpp_model_add_columns(SEXP xSEXP, SEXP objSEXP, SEXP lbSEXP, SEXP ubSEXP, SEXP vtypeSEXP, SEXP namesSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type obj(objSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type lb(lbSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type ub(ubSEXP);
+    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type vtype(vtypeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type names(namesSEXP);
+    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_model_add_columns(x, obj, lb, ub, vtype, names, block_name, tag));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_model_set_objective_vector
 void rcpp_model_set_objective_vector(SEXP x, Rcpp::NumericVector obj, std::string model_sense);
 RcppExport SEXP _mosap_rcpp_model_set_objective_vector(SEXP xSEXP, SEXP objSEXP, SEXP model_senseSEXP) {

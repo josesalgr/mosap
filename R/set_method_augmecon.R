@@ -2,9 +2,13 @@
 #'
 #' Configure a problem to be solved with the augmented epsilon-constraint
 #' method (AUGMECON). One objective is treated as the primary objective and
-#' the remaining objectives are converted into epsilon constraints. A small
-#' augmentation term is added to the objective to avoid weakly efficient
-#' solutions and improve frontier generation.
+#' the remaining objectives are converted into epsilon constraints.
+#'
+#' In the AUGMECON formulation, each secondary objective is enforced through
+#' an epsilon equality with a non-negative slack variable, and the primary
+#' objective is augmented with a small reward term based on the normalized
+#' slacks. This augmentation helps avoid weakly efficient solutions, following
+#' the formulation proposed by Mavrotas (2009).
 #'
 #' The set of epsilon levels for secondary objectives can be supplied
 #' manually through `grid`, or generated automatically when `grid = NULL`.
@@ -12,7 +16,7 @@
 #' @param x A problem object.
 #'
 #' @param primary `character(1)`. Alias of the primary objective, i.e. the
-#'   objective optimized directly in the augmented formulation.
+#'   objective optimized directly in the AUGMECON formulation.
 #'
 #' @param aliases `NULL` or `character`. Objective aliases to include in the
 #'   method. If `NULL`, all registered objective aliases are used. `primary`
@@ -37,15 +41,26 @@
 #'   lexicographic anchoring.
 #'
 #' @param augmentation `numeric(1)`. Positive augmentation coefficient used
-#'   in the AUGMECON formulation. Small values such as `1e-3` or `1e-4` are
-#'   usually appropriate.
+#'   to weight the normalized slack variables in the AUGMECON objective.
+#'   Smaller values make the primary objective dominate more strongly, while
+#'   larger values give more emphasis to slack maximization within the same
+#'   epsilon-constrained region. The effective coefficient of each slack is
+#'   computed internally as `augmentation / range`, where `range` is the
+#'   payoff-table range of the corresponding secondary objective.
+#'
+#' @param slack_upper_bound `numeric(1)`. Upper bound used for the explicit
+#'   non-negative slack variables associated with secondary objectives.
 #'
 #' @details
-#' AUGMECON is an augmented version of the epsilon-constraint method. It
-#' optimizes a primary objective while converting the remaining objectives
-#' into epsilon constraints, and augments the objective with a small penalty
-#' or reward term based on slack variables. This helps avoid weakly efficient
-#' solutions.
+#' AUGMECON is an augmented version of the epsilon-constraint method. Let
+#' `f_primary(x)` denote the primary objective and let the remaining objectives
+#' be treated as secondary objectives. For each secondary objective, the method
+#' introduces an epsilon equality with a slack variable. The objective then
+#' optimizes the primary objective while rewarding normalized slack values.
+#'
+#' This follows the spirit of the AUGMECON formulation of Mavrotas (2009),
+#' where augmentation is used to avoid weakly efficient solutions and improve
+#' the generation of the Pareto frontier.
 #'
 #' If `grid = NULL`, the method will later build epsilon levels
 #' automatically from the ranges of the secondary objectives. If `grid` is
@@ -56,6 +71,11 @@
 #'
 #' @return The updated problem object with the AUGMECON method stored in
 #'   `x$data$method`.
+#'
+#' @references
+#' Mavrotas, G. (2009). Effective implementation of the epsilon-constraint
+#' method in Multi-Objective Mathematical Programming problems.
+#' \emph{Applied Mathematics and Computation}, 213(2), 455--465.
 #'
 #' @examples
 #' \dontrun{
@@ -91,7 +111,8 @@ set_method_augmecon <- function(
     include_extremes = TRUE,
     lexicographic = TRUE,
     lexicographic_tol = 1e-9,
-    augmentation = 1e-3
+    augmentation = 1e-3,
+    slack_upper_bound = 1e6
 ) {
 
   # ---- primary
@@ -157,6 +178,12 @@ set_method_augmecon <- function(
     stop("`augmentation` must be a single finite positive number.", call. = FALSE)
   }
   augmentation <- as.numeric(augmentation)
+
+  if (!is.numeric(slack_upper_bound) || length(slack_upper_bound) != 1L ||
+      is.na(slack_upper_bound) || !is.finite(slack_upper_bound) || slack_upper_bound <= 0) {
+    stop("`slack_upper_bound` must be a single finite positive number.", call. = FALSE)
+  }
+  slack_upper_bound <- as.numeric(slack_upper_bound)
 
   # ---- automatic grid
   if (is.null(grid)) {
@@ -226,7 +253,8 @@ set_method_augmecon <- function(
     include_extremes = include_extremes,
     lexicographic = lexicographic,
     lexicographic_tol = lexicographic_tol,
-    augmentation = augmentation
+    augmentation = augmentation,
+    slack_upper_bound = slack_upper_bound
   )
 
   x

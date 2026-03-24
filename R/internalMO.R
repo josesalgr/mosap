@@ -2071,11 +2071,13 @@ add_objective <- function(x, objective) {
 
   } else if (identical(spec$type, "augmecon")) {
 
-    primary     <- as.character(spec$primary)[1]
-    eps_list    <- spec$eps %||% list()
-    eps_tol     <- spec$eps_tol %||% list()
+    primary      <- as.character(spec$primary)[1]
+    eps_list     <- spec$eps %||% list()
+    eps_tol      <- spec$eps_tol %||% list()
+    sec_aliases  <- names(eps_list)
+    sec_ranges   <- as.numeric(spec$secondary_ranges %||% numeric(0))
     augmentation <- as.numeric(spec$augmentation %||% NA_real_)[1]
-    sec_aliases <- names(eps_list)
+    slack_upper_bound <- as.numeric((x$data$method %||% list())$slack_upper_bound %||% 1e6)[1]
 
     if (is.na(primary) || !nzchar(primary)) {
       stop("augmecon: primary is invalid.", call. = FALSE)
@@ -2086,8 +2088,23 @@ add_objective <- function(x, objective) {
     if (!is.finite(augmentation) || augmentation <= 0) {
       stop("augmecon: augmentation must be a finite positive number.", call. = FALSE)
     }
+    if (!is.finite(slack_upper_bound) || slack_upper_bound <= 0) {
+      stop("augmecon: slack_upper_bound must be a finite positive number.", call. = FALSE)
+    }
+    if (length(sec_ranges) != length(sec_aliases)) {
+      stop(
+        "augmecon: secondary_ranges must have one value per secondary objective.\n",
+        "length(secondary_ranges) = ", length(sec_ranges),
+        ", length(sec_aliases) = ", length(sec_aliases), ".",
+        call. = FALSE
+      )
+    }
+    if (any(!is.finite(sec_ranges)) || any(sec_ranges <= 0)) {
+      stop("augmecon: secondary_ranges must be finite and > 0.", call. = FALSE)
+    }
+    names(sec_ranges) <- sec_aliases
 
-    # ---- build IRs for primary + secondary objectives
+    # ---- build IRs for primary + secondaries
     all_aliases <- unique(c(primary, sec_aliases))
     specs_all <- .pamo_get_objective_specs(x, all_aliases)
     ir_all <- lapply(specs_all, function(sp) .pamo_objective_to_ir(base, sp))
@@ -2095,8 +2112,21 @@ add_objective <- function(x, objective) {
     # ---- build one superset
     base <- .pamo_prepare_superset_model(base, ir_all)
 
-    # ---- add epsilon constraints for all secondaries
-    for (a in sec_aliases) {
+    # ---- add explicit slack variables (one per secondary objective)
+    base <- .pamo_add_augmecon_slacks(
+      base = base,
+      secondary_aliases = sec_aliases,
+      ub = slack_upper_bound
+    )
+
+    slack_cols <- base$data$mo_cache$augmecon$slack_cols_0based[sec_aliases]
+    if (length(slack_cols) != length(sec_aliases)) {
+      stop("augmecon: failed to recover slack columns for all secondary objectives.", call. = FALSE)
+    }
+
+    # ---- add equality constraints with slack: g_j(x) + s_j = eps_j
+    for (j in seq_along(sec_aliases)) {
+      a <- sec_aliases[j]
       sp_sec <- specs_all[[a]]
       ir_sec <- ir_all[[a]]
 
@@ -2110,33 +2140,28 @@ add_objective <- function(x, objective) {
         stop("augmecon: eps_tol for '", a, "' must be finite and >= 0.", call. = FALSE)
       }
 
-      base <- .pamo_apply_epsilon_constraint(
+      base <- .pamo_apply_augmecon_constraint(
         base = base,
         ir = ir_sec,
         eps = eps_val + tol_a,
+        slack_col = as.integer(slack_cols[[a]]),
         sense = as.character(sp_sec$sense %||% "min")[1],
-        name = paste0("eps_", a),
+        name = paste0("augmecon_", a),
         block_name = "augmecon_constraint"
       )
     }
 
-    # ---- build scales for secondary objectives (simple payoff-based scaling)
-    sec_scales <- spec$secondary_scales %||% rep(1, length(sec_aliases))
-
-    # ---- set augmented objective
-    sp_primary <- specs_all[[primary]]
+    # ---- primary objective + normalized slack rewards
     ir_primary <- ir_all[[primary]]
-
-    ir_secondary <- ir_all[sec_aliases]
+    slack_weights <- augmentation / sec_ranges
 
     base <- .pamo_apply_augmecon_objective(
       base = base,
       ir_primary = ir_primary,
-      ir_secondary = ir_secondary,
-      secondary_scales = sec_scales,
-      augmentation = augmentation
+      slack_cols = as.integer(unname(slack_cols)),
+      slack_weights = as.numeric(slack_weights)
     )
-  }else {
+  } else {
     stop("Unsupported spec$type in .pamo_solve_one: ", spec$type, call. = FALSE)
   }
 
@@ -2568,8 +2593,7 @@ add_objective <- function(x, objective) {
         aliases = primary,
         weights = 1,
         objective_scaling = FALSE,
-        scales = NULL,
-        ...
+        scales = NULL
       )
     )
 
@@ -3335,57 +3359,53 @@ add_objective <- function(x, objective) {
 
 .pamo_apply_augmecon_objective <- function(base,
                                            ir_primary,
-                                           ir_secondary,
-                                           secondary_scales = NULL,
-                                           augmentation = 1e-3) {
+                                           slack_cols,
+                                           slack_weights) {
   stopifnot(inherits(base, "Problem"))
 
-  augmentation <- as.numeric(augmentation)[1]
-  if (!is.finite(augmentation) || augmentation <= 0) {
-    stop("augmentation must be a single finite positive number.", call. = FALSE)
+  slack_cols <- as.integer(slack_cols)
+  slack_weights <- as.numeric(slack_weights)
+
+  if (length(slack_cols) == 0L) {
+    stop("slack_cols must contain at least one slack column.", call. = FALSE)
+  }
+
+  if (length(slack_cols) != length(slack_weights)) {
+    stop(
+      "slack_cols and slack_weights must have the same length.",
+      call. = FALSE
+    )
+  }
+
+  if (any(!is.finite(slack_cols)) || any(is.na(slack_cols)) || any(slack_cols < 0L)) {
+    stop("slack_cols must contain valid 0-based column indices.", call. = FALSE)
+  }
+
+  if (any(!is.finite(slack_weights)) || any(is.na(slack_weights)) || any(slack_weights <= 0)) {
+    stop("slack_weights must contain finite positive values.", call. = FALSE)
   }
 
   v_primary <- .pamo_objvec_from_ir(base, ir_primary)
+
+  # canonical minimization form
   if (identical(ir_primary$sense, "max")) {
     v_primary <- -v_primary
   }
 
-  if (length(ir_secondary) == 0L) {
-    obj <- as.numeric(v_primary)
-  } else {
-    sec_vecs <- vector("list", length(ir_secondary))
+  obj <- as.numeric(v_primary)
 
-    for (i in seq_along(ir_secondary)) {
-      v <- .pamo_objvec_from_ir(base, ir_secondary[[i]])
-      if (identical(ir_secondary[[i]]$sense, "max")) {
-        v <- -v
-      }
-      sec_vecs[[i]] <- as.numeric(v)
-    }
-
-    if (is.null(secondary_scales)) {
-      secondary_scales <- rep(1, length(sec_vecs))
-    }
-
-    if (length(secondary_scales) != length(sec_vecs)) {
+  # add AUGMECON slack contribution:
+  # minimize primary - sum_j weight_j * slack_j
+  for (i in seq_along(slack_cols)) {
+    j <- slack_cols[i] + 1L
+    if (j > length(obj)) {
       stop(
-        "secondary_scales length must match the number of secondary objectives.",
+        "Slack column ", slack_cols[i], " is outside the model dimension (length(obj) = ",
+        length(obj), ").",
         call. = FALSE
       )
     }
-
-    sec_vecs <- Map(
-      function(v, s) {
-        s <- as.numeric(s)[1]
-        if (!is.finite(s) || s <= 0) s <- 1
-        v / s
-      },
-      sec_vecs,
-      as.list(secondary_scales)
-    )
-
-    aug_term <- Reduce(`+`, sec_vecs)
-    obj <- as.numeric(v_primary + augmentation * aug_term)
+    obj[j] <- obj[j] - slack_weights[i]
   }
 
   base$data$runtime_updates <- list(
@@ -3397,13 +3417,15 @@ add_objective <- function(x, objective) {
   base$data$meta$model_dirty <- FALSE
   base$data$has_model <- TRUE
 
-  base$data$mo_cache <- list(
-    type = "augmecon",
-    ir_primary = ir_primary,
-    ir_secondary = ir_secondary,
-    secondary_scales = secondary_scales,
-    augmentation = augmentation,
-    obj_augmented = obj
+  base$data$mo_cache <- base$data$mo_cache %||% list()
+  base$data$mo_cache$augmecon <- modifyList(
+    base$data$mo_cache$augmecon %||% list(),
+    list(
+      ir_primary = ir_primary,
+      slack_cols_0based = slack_cols,
+      slack_weights = slack_weights,
+      obj_augmented = obj
+    )
   )
 
   base
@@ -3448,6 +3470,23 @@ add_objective <- function(x, objective) {
   if (!is.finite(augmentation) || is.na(augmentation) || augmentation <= 0) {
     stop("augmecon: augmentation must be a finite positive number.", call. = FALSE)
   }
+
+  secondary_ranges <- vapply(
+    secondary,
+    function(a) {
+      rr <- .pamo_compute_secondary_range_against_primary(
+        x = x,
+        primary = primary,
+        secondary = a,
+        gap_limit = gap_limit,
+        time_limit = time_limit
+      )
+      rng <- as.numeric(rr$secondary_max)[1] - as.numeric(rr$secondary_min)[1]
+      if (!is.finite(rng) || rng <= 0) rng <- 1
+      rng
+    },
+    numeric(1)
+  )
 
   .pamo_cli_step(
     "Primary objective: {.val {primary}}. Secondary objectives: {.val {paste(secondary, collapse = ', ')}}.",
@@ -3519,22 +3558,6 @@ add_objective <- function(x, objective) {
     }
   }
 
-  secondary_scales <- vapply(
-    secondary,
-    function(a) {
-      rr <- .pamo_compute_secondary_range_against_primary(
-        x = x,
-        primary = primary,
-        secondary = a,
-        gap_limit = gap_limit,
-        time_limit = time_limit
-      )
-      rng <- as.numeric(rr$secondary_max)[1] - as.numeric(rr$secondary_min)[1]
-      if (!is.finite(rng) || rng <= 0) rng <- 1
-      rng
-    },
-    numeric(1)
-  )
 
   for (r in seq_len(n_runs)) {
     eps_r <- as.list(design_df[r, eps_cols, drop = FALSE])
@@ -3546,9 +3569,9 @@ add_objective <- function(x, objective) {
         type = "augmecon",
         primary = primary,
         eps = eps_r,
-        eps_tol = ...,
+        eps_tol = stats::setNames(as.list(rep(0, length(secondary))), secondary),
         augmentation = augmentation,
-        secondary_scales = secondary_scales,
+        secondary_ranges = secondary_ranges,
         gap_limit = gap_limit,
         time_limit = time_limit
       )
@@ -4111,4 +4134,189 @@ add_objective <- function(x, objective) {
   if (isTRUE(verbose)) {
     cli::cli_alert_warning(..., .envir = parent.frame())
   }
+}
+
+
+
+.pamo_add_augmecon_slacks <- function(base,
+                                      secondary_aliases,
+                                      ub = 1e6,
+                                      prefix = "aug_slack") {
+  stopifnot(inherits(base, "Problem"))
+
+  secondary_aliases <- as.character(secondary_aliases)
+  secondary_aliases <- secondary_aliases[!is.na(secondary_aliases) & nzchar(secondary_aliases)]
+
+  if (length(secondary_aliases) == 0L) {
+    stop("secondary_aliases must contain at least one objective alias.", call. = FALSE)
+  }
+
+  ub <- as.numeric(ub)[1]
+  if (!is.finite(ub) || ub <= 0) {
+    stop("`ub` must be a single finite positive number.", call. = FALSE)
+  }
+
+  if (is.null(base$data$model_ptr)) {
+    stop("Model not built (model_ptr is NULL).", call. = FALSE)
+  }
+
+  # snapshot actual del modelo
+  m0 <- .pa_model_from_ptr(
+    base$data$model_ptr,
+    args = base$data$model_args %||% list(),
+    drop_triplets = TRUE
+  )
+
+  n_old <- length(m0$obj)
+  if (!is.finite(n_old) || n_old <= 0L) {
+    stop("Could not determine current number of model columns.", call. = FALSE)
+  }
+
+  k <- length(secondary_aliases)
+
+  # necesitamos una helper de bajo nivel para añadir columnas al modelo ya construido
+  if (!exists("rcpp_model_add_columns", mode = "function")) {
+    stop(
+      "AUGMECON with explicit slacks requires a low-level helper `rcpp_model_add_columns()`.\n",
+      "This helper is not available yet, so slack variables cannot be appended to the built model.",
+      call. = FALSE
+    )
+  }
+
+  slack_names <- paste0(prefix, "_", secondary_aliases)
+
+  # Añadir k columnas continuas:
+  # obj = 0 por ahora (el objetivo aumentado se define después)
+  # lb = 0
+  # ub = ub
+  # vtype = "C"
+  #
+  # Se asume que rcpp_model_add_columns():
+  # - modifica el modelo en sitio
+  # - acepta vectores de obj/lb/ub/vtype/names
+  # - deja el modelo consistente para luego añadir restricciones
+  rcpp_model_add_columns(
+    x = base$data$model_ptr,
+    obj = rep(0, k),
+    lb = rep(0, k),
+    ub = rep(ub, k),
+    vtype = rep("C", k),
+    names = slack_names
+  )
+
+  # refrescar snapshot/model_list tras añadir columnas
+  base <- .pa_refresh_model_snapshot(base)
+
+  m1 <- .pa_model_from_ptr(
+    base$data$model_ptr,
+    args = base$data$model_args %||% list(),
+    drop_triplets = TRUE
+  )
+
+  n_new <- length(m1$obj)
+  if (!identical(n_new, n_old + k)) {
+    stop(
+      "Failed to append AUGMECON slack variables.\n",
+      "Expected ", n_old + k, " columns after insertion, got ", n_new, ".",
+      call. = FALSE
+    )
+  }
+
+  # columnas nuevas en índice 0-based
+  slack_cols_0based <- seq.int(from = n_old, length.out = k)
+  names(slack_cols_0based) <- secondary_aliases
+
+  # guardar metadata útil
+  base$data$mo_cache <- base$data$mo_cache %||% list()
+  base$data$mo_cache$augmecon <- modifyList(
+    base$data$mo_cache$augmecon %||% list(),
+    list(
+      secondary_aliases = secondary_aliases,
+      slack_names = slack_names,
+      slack_cols_0based = slack_cols_0based,
+      slack_cols_1based = slack_cols_0based + 1L,
+      slack_upper_bound = ub
+    )
+  )
+
+  base$data$meta <- base$data$meta %||% list()
+  base$data$meta$model_dirty <- FALSE
+  base$data$has_model <- TRUE
+
+  base
+}
+
+
+
+.pamo_apply_augmecon_constraint <- function(base, ir, eps, slack_col, sense = c("min", "max"),
+                                            name = "", block_name = "augmecon_constraint", tag = "") {
+  stopifnot(inherits(base, "Problem"))
+  sense <- match.arg(sense)
+
+  if (is.null(base$data$model_ptr)) {
+    stop("Model not built (model_ptr is NULL).", call. = FALSE)
+  }
+
+  eps <- as.numeric(eps)[1]
+  if (!is.finite(eps)) {
+    stop("eps must be finite.", call. = FALSE)
+  }
+
+  slack_col <- as.integer(slack_col)[1]
+  if (!is.finite(slack_col) || is.na(slack_col) || slack_col < 0L) {
+    stop("slack_col must be a valid 0-based column index.", call. = FALSE)
+  }
+
+  v <- .pamo_objvec_from_ir(base, ir)
+  if (length(v) == 0L) {
+    stop("AUGMECON objective vector is empty.", call. = FALSE)
+  }
+
+  # canonical minimization form
+  if (identical(sense, "max")) {
+    v <- -v
+    eps <- -eps
+  }
+
+  # build equality: g(x) + s = eps
+  v2 <- as.numeric(v)
+  m <- .pa_model_from_ptr(
+    base$data$model_ptr,
+    args = base$data$model_args %||% list(),
+    drop_triplets = TRUE
+  )
+
+  n_model <- length(m$obj)
+  if (length(v2) != n_model) {
+    stop(
+      "AUGMECON constraint vector length does not match model dimension.\n",
+      "length(v2) = ", length(v2), ", model dimension = ", n_model, ".",
+      call. = FALSE
+    )
+  }
+  if (slack_col + 1L > n_model) {
+    stop("slack_col is outside model dimension.", call. = FALSE)
+  }
+
+  v2[slack_col + 1L] <- v2[slack_col + 1L] + 1
+
+  idx <- which(abs(v2) > 1e-12)
+  if (length(idx) == 0L) {
+    stop("AUGMECON constraint vector has no non-zero coefficients.", call. = FALSE)
+  }
+
+  rcpp_add_linear_constraint(
+    base$data$model_ptr,
+    j0 = as.integer(idx - 1L),
+    x = as.numeric(v2[idx]),
+    sense = "=",
+    rhs = as.numeric(eps),
+    name = as.character(name %||% ""),
+    block_name = block_name,
+    tag = tag
+  )
+
+  base$data$meta$model_dirty <- TRUE
+  base <- .pa_refresh_model_snapshot(base)
+  base
 }

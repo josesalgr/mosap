@@ -105,6 +105,10 @@ rcpp_fix_z_ineligible_by_positive_delta <- function(x, dist_features_data, dist_
     .Call(`_mosap_rcpp_fix_z_ineligible_by_positive_delta`, x, dist_features_data, dist_benefit_data, fix_lb_too, eps)
 }
 
+rcpp_model_add_columns <- function(x, obj, lb, ub, vtype, names = NULL, block_name = "augmecon_slacks", tag = "") {
+    .Call(`_mosap_rcpp_model_add_columns`, x, obj, lb, ub, vtype, names, block_name, tag)
+}
+
 rcpp_model_set_objective_vector <- function(x, obj, model_sense = "min") {
     invisible(.Call(`_mosap_rcpp_model_set_objective_vector`, x, obj, model_sense))
 }

@@ -13,14 +13,15 @@ set_method_augmecon(
   include_extremes = TRUE,
   lexicographic = TRUE,
   lexicographic_tol = 1e-09,
-  augmentation = 0.001
+  augmentation = 0.001,
+  slack_upper_bound = 1e+06
 )
 }
 \arguments{
 \item{x}{A problem object.}
 
 \item{primary}{\code{character(1)}. Alias of the primary objective, i.e. the
-objective optimized directly in the augmented formulation.}
+objective optimized directly in the AUGMECON formulation.}
 
 \item{aliases}{\code{NULL} or \code{character}. Objective aliases to include in the
 method. If \code{NULL}, all registered objective aliases are used. \code{primary}
@@ -45,8 +46,15 @@ when computing extreme points for automatic grid construction?}
 lexicographic anchoring.}
 
 \item{augmentation}{\code{numeric(1)}. Positive augmentation coefficient used
-in the AUGMECON formulation. Small values such as \code{1e-3} or \code{1e-4} are
-usually appropriate.}
+to weight the normalized slack variables in the AUGMECON objective.
+Smaller values make the primary objective dominate more strongly, while
+larger values give more emphasis to slack maximization within the same
+epsilon-constrained region. The effective coefficient of each slack is
+computed internally as \code{augmentation / range}, where \code{range} is the
+payoff-table range of the corresponding secondary objective.}
+
+\item{slack_upper_bound}{\code{numeric(1)}. Upper bound used for the explicit
+non-negative slack variables associated with secondary objectives.}
 }
 \value{
 The updated problem object with the AUGMECON method stored in
@@ -55,19 +63,27 @@ The updated problem object with the AUGMECON method stored in
 \description{
 Configure a problem to be solved with the augmented epsilon-constraint
 method (AUGMECON). One objective is treated as the primary objective and
-the remaining objectives are converted into epsilon constraints. A small
-augmentation term is added to the objective to avoid weakly efficient
-solutions and improve frontier generation.
+the remaining objectives are converted into epsilon constraints.
 }
 \details{
+In the AUGMECON formulation, each secondary objective is enforced through
+an epsilon equality with a non-negative slack variable, and the primary
+objective is augmented with a small reward term based on the normalized
+slacks. This augmentation helps avoid weakly efficient solutions, following
+the formulation proposed by Mavrotas (2009).
+
 The set of epsilon levels for secondary objectives can be supplied
 manually through \code{grid}, or generated automatically when \code{grid = NULL}.
 
-AUGMECON is an augmented version of the epsilon-constraint method. It
-optimizes a primary objective while converting the remaining objectives
-into epsilon constraints, and augments the objective with a small penalty
-or reward term based on slack variables. This helps avoid weakly efficient
-solutions.
+AUGMECON is an augmented version of the epsilon-constraint method. Let
+\code{f_primary(x)} denote the primary objective and let the remaining objectives
+be treated as secondary objectives. For each secondary objective, the method
+introduces an epsilon equality with a slack variable. The objective then
+optimizes the primary objective while rewarding normalized slack values.
+
+This follows the spirit of the AUGMECON formulation of Mavrotas (2009),
+where augmentation is used to avoid weakly efficient solutions and improve
+the generation of the Pareto frontier.
 
 If \code{grid = NULL}, the method will later build epsilon levels
 automatically from the ranges of the secondary objectives. If \code{grid} is
@@ -100,4 +116,9 @@ p <- p |>
   )
 }
 
+}
+\references{
+Mavrotas, G. (2009). Effective implementation of the epsilon-constraint
+method in Multi-Objective Mathematical Programming problems.
+\emph{Applied Mathematics and Computation}, 213(2), 455--465.
 }

@@ -14,6 +14,7 @@ extern SEXP _mosap_rcpp_get_optimization_problem_ncol(SEXP);
 extern SEXP _mosap_rcpp_get_optimization_problem_nrow(SEXP);
 extern SEXP _mosap_rcpp_get_optimization_problem_ncell(SEXP);
 extern SEXP _mosap_rcpp_get_optimization_problem_A(SEXP);
+extern SEXP _mosap_rcpp_model_add_columns(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 // extern SEXP _mosap_rcpp_objective_min_set(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 // extern SEXP _mosap_rcpp_objective_max_coverage(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -104,6 +105,7 @@ static const R_CallMethodDef CallEntries[] = {
   {"_mosap_rcpp_model_set_objective_vector", (DL_FUNC) &_mosap_rcpp_model_set_objective_vector, 3},
   {"_mosap_rcpp_add_objective_min_loss", (DL_FUNC) &_mosap_rcpp_add_objective_min_loss, 6},
   {"_mosap_rcpp_prepare_objective_min_loss", (DL_FUNC) &_mosap_rcpp_prepare_objective_min_loss, 5},
+  {"_mosap_rcpp_model_add_columns", (DL_FUNC) &_mosap_rcpp_model_add_columns, 8},
   {NULL, NULL, 0}
 
 };

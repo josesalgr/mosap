@@ -604,6 +604,20 @@ methods::setMethod(
     }
     features$id <- as.integer(features$id)
 
+    if ("name" %in% names(features)) {
+      if (anyNA(features$name) || any(!nzchar(as.character(features$name)))) {
+        stop("`features$name` must not contain NA or empty strings.", call. = FALSE)
+      }
+      if (anyDuplicated(as.character(features$name)) != 0L) {
+        dups <- unique(as.character(features$name)[duplicated(as.character(features$name))])
+        stop(
+          "`features$name` must be unique when feature names are used in `dist_features$feature`. ",
+          "Duplicated names: ", paste(dups, collapse = ", "),
+          call. = FALSE
+        )
+      }
+    }
+
     # ---- dist_features checks
     if (!inherits(dist_features, "data.frame")) {
       stop("`dist_features` must be a data.frame.", call. = FALSE)
@@ -620,8 +634,46 @@ methods::setMethod(
     }
 
     dist_features$pu <- as.integer(dist_features$pu)
-    dist_features$feature <- as.integer(dist_features$feature)
     dist_features$amount <- as.numeric(dist_features$amount)
+
+    # ---- resolve dist_features$feature against features$id or features$name
+    feature_raw <- dist_features$feature
+
+    # case 1: already numeric ids
+    feature_as_int <- suppressWarnings(as.integer(feature_raw))
+    can_use_ids <- !anyNA(feature_as_int) &&
+      all(feature_as_int %in% features$id)
+
+    if (can_use_ids) {
+      dist_features$feature <- feature_as_int
+
+    } else {
+      # case 2: try matching against features$name
+      if (!("name" %in% names(features))) {
+        stop(
+          "`dist_features$feature` could not be matched to `features$id`, ",
+          "and `features` has no `name` column to resolve feature names.",
+          call. = FALSE
+        )
+      }
+
+      feature_chr <- as.character(feature_raw)
+      idx <- match(feature_chr, as.character(features$name))
+
+      if (anyNA(idx)) {
+        bad <- unique(feature_chr[is.na(idx)])
+        stop(
+          "`dist_features$feature` must contain either valid feature ids ",
+          "from `features$id` or valid feature names from `features$name`.\n",
+          "Unmatched values: ",
+          paste(head(bad, 20), collapse = ", "),
+          if (length(bad) > 20) " ..." else "",
+          call. = FALSE
+        )
+      }
+
+      dist_features$feature <- as.integer(features$id[idx])
+    }
 
     # ---- build PU table for tabular backend
     pu_df_out <- pu_df_raw[, c("id", "cost"), drop = FALSE]
