@@ -137,15 +137,14 @@ of the form:
 \itemize{
 \item planning units \eqn{i \in \mathcal{P}},
 \item features \eqn{f \in \mathcal{F}},
-\item amounts \eqn{a_{if} \ge 0} stored in \code{dist_features},
+\item non-negative baseline amounts \eqn{a_{if} \ge 0} stored in
+\code{dist_features},
 \item and, when available, spatial metadata associated with planning units.
 }
 
-Thus, after \code{inputData()} has run, the landscape is represented as a set
-of planning units and their baseline feature amounts:
-\deqn{
-a_{if} = \text{amount of feature } f \text{ in planning unit } i.
-}
+Thus, after \code{inputData()} has run, the landscape is represented by
+baseline feature amounts \eqn{a_{if}}, where \eqn{a_{if}} denotes the amount
+of feature \eqn{f} in planning unit \eqn{i}.
 
 These baseline amounts are later combined with actions, effects, targets,
 objectives, and constraints to build the optimization model.
@@ -160,24 +159,11 @@ If \code{pu}, \code{features}, and \code{dist_features} are all
 \code{data.frame} objects, the problem is built directly from tabular data.
 No spatial package is required.
 
-This mode is appropriate when the user already has a tabular planning-unit
-table, a feature catalog, and a planning unit--feature distribution table.
-
 \strong{2. Vector-PU spatial mode}
 
 If \code{dist_features} is missing or \code{NULL}, \code{pu} is a spatial
 vector object, and \code{features} is a raster stack, the function derives
 \code{dist_features} by aggregating raster values over planning-unit polygons.
-
-In this mode:
-\itemize{
-\item each polygon becomes one planning unit,
-\item each raster layer becomes one feature,
-\item feature amounts are aggregated by polygon, currently using
-\code{sum},
-\item planning-unit cost is taken either from a vector attribute column or
-from a cost raster aggregated over polygons using \code{cost_aggregation}.
-}
 
 \strong{3. Raster-cell fast mode}
 
@@ -189,11 +175,12 @@ In this mode:
 \itemize{
 \item \code{pu} is used as a mask or template,
 \item \code{cost} must be a single-layer raster,
-\item a raster cell becomes a planning unit if and only if:
-\deqn{
-  \text{\code{pu} is not NA} \quad \text{and} \quad
-  \text{\code{cost} is finite and } > 0,
-  }
+\item a raster cell becomes a planning unit if and only if the
+corresponding \code{pu} cell is not \code{NA}, and the corresponding
+\code{cost} cell is finite and strictly positive,
+\item equivalently, if \eqn{m_i} denotes the raster-mask value and
+\eqn{c_i} the cost of cell \eqn{i}, then cell \eqn{i} is retained only if
+\eqn{m_i \neq \mathrm{NA}} and \eqn{c_i > 0},
 \item each valid cell is assigned a new sequential planning-unit id,
 \item feature values are extracted directly by cell without raster-to-polygon
 conversion,
@@ -325,72 +312,45 @@ This alignment is critical because later functions assume that all stored
 planning-unit components refer to the same ordered set of planning units.
 }
 \examples{
-\dontrun{
 # ------------------------------------------------------
 # 1) Tabular mode
 # ------------------------------------------------------
-pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
-features <- data.frame(id = 1:2, name = c("sp1", "sp2"))
-dist_features <- data.frame(
-  pu = c(1, 1, 2, 3),
-  feature = c(1, 2, 2, 1),
-  amount = c(1, 5, 2, 1)
+pu_tbl <- data.frame(
+  id = 1:4,
+  cost = c(1, 2, 3, 4)
 )
 
-x <- inputData(
-  pu = pu,
-  features = features,
-  dist_features = dist_features
+feat_tbl <- data.frame(
+  id = 1:2,
+  name = c("feature_1", "feature_2")
 )
 
-# ------------------------------------------------------
-# 2) Raster-cell fast mode
-# ------------------------------------------------------
-library(terra)
-pu_mask <- rast("pu_mask.tif")
-cost_r  <- rast("cost.tif")
-feat_r  <- rast(c("sp1.tif", "sp2.tif"))
-
-x <- inputData(
-  pu = pu_mask,
-  features = feat_r,
-  cost = cost_r
+dist_feat_tbl <- data.frame(
+  pu = c(1, 1, 2, 3, 4),
+  feature = c(1, 2, 2, 1, 2),
+  amount = c(5, 2, 3, 4, 1)
 )
 
-# ------------------------------------------------------
-# 3) Vector-PU spatial mode
-# ------------------------------------------------------
-pu_v   <- vect("pus.gpkg")
-feat_r <- rast(c("sp1.tif", "sp2.tif"))
-cost_r <- rast("cost.tif")
-
-x <- inputData(
-  pu = pu_v,
-  features = feat_r,
-  cost = cost_r,
-  pu_id_col = "id",
-  cost_aggregation = "mean"
+p1 <- inputData(
+  pu = pu_tbl,
+  features = feat_tbl,
+  dist_features = dist_feat_tbl
 )
 
-# ------------------------------------------------------
-# 4) Hybrid sf + tabular mode
-# ------------------------------------------------------
-library(sf)
-pu_sf <- st_read("pus.gpkg")
-features <- data.frame(id = 1:2, name = c("sp1", "sp2"))
-dist_features <- data.frame(
-  pu = c(1, 1, 2, 3),
-  feature = c("sp1", "sp2", "sp2", "sp1"),
-  amount = c(1, 5, 2, 1)
-)
+print(p1)
 
-x <- inputData(
-  pu = pu_sf,
-  features = features,
-  dist_features = dist_features,
+# ------------------------------------------------------
+# 2) Hybrid sf + tabular mode using package data
+# ------------------------------------------------------
+
+p2 <- inputData(
+  pu = sim_pu_sf,
+  features = sim_features,
+  dist_features = sim_dist_features,
   cost = "cost"
 )
-}
+
+print(p2)
 
 }
 \seealso{

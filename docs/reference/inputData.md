@@ -171,13 +171,14 @@ core of the form:
 
 - features \\f \in \mathcal{F}\\,
 
-- amounts \\a\_{if} \ge 0\\ stored in `dist_features`,
+- non-negative baseline amounts \\a\_{if} \ge 0\\ stored in
+  `dist_features`,
 
 - and, when available, spatial metadata associated with planning units.
 
-Thus, after `inputData()` has run, the landscape is represented as a set
-of planning units and their baseline feature amounts: \$\$ a\_{if} =
-\text{amount of feature } f \text{ in planning unit } i. \$\$
+Thus, after `inputData()` has run, the landscape is represented by
+baseline feature amounts \\a\_{if}\\, where \\a\_{if}\\ denotes the
+amount of feature \\f\\ in planning unit \\i\\.
 
 These baseline amounts are later combined with actions, effects,
 targets, objectives, and constraints to build the optimization model.
@@ -192,27 +193,12 @@ If `pu`, `features`, and `dist_features` are all `data.frame` objects,
 the problem is built directly from tabular data. No spatial package is
 required.
 
-This mode is appropriate when the user already has a tabular
-planning-unit table, a feature catalog, and a planning unit–feature
-distribution table.
-
 **2. Vector-PU spatial mode**
 
 If `dist_features` is missing or `NULL`, `pu` is a spatial vector
 object, and `features` is a raster stack, the function derives
 `dist_features` by aggregating raster values over planning-unit
 polygons.
-
-In this mode:
-
-- each polygon becomes one planning unit,
-
-- each raster layer becomes one feature,
-
-- feature amounts are aggregated by polygon, currently using `sum`,
-
-- planning-unit cost is taken either from a vector attribute column or
-  from a cost raster aggregated over polygons using `cost_aggregation`.
 
 **3. Raster-cell fast mode**
 
@@ -226,9 +212,13 @@ In this mode:
 
 - `cost` must be a single-layer raster,
 
-- a raster cell becomes a planning unit if and only if: \$\$
-  \text{\code{pu} is not NA} \quad \text{and} \quad \text{\code{cost} is
-  finite and } \> 0, \$\$
+- a raster cell becomes a planning unit if and only if the corresponding
+  `pu` cell is not `NA`, and the corresponding `cost` cell is finite and
+  strictly positive,
+
+- equivalently, if \\m_i\\ denotes the raster-mask value and \\c_i\\ the
+  cost of cell \\i\\, then cell \\i\\ is retained only if \\m_i \neq
+  \mathrm{NA}\\ and \\c_i \> 0\\,
 
 - each valid cell is assigned a new sequential planning-unit id,
 
@@ -404,70 +394,96 @@ planning units.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
 # ------------------------------------------------------
 # 1) Tabular mode
 # ------------------------------------------------------
-pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
-features <- data.frame(id = 1:2, name = c("sp1", "sp2"))
-dist_features <- data.frame(
-  pu = c(1, 1, 2, 3),
-  feature = c(1, 2, 2, 1),
-  amount = c(1, 5, 2, 1)
+pu_tbl <- data.frame(
+  id = 1:4,
+  cost = c(1, 2, 3, 4)
 )
 
-x <- inputData(
-  pu = pu,
-  features = features,
-  dist_features = dist_features
+feat_tbl <- data.frame(
+  id = 1:2,
+  name = c("feature_1", "feature_2")
 )
 
-# ------------------------------------------------------
-# 2) Raster-cell fast mode
-# ------------------------------------------------------
-library(terra)
-pu_mask <- rast("pu_mask.tif")
-cost_r  <- rast("cost.tif")
-feat_r  <- rast(c("sp1.tif", "sp2.tif"))
-
-x <- inputData(
-  pu = pu_mask,
-  features = feat_r,
-  cost = cost_r
+dist_feat_tbl <- data.frame(
+  pu = c(1, 1, 2, 3, 4),
+  feature = c(1, 2, 2, 1, 2),
+  amount = c(5, 2, 3, 4, 1)
 )
 
-# ------------------------------------------------------
-# 3) Vector-PU spatial mode
-# ------------------------------------------------------
-pu_v   <- vect("pus.gpkg")
-feat_r <- rast(c("sp1.tif", "sp2.tif"))
-cost_r <- rast("cost.tif")
-
-x <- inputData(
-  pu = pu_v,
-  features = feat_r,
-  cost = cost_r,
-  pu_id_col = "id",
-  cost_aggregation = "mean"
+p1 <- inputData(
+  pu = pu_tbl,
+  features = feat_tbl,
+  dist_features = dist_feat_tbl
 )
 
-# ------------------------------------------------------
-# 4) Hybrid sf + tabular mode
-# ------------------------------------------------------
-library(sf)
-pu_sf <- st_read("pus.gpkg")
-features <- data.frame(id = 1:2, name = c("sp1", "sp2"))
-dist_features <- data.frame(
-  pu = c(1, 1, 2, 3),
-  feature = c("sp1", "sp2", "sp2", "sp1"),
-  amount = c(1, 5, 2, 1)
-)
+print(p1)
+#> A mosap object (<Problem>)
+#> ├─data
+#> │├─planning units: <data.frame> (4 total)
+#> │├─costs: min: 1, max: 4
+#> │└─features: 2 total ("feature_1", "feature_2")
+#> └─actions and effects
+#> │├─actions: none specified
+#> │├─dist_actions: none
+#> │├─dist_effects: none specified
+#> │└─dist_profit: none specified
+#> └─spatial
+#> │├─geometry: none
+#> │├─pu_coords: none
+#> │└─relations: none
+#> └─targets and constraints
+#> │├─targets: none
+#> │├─area constraints: none
+#> │├─pu_locks: none
+#> │└─action_locks: none
+#> └─model
+#> │├─status: not built yet (will build in solve())
+#> │├─objectives: none
+#> │├─method: single-objective
+#> │├─solver: not set (auto)
+#> │└─checks: incomplete (no objective registered)
+#> # ℹ Use `x$data` to inspect stored tables and model snapshots.
 
-x <- inputData(
-  pu = pu_sf,
-  features = features,
-  dist_features = dist_features,
+# ------------------------------------------------------
+# 2) Hybrid sf + tabular mode using package data
+# ------------------------------------------------------
+
+p2 <- inputData(
+  pu = sim_pu_sf,
+  features = sim_features,
+  dist_features = sim_dist_features,
   cost = "cost"
 )
-} # }
+#> Warning: The following pu's do not contain features: 8012 8033 8147 8263
+
+print(p2)
+#> A mosap object (<Problem>)
+#> ├─data
+#> │├─planning units: <tbl_df> (11109 total)
+#> │├─costs: min: 1, max: 1
+#> │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)
+#> └─actions and effects
+#> │├─actions: none specified
+#> │├─dist_actions: none
+#> │├─dist_effects: none specified
+#> │└─dist_profit: none specified
+#> └─spatial
+#> │├─geometry: sf (11109 rows)
+#> │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)
+#> │└─relations: none
+#> └─targets and constraints
+#> │├─targets: none
+#> │├─area constraints: none
+#> │├─pu_locks: none
+#> │└─action_locks: none
+#> └─model
+#> │├─status: not built yet (will build in solve())
+#> │├─objectives: none
+#> │├─method: single-objective
+#> │├─solver: not set (auto)
+#> │└─checks: incomplete (no objective registered)
+#> # ℹ Use `x$data` to inspect stored tables and model snapshots.
 ```

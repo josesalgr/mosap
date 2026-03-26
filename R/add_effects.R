@@ -195,7 +195,9 @@
 #' }
 #'
 #' @examples
-#' # Minimal problem
+#' # ------------------------------------------------------
+#' # Minimal problem with actions
+#' # ------------------------------------------------------
 #' pu <- data.frame(
 #'   id = 1:3,
 #'   cost = c(1, 2, 3)
@@ -219,7 +221,8 @@
 #' )
 #'
 #' actions <- data.frame(
-#'   id = c("conservation", "restoration")
+#'   id = c("conservation", "restoration"),
+#'   name = c("Conservation", "Restoration")
 #' )
 #'
 #' p <- add_actions(
@@ -228,15 +231,23 @@
 #'   cost = c(conservation = 2, restoration = 4)
 #' )
 #'
+#' print(p)
+#'
+#' # ------------------------------------------------------
 #' # 1) Empty effects
+#' # ------------------------------------------------------
 #' p0 <- add_effects(p, effects = NULL)
 #' p0$data$dist_effects
 #'
+#' # ------------------------------------------------------
 #' # 2) Multipliers by action and feature
+#' # delta = baseline amount * multiplier
+#' # ------------------------------------------------------
 #' mult <- data.frame(
-#'   action = c("conservation", "restoration"),
-#'   feature = c("sp1", "sp2"),
-#'   multiplier = c(0.10, -0.25)
+#'   action = c("conservation", "conservation",
+#'              "restoration", "restoration"),
+#'   feature = c("sp1", "sp2", "sp1", "sp2"),
+#'   multiplier = c(0.10, 0.00, -0.20, 0.25)
 #' )
 #'
 #' p1 <- add_effects(
@@ -247,20 +258,52 @@
 #'
 #' p1$data$dist_effects
 #'
-#' # 3) Explicit net effects
-#' eff <- data.frame(
+#' # ------------------------------------------------------
+#' # 3) Explicit net effects using signed deltas
+#' # ------------------------------------------------------
+#' eff_delta <- data.frame(
+#'   pu = c(1, 2, 3, 3),
+#'   action = c("conservation", "restoration", "restoration", "conservation"),
+#'   feature = c(1, 1, 2, 2),
+#'   delta = c(2, -3, 1, 0.5)
+#' )
+#'
+#' p2 <- add_effects(
+#'   x = p,
+#'   effects = eff_delta
+#' )
+#'
+#' p2$data$dist_effects
+#'
+#' # ------------------------------------------------------
+#' # 4) Explicit after-action amounts
+#' # delta = after - baseline
+#' # ------------------------------------------------------
+#' eff_after <- data.frame(
 #'   pu = c(1, 2, 3),
 #'   action = c("conservation", "restoration", "restoration"),
 #'   feature = c(1, 1, 2),
-#'   delta = c(2, -3, 1)
+#'   after = c(12, 5, 6)
 #' )
 #'
-#' p2 <- add_effects(p, effects = eff)
-#' p2$data$dist_effects
+#' p3 <- add_effects(
+#'   x = p,
+#'   effects = eff_after,
+#'   effect_type = "after"
+#' )
 #'
-#' # 4) Keep only beneficial effects
-#' p3 <- add_effects(p, effects = eff, filter = "benefit")
 #' p3$data$dist_effects
+#'
+#' # ------------------------------------------------------
+#' # 5) Keep only beneficial effects
+#' # ------------------------------------------------------
+#' p4 <- add_effects(
+#'   x = p,
+#'   effects = eff_delta,
+#'   filter = "benefit"
+#' )
+#'
+#' p4$data$dist_effects
 #'
 #' @seealso
 #' \code{\link{add_actions}},

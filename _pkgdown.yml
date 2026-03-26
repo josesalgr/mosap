@@ -3,6 +3,7 @@ url: https://josesalgr.github.io/mosap/
 
 template:
   bootstrap: 5
+  math-rendering: mathjax
   params:
     docsearch:
       api_key: f00985ff93067595b4da97a65fe69f1a

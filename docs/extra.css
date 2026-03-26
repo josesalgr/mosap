@@ -1,0 +1,33 @@
+main a {
+  color: #00695c;
+  text-decoration: none;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+main a:hover,
+main a:focus {
+  color: #004d40;
+  text-decoration: underline;
+}
+
+main .container-fluid,
+main .container-lg {
+  max-width: 900px;
+}
+
+main p a code,
+main li a code {
+  background: #cfe8df;
+  color: #004d40;
+  border: 1px solid #9ecdbd;
+  border-radius: 7px;
+  padding: 0.14em 0.38em;
+  font-weight: 650;
+}
+
+main p a:hover code,
+main li a:hover code {
+  background: #c9e7de;
+  color: #00463d;
+  border-color: #9fcbbf;
+}

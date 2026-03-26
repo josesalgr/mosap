@@ -163,8 +163,8 @@ process. Depending on the implementation, it may summarize:
 
 **Printing**
 
-The [`print()`](https://rdrr.io/r/base/print.html) method provides a
-concise summary of the full solution set. It reports:
+The [`print()`](https://josesalgr.github.io/mosap/reference/print.md)
+method provides a concise summary of the full solution set. It reports:
 
 - the optimization method name,
 
@@ -224,20 +224,21 @@ should use:
 
 ## Methods
 
-- [`print()`](https://rdrr.io/r/base/print.html):
+- [`print()`](https://josesalgr.github.io/mosap/reference/print.md):
 
   Print a concise summary of the solution set, including method name,
   number of runs, and run-level diagnostics.
 
-- [`show()`](https://rdrr.io/r/methods/show.html):
+- [`show()`](https://josesalgr.github.io/mosap/reference/show.md):
 
-  Alias of [`print()`](https://rdrr.io/r/base/print.html).
+  Alias of
+  [`print()`](https://josesalgr.github.io/mosap/reference/print.md).
 
 - `repr()`:
 
   Return a short one-line representation of the solution set.
 
-- [`getMethod()`](https://rdrr.io/r/methods/getMethod.html):
+- `getMethod()`:
 
   Return the method specification stored in `self$method`.
 

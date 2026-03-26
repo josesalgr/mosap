@@ -160,8 +160,8 @@ the solution itself.
 
 **Printing**
 
-The [`print()`](https://rdrr.io/r/base/print.html) method is intended as
-a concise diagnostic summary. It reports:
+The [`print()`](https://josesalgr.github.io/mosap/reference/print.md)
+method is intended as a concise diagnostic summary. It reports:
 
 - solver status,
 
@@ -215,14 +215,15 @@ directly, or the dedicated accessor functions.
 
 ## Methods
 
-- [`print()`](https://rdrr.io/r/base/print.html):
+- [`print()`](https://josesalgr.github.io/mosap/reference/print.md):
 
   Print a concise summary of the solution, including status, objective
   value, runtime, selection counts, and target fulfillment.
 
-- [`show()`](https://rdrr.io/r/methods/show.html):
+- [`show()`](https://josesalgr.github.io/mosap/reference/show.md):
 
-  Alias of [`print()`](https://rdrr.io/r/base/print.html).
+  Alias of
+  [`print()`](https://josesalgr.github.io/mosap/reference/print.md).
 
 - `repr()`:
 

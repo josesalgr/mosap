@@ -188,7 +188,7 @@ problem definition from which a solution can be obtained.
 
 ## Methods
 
-- [`print()`](https://rdrr.io/r/base/print.html):
+- [`print()`](https://josesalgr.github.io/mosap/reference/print.md):
 
   Print a structured summary of the stored problem specification,
   including data, actions and effects, spatial inputs, targets and
@@ -196,9 +196,10 @@ problem definition from which a solution can be obtained.
   additional dimensions and auxiliary-variable information are
   displayed.
 
-- [`show()`](https://rdrr.io/r/methods/show.html):
+- [`show()`](https://josesalgr.github.io/mosap/reference/show.md):
 
-  Alias of [`print()`](https://rdrr.io/r/base/print.html).
+  Alias of
+  [`print()`](https://josesalgr.github.io/mosap/reference/print.md).
 
 - `repr()`:
 
@@ -237,8 +238,9 @@ problem definition from which a solution can be obtained.
 
 ## Printing and diagnostics
 
-The [`print()`](https://rdrr.io/r/base/print.html) method is intended as
-a quick diagnostic summary. It helps users understand:
+The [`print()`](https://josesalgr.github.io/mosap/reference/print.md)
+method is intended as a quick diagnostic summary. It helps users
+understand:
 
 - what data have already been loaded,
 

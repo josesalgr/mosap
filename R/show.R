@@ -15,6 +15,8 @@ NULL
 #' @name show
 #'
 #' @aliases show,Problem-method show,Solution-method show,SolutionSet-method show
+#' @keywords internal
+#'
 NULL
 
 #' @name show

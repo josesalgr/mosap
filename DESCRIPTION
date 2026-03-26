@@ -29,7 +29,8 @@ Imports:
     dplyr,
     Rcpp,
     rlang,
-    cli
+    cli,
+    sf
 Suggests: 
     knitr,
     gurobi (>= 9.0),
@@ -51,8 +52,7 @@ Suggests:
     tibble,
     methods,
     reshape2,
-    terra,
-    sf
+    terra
 LinkingTo:
   Rcpp, 
   RcppArmadillo (>= 0.10.1.0.0), 
