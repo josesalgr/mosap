@@ -3704,14 +3704,30 @@ NULL
 
     sol <- gurobi::gurobi(model, params)
 
-    status_code <- dplyr::case_when(
-      sol$status == "OPTIMAL" ~ 0L,
-      sol$status %in% c("INF_OR_UNBD", "INFEASIBLE", "UNBOUNDED") ~ 1L,
-      (sol$status == "TIME_LIMIT" && !is.null(sol$objval)) ~ 2L,
-      (sol$status == "TIME_LIMIT" && is.null(sol$objval)) ~ 3L,
-      sol$status == "SOLUTION_LIMIT" ~ 4L,
-      TRUE ~ 999L
-    )
+    # status_code <- dplyr::case_when(
+    #   sol$status == "OPTIMAL" ~ 0L,
+    #   sol$status %in% c("INF_OR_UNBD", "INFEASIBLE", "UNBOUNDED") ~ 1L,
+    #   (sol$status == "TIME_LIMIT" && !is.null(sol$objval)) ~ 2L,
+    #   (sol$status == "TIME_LIMIT" && is.null(sol$objval)) ~ 3L,
+    #   sol$status == "SOLUTION_LIMIT" ~ 4L,
+    #   TRUE ~ 999L
+    # )
+
+    status_chr <- as.character(sol$status %||% NA_character_)[1]
+
+    status_code <- if (identical(status_chr, "OPTIMAL")) {
+      0L
+    } else if (status_chr %in% c("INF_OR_UNBD", "INFEASIBLE", "UNBOUNDED")) {
+      1L
+    } else if (identical(status_chr, "TIME_LIMIT") && !is.null(sol$objval)) {
+      2L
+    } else if (identical(status_chr, "TIME_LIMIT") && is.null(sol$objval)) {
+      3L
+    } else if (identical(status_chr, "SOLUTION_LIMIT")) {
+      4L
+    } else {
+      999L
+    }
 
     objval  <- sol$objval %||% NA_real_
     solvec  <- sol$x %||% numeric(0)

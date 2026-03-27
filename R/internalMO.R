@@ -620,23 +620,26 @@
 # (Avoid copying externalptr / built model pointer)
 # -------------------------------------------------------------------------
 
-.pamo_deepcopy_data <- function(d) {
-  # Deep copy list/data.frames. WARNING: do NOT deep-copy externalptr; we drop model_ptr later.
-  unserialize(serialize(d, NULL))
-}
-
 .pamo_clone_base <- function(base) {
   stopifnot(inherits(base, "Problem"))
 
   b <- pproto(NULL, base)
-  b$data <- .pamo_deepcopy_data(base$data)
 
+  # copia superficial del contenedor
+  b$data <- base$data
+
+  # independizar solo lo mutable
+  b$data$model_args <- unserialize(serialize(base$data$model_args %||% list(), NULL))
+  b$data$meta <- unserialize(serialize(base$data$meta %||% list(), NULL))
+
+  # limpiar estado de modelo para este run
   b$data$model_ptr <- NULL
   b$data$has_model <- FALSE
   b$data$model_list <- NULL
   b$data$model_index <- NULL
+  b$data$runtime_updates <- NULL
+  b$data$mo_cache <- NULL
 
-  if (is.null(b$data$meta) || !is.list(b$data$meta)) b$data$meta <- list()
   b$data$meta$model_dirty <- TRUE
 
   b
