@@ -4,18 +4,10 @@
 \alias{add_spatial_relations}
 \title{Add spatial relations}
 \usage{
-add_spatial_relations(
-  x,
-  relations,
-  name = "default",
-  directed = FALSE,
-  allow_self = FALSE,
-  duplicate_agg = c("sum", "max", "min", "mean"),
-  symmetric = FALSE
-)
+add_spatial_relations(x, relations, name, directed = FALSE, allow_self = FALSE)
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}}.}
+\item{x}{A \code{Problem} object created with \code{\link{input_data}}.}
 
 \item{relations}{A \code{data.frame} describing relation edges. It must
 contain either:
@@ -37,14 +29,6 @@ ordered pairs.}
 
 \item{allow_self}{Logical. If \code{TRUE}, allow self-edges
 \eqn{(i,i)}. Default is \code{FALSE}.}
-
-\item{duplicate_agg}{Character string specifying how to aggregate duplicated
-undirected edges when \code{directed = FALSE}. Must be one of
-\code{"sum"}, \code{"max"}, \code{"min"}, or \code{"mean"}.}
-
-\item{symmetric}{Logical. If \code{TRUE}, expand an undirected relation into
-a directed representation by duplicating off-diagonal edges in both
-directions. Default is \code{FALSE}.}
 }
 \value{
 An updated \code{Problem} object with the relation stored in
@@ -57,8 +41,8 @@ object using the unified internal representation adopted by \code{mosap}.
 Most users will typically prefer one of the convenience constructors such as
 \code{\link{add_spatial_boundary}}, \code{\link{add_spatial_rook}},
 \code{\link{add_spatial_queen}}, \code{\link{add_spatial_knn}}, or
-\code{\link{add_spatial_distance}}. This function is the core low-level entry
-point for adding an already computed relation.
+\code{\link{add_spatial_distance}}. This function is the advanced low-level
+entry point for adding an already computed relation.
 }
 \details{
 The input relation may be provided either in terms of external planning-unit
@@ -76,18 +60,11 @@ If external ids are supplied, they are mapped to internal indices using
 Let \eqn{E} denote the set of rows supplied in \code{relations}. If
 \code{directed = FALSE}, each edge is treated as undirected, so pairs
 \eqn{(i,j)} and \eqn{(j,i)} are interpreted as the same edge. In that case,
-duplicated undirected edges are collapsed according to
-\code{duplicate_agg}.
+duplicated undirected edges are collapsed automatically using the maximum
+weight observed for each unordered pair.
 
 If \code{directed = TRUE}, edges are preserved as ordered pairs, so
 \eqn{(i,j)} and \eqn{(j,i)} are distinct unless the user provides both.
-
-If \code{symmetric = TRUE} and \code{directed = FALSE}, the final undirected
-relation is expanded into a directed representation by duplicating each
-off-diagonal edge:
-\deqn{
-(i,j,\omega_{ij}) \mapsto (i,j,\omega_{ij}), (j,i,\omega_{ij}).
-}
 
 Self-edges \eqn{(i,i)} are permitted only if \code{allow_self = TRUE}.
 
@@ -98,7 +75,7 @@ pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
 features <- data.frame(id = "sp1")
 dist_features <- data.frame(pu = 1:3, feature = "sp1", amount = c(1, 1, 1))
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

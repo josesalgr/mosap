@@ -60,7 +60,14 @@
 #' When action-level profit is supplied, the same profit value is assigned to
 #' all feasible planning units for that action. When pair-specific profit is
 #' supplied, only the listed \code{(pu, action)} pairs receive explicit values;
-#' unmatched feasible pairs are set to zero if \code{na_to_zero = TRUE}.
+#' unmatched feasible pairs are interpreted as zero-profit pairs.
+#'
+#' \strong{Storage behaviour}
+#'
+#' This function stores only rows with non-zero profit values. Feasible pairs
+#' whose final profit is zero are omitted from \code{x$data$dist_profit}.
+#' Missing values produced during matching or joins are treated as zero before
+#' this filtering step.
 #'
 #' \strong{Data-only behaviour}
 #'
@@ -93,10 +100,9 @@
 #' \max \sum_{(i,a) \in \mathcal{F}} \pi_{ia} x_{ia}.
 #' }
 #'
-#' @param x A \code{Problem} object created with \code{\link{inputData}}. It must
-#' already contain
-#'   \code{x$data$dist_actions} and \code{x$data$actions}; run
-#'   \code{\link{add_actions}} first.
+#' @param x A \code{Problem} object created with \code{\link{input_data}}. It
+#'   must already contain \code{x$data$dist_actions} and \code{x$data$actions};
+#'   run \code{\link{add_actions}} first.
 #'
 #' @param profit Profit specification. One of:
 #' \itemize{
@@ -110,17 +116,10 @@
 #'   profit.
 #' }
 #'
-#' @param keep_zero Logical. If \code{TRUE}, rows with \code{profit == 0} are
-#'   kept in the stored table. If \code{FALSE}, zero-profit rows are dropped
-#'   before storing. Default is \code{FALSE}.
-#'
-#' @param na_to_zero Logical. If \code{TRUE}, missing profit values produced
-#'   during matching or joins are treated as zero. Default is \code{TRUE}.
-#'
 #' @return An updated \code{Problem} object with \code{x$data$dist_profit}
 #'   created or replaced. The stored table contains columns \code{pu},
 #'   \code{action}, \code{profit}, \code{internal_pu}, and
-#'   \code{internal_action}.
+#'   \code{internal_action}, and includes only rows with non-zero profit.
 #'
 #' @examples
 #' # Minimal problem
@@ -139,7 +138,7 @@
 #'   amount = c(1, 2, 1, 3)
 #' )
 #'
-#' p <- inputData(
+#' p <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -156,7 +155,7 @@
 #'
 #' # 2) Profit per action using a named vector
 #' pr <- c(harvest = 50, restoration = -5)
-#' p2 <- add_profit(p, profit = pr, keep_zero = TRUE)
+#' p2 <- add_profit(p, profit = pr)
 #' p2$data$dist_profit
 #'
 #' # 3) Profit per action using a data frame
@@ -173,7 +172,7 @@
 #'   action = c("harvest", "harvest", "restoration"),
 #'   profit = c(100, 80, 30)
 #' )
-#' p4 <- add_profit(p, profit = pr_pair, keep_zero = TRUE)
+#' p4 <- add_profit(p, profit = pr_pair)
 #' p4$data$dist_profit
 #'
 #' @seealso
@@ -185,15 +184,13 @@
 #' @export
 add_profit <- function(
     x,
-    profit = NULL,
-    keep_zero = FALSE,
-    na_to_zero = TRUE
+    profit = NULL
 ) {
 
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
   assertthat::assert_that(!is.null(x$data), msg = "x does not look like a mosap Problem object")
-  assertthat::assert_that(!is.null(x$data$pu), msg = "x$data$pu is missing. Run inputData() first.")
+  assertthat::assert_that(!is.null(x$data$pu), msg = "x$data$pu is missing. Run input_data() first.")
   assertthat::assert_that(!is.null(x$data$dist_actions), msg = "No actions found. Run add_actions() first.")
   assertthat::assert_that(!is.null(x$data$actions), msg = "No action catalog found. Run add_actions() first.")
 
@@ -221,7 +218,7 @@ add_profit <- function(
   pu_ids     <- pu$id
   action_ids <- as.character(acts$id)
 
-  # base skeleton: all (pu, action) pairs currently in dist_actions (no feasibility filtering here)
+  # base skeleton: all (pu, action) pairs currently in dist_actions
   base <- da[, c("pu", "action"), drop = FALSE]
   base$action <- as.character(base$action)
 
@@ -245,7 +242,7 @@ add_profit <- function(
       stop("profit contains unknown action ids: ", paste(bad, collapse = ", "), call. = FALSE)
     }
     base$profit <- as.numeric(profit[base$action])
-    if (na_to_zero) base$profit[is.na(base$profit)] <- 0
+    base$profit[is.na(base$profit)] <- 0
 
   } else if (inherits(profit, "data.frame")) {
 
@@ -264,15 +261,13 @@ add_profit <- function(
         bad <- unique(p$action[!p$action %in% action_ids])
         stop("profit contains unknown action ids: ", paste(bad, collapse = ", "), call. = FALSE)
       }
-      # en vez de distinct(...)
       if (anyDuplicated(p$action)) {
         stop("profit (action,profit) must have unique action rows.", call. = FALSE)
       }
 
-
       base <- dplyr::left_join(base, p, by = "action", suffix = c("", ".new"))
       if ("profit.new" %in% names(base)) {
-        if (na_to_zero) base$profit.new[is.na(base$profit.new)] <- 0
+        base$profit.new[is.na(base$profit.new)] <- 0
         base$profit <- base$profit.new
         base$profit.new <- NULL
       } else {
@@ -301,7 +296,7 @@ add_profit <- function(
 
       base <- dplyr::left_join(base, p, by = c("pu", "action"), suffix = c("", ".new"))
       if ("profit.new" %in% names(base)) {
-        if (na_to_zero) base$profit.new[is.na(base$profit.new)] <- 0
+        base$profit.new[is.na(base$profit.new)] <- 0
         base$profit <- base$profit.new
         base$profit.new <- NULL
       } else {
@@ -318,11 +313,12 @@ add_profit <- function(
 
   # ---- cleanup / validation
   base$profit <- as.numeric(base$profit)
-  if (na_to_zero) base$profit[is.na(base$profit)] <- 0
+  base$profit[is.na(base$profit)] <- 0
 
   if (!all(is.finite(base$profit))) stop("profit values must be finite.", call. = FALSE)
 
-  if (!keep_zero) base <- base[base$profit != 0, , drop = FALSE]
+  # store only non-zero rows
+  base <- base[base$profit != 0, , drop = FALSE]
 
   # ---- add internal ids
   pu_map   <- x$data$pu[, c("id", "internal_id")]

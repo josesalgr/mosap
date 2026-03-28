@@ -19,12 +19,7 @@ Locked decisions are represented through status codes:
 ## Usage
 
 ``` r
-add_locked_actions(
-  x,
-  locked_in = NULL,
-  locked_out = NULL,
-  na_is_infeasible = TRUE
-)
+add_locked_actions(x, locked_in = NULL, locked_out = NULL)
 ```
 
 ## Arguments
@@ -43,12 +38,6 @@ add_locked_actions(
 
   Optional specification of feasible `(pu, action)` pairs that must not
   be selected. It may be `NULL`, a `data.frame`, or a named list.
-
-- na_is_infeasible:
-
-  Logical. Only relevant when `locked_in` or `locked_out` is supplied as
-  a `data.frame` with a `feasible` column. If `TRUE`, missing values in
-  `feasible` are treated as `FALSE`.
 
 ## Value
 
@@ -98,6 +87,10 @@ Both `locked_in` and `locked_out` accept the same formats:
 - a named list whose names are action ids and whose elements are either
   vectors of planning unit ids or `sf` objects.
 
+If a `feasible` column is supplied in a `data.frame`, only rows with
+`feasible = TRUE` are used. Missing values in `feasible` are treated as
+`FALSE`.
+
 If an `sf` specification is supplied, the problem object must contain
 `x$data$pu_sf`, and planning units are matched spatially using
 [`sf::st_intersects()`](https://r-spatial.github.io/sf/reference/geos_binary_pred.html).
@@ -143,7 +136,7 @@ dist_features <- data.frame(
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

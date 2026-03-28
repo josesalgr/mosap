@@ -61,9 +61,9 @@ coordinates supplied explicitly or stored in the <code>Problem</code> object.</p
 <span>  <span class="va">x</span>,</span>
 <span>  coords <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  k <span class="op">=</span> <span class="fl">8</span>,</span>
-<span>  name <span class="op">=</span> <span class="st">"default"</span>,</span>
-<span>  weight_fn <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"constant"</span>, <span class="st">"inverse"</span>, <span class="st">"inverse_sq"</span><span class="op">)</span>,</span>
-<span>  eps <span class="op">=</span> <span class="fl">1e-09</span></span>
+<span>  name <span class="op">=</span> <span class="st">"knn"</span>,</span>
+<span>  weight_mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"constant"</span>, <span class="st">"inverse"</span>, <span class="st">"inverse_sq"</span><span class="op">)</span>,</span>
+<span>  distance_eps <span class="op">=</span> <span class="fl">1e-09</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -72,7 +72,7 @@ coordinates supplied explicitly or stored in the <code>Problem</code> object.</p
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>A <code>Problem</code> object created with <code><a href="inputData.html">inputData</a></code>.</p></dd>
+<dd><p>A <code>Problem</code> object created with <code><a href="input_data.html">input_data</a></code>.</p></dd>
 
 
 <dt id="arg-coords">coords<a class="anchor" aria-label="anchor" href="#arg-coords"></a></dt>
@@ -93,15 +93,15 @@ at least 1 and strictly less than the number of planning units.</p></dd>
 stored.</p></dd>
 
 
-<dt id="arg-weight-fn">weight_fn<a class="anchor" aria-label="anchor" href="#arg-weight-fn"></a></dt>
+<dt id="arg-weight-mode">weight_mode<a class="anchor" aria-label="anchor" href="#arg-weight-mode"></a></dt>
 <dd><p>Character string indicating how distance is converted to
 weight. Must be one of <code>"constant"</code>, <code>"inverse"</code>, or
 <code>"inverse_sq"</code>.</p></dd>
 
 
-<dt id="arg-eps">eps<a class="anchor" aria-label="anchor" href="#arg-eps"></a></dt>
-<dd><p>Small positive numeric constant used to avoid division by zero in
-inverse-distance weighting.</p></dd>
+<dt id="arg-distance-eps">distance_eps<a class="anchor" aria-label="anchor" href="#arg-distance-eps"></a></dt>
+<dd><p>Small positive numeric constant used to avoid division by
+zero in inverse-distance weighting.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -116,14 +116,14 @@ nearest distinct planning units under Euclidean distance.</p>
 <p>If \(d_{ij}\) denotes the Euclidean distance between units \(i\) and
 \(j\), then the k-nearest-neighbours relation is constructed by adding an
 edge from \(i\) to each of its <code>k</code> nearest neighbours.</p>
-<p>Edge weights are then assigned according to <code>weight_fn</code>:</p><ul><li><p><code>"constant"</code>:
+<p>Edge weights are then assigned according to <code>weight_mode</code>:</p><ul><li><p><code>"constant"</code>:
 $$\omega_{ij} = 1,$$</p></li>
 <li><p><code>"inverse"</code>:
 $$\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)},$$</p></li>
 <li><p><code>"inverse_sq"</code>:
 $$\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},$$</p></li>
-</ul><p>where \(\varepsilon = \code{eps}\) is a small constant to avoid division
-by zero.</p>
+</ul><p>where \(\varepsilon = \code{distance_eps}\) is a small constant to avoid
+division by zero.</p>
 <p>The raw k-nearest-neighbours structure is directional by construction, but
 the stored relation is registered as undirected by default through
 <code><a href="add_spatial_relations.html">add_spatial_relations</a></code>, which collapses duplicate unordered
@@ -144,7 +144,7 @@ neighbour search. Otherwise, a full distance matrix is computed.</p>
 <span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
 <span class="r-in"><span>  k <span class="op">=</span> <span class="fl">8</span>,</span></span>
 <span class="r-in"><span>  name <span class="op">=</span> <span class="st">"knn8"</span>,</span></span>
-<span class="r-in"><span>  weight_fn <span class="op">=</span> <span class="st">"inverse"</span></span></span>
+<span class="r-in"><span>  weight_mode <span class="op">=</span> <span class="st">"inverse"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>

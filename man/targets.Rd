@@ -13,7 +13,13 @@ selected actions in the final solution.
 
 By default, all actions are allowed to contribute toward target achievement.
 Optionally, the set of contributing actions can be restricted through the
-\code{subset} argument.
+\code{actions} argument.
+
+A problem may contain multiple simultaneous targets. Each call to
+\code{add_targets_absolute()} or \code{add_targets_relative()} appends one or
+more target definitions to \code{x$data$targets}. This makes it possible to
+combine, for example, relative targets counted only from conservation actions
+with absolute targets counted only from restoration actions.
 }
 \details{
 Let \eqn{\mathcal{P}} denote the set of planning units, \eqn{\mathcal{A}} the
@@ -36,21 +42,34 @@ constraint of the form
 where \eqn{\mathcal{S}_f} is the set of planning unit--action pairs allowed to
 count toward achievement of the target for feature \eqn{f}.
 
-By default, \eqn{\mathcal{S}_f} includes all feasible actions. If a
-\code{subset} is supplied, then \eqn{\mathcal{S}_f} is restricted to the
-actions matching that subset.
+By default, \eqn{\mathcal{S}_f} includes all feasible actions. If
+\code{actions} is supplied, then \eqn{\mathcal{S}_f} is restricted to the
+actions matching that specification.
 
-\strong{Subset semantics}
+\strong{Feature and action semantics}
 
-The \code{subset} argument does \emph{not} change the target value itself. It
+Targets are always defined for one or more features.
+
+The \code{features} argument determines which features the supplied target
+values refer to when the \code{targets} specification does not already
+identify features explicitly.
+
+The \code{actions} argument does \emph{not} change the target value itself. It
 only determines which actions are allowed to contribute toward target
 achievement when the model is built.
 
-A subset specification may contain:
+An \code{actions} specification may contain:
 \itemize{
 \item action identifiers from \code{x$data$actions$id},
 \item action-set labels from \code{x$data$actions$action_set},
 \item or a mixture of both.
+}
+
+A \code{features} specification may contain:
+\itemize{
+\item feature identifiers from \code{x$data$features$id},
+\item feature names from \code{x$data$features$name}, if present,
+\item or a mixture of both, if supported by the resolver.
 }
 
 \strong{Stored fields}
@@ -66,7 +85,7 @@ Each stored target row contains, at minimum:
 relative target into an absolute threshold.}
 \item{\code{target_value}}{The final absolute threshold stored for model
 building.}
-\item{\code{subset}}{A text representation of the action subset allowed to
+\item{\code{actions}}{A text representation of the action subset allowed to
 contribute.}
 \item{\code{label}}{Optional user label.}
 \item{\code{created_at}}{Creation timestamp.}
@@ -89,22 +108,18 @@ T_f = r_f \times B_f,
 where \eqn{B_f} is the current total amount of feature \eqn{f} in the
 landscape, computed by \code{.pa_feature_totals()}.
 
-\strong{Overwrite behaviour}
-
-If \code{overwrite = TRUE}, existing targets for the same feature and subset
-specification may be replaced. If \code{overwrite = FALSE}, new target rows
-are appended and any conflict handling is delegated to
-\code{.pa_store_targets()}.
-
 \strong{Input format}
 
 The \code{targets} argument is parsed internally by \code{.pa_parse_targets()}
 and may typically be provided as:
 \itemize{
-\item a single numeric value recycled to all features,
-\item a numeric vector aligned to feature order,
+\item a single numeric value recycled to all selected features,
+\item a numeric vector aligned to \code{features},
 \item a named numeric vector where names identify features,
 \item a \code{data.frame} with feature identifiers and target values.
 }
+
+If \code{targets} does not explicitly identify features, then
+\code{features = NULL} means that all features are targeted.
 }
 \keyword{internal}

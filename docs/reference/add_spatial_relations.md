@@ -11,21 +11,13 @@ such as
 [`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md),
 or
 [`add_spatial_distance`](https://josesalgr.github.io/mosap/reference/add_spatial_distance.md).
-This function is the core low-level entry point for adding an already
-computed relation.
+This function is the advanced low-level entry point for adding an
+already computed relation.
 
 ## Usage
 
 ``` r
-add_spatial_relations(
-  x,
-  relations,
-  name = "default",
-  directed = FALSE,
-  allow_self = FALSE,
-  duplicate_agg = c("sum", "max", "min", "mean"),
-  symmetric = FALSE
-)
+add_spatial_relations(x, relations, name, directed = FALSE, allow_self = FALSE)
 ```
 
 ## Arguments
@@ -33,7 +25,7 @@ add_spatial_relations(
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md).
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
 
 - relations:
 
@@ -60,18 +52,6 @@ add_spatial_relations(
 
   Logical. If `TRUE`, allow self-edges \\(i,i)\\. Default is `FALSE`.
 
-- duplicate_agg:
-
-  Character string specifying how to aggregate duplicated undirected
-  edges when `directed = FALSE`. Must be one of `"sum"`, `"max"`,
-  `"min"`, or `"mean"`.
-
-- symmetric:
-
-  Logical. If `TRUE`, expand an undirected relation into a directed
-  representation by duplicating off-diagonal edges in both directions.
-  Default is `FALSE`.
-
 ## Value
 
 An updated `Problem` object with the relation stored in
@@ -94,15 +74,11 @@ If external ids are supplied, they are mapped to internal indices using
 Let \\E\\ denote the set of rows supplied in `relations`. If
 `directed = FALSE`, each edge is treated as undirected, so pairs
 \\(i,j)\\ and \\(j,i)\\ are interpreted as the same edge. In that case,
-duplicated undirected edges are collapsed according to `duplicate_agg`.
+duplicated undirected edges are collapsed automatically using the
+maximum weight observed for each unordered pair.
 
 If `directed = TRUE`, edges are preserved as ordered pairs, so \\(i,j)\\
 and \\(j,i)\\ are distinct unless the user provides both.
-
-If `symmetric = TRUE` and `directed = FALSE`, the final undirected
-relation is expanded into a directed representation by duplicating each
-off-diagonal edge: \$\$ (i,j,\omega\_{ij}) \mapsto (i,j,\omega\_{ij}),
-(j,i,\omega\_{ij}). \$\$
 
 Self-edges \\(i,i)\\ are permitted only if `allow_self = TRUE`.
 
@@ -123,7 +99,7 @@ pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
 features <- data.frame(id = "sp1")
 dist_features <- data.frame(pu = 1:3, feature = "sp1", amount = c(1, 1, 1))
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

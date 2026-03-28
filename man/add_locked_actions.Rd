@@ -4,12 +4,7 @@
 \alias{add_locked_actions}
 \title{Add locked action decisions to a planning problem}
 \usage{
-add_locked_actions(
-  x,
-  locked_in = NULL,
-  locked_out = NULL,
-  na_is_infeasible = TRUE
-)
+add_locked_actions(x, locked_in = NULL, locked_out = NULL)
 }
 \arguments{
 \item{x}{A \code{Problem} object with action feasibility already defined via
@@ -22,11 +17,6 @@ named list.}
 \item{locked_out}{Optional specification of feasible \code{(pu, action)}
 pairs that must not be selected. It may be \code{NULL}, a
 \code{data.frame}, or a named list.}
-
-\item{na_is_infeasible}{Logical. Only relevant when \code{locked_in} or
-\code{locked_out} is supplied as a \code{data.frame} with a
-\code{feasible} column. If \code{TRUE}, missing values in
-\code{feasible} are treated as \code{FALSE}.}
 }
 \value{
 An updated \code{Problem} object in which
@@ -88,6 +78,10 @@ optionally including a \code{feasible} column used as a filter,
 vectors of planning unit ids or \code{sf} objects.
 }
 
+If a \code{feasible} column is supplied in a \code{data.frame}, only rows
+with \code{feasible = TRUE} are used. Missing values in \code{feasible} are
+treated as \code{FALSE}.
+
 If an \code{sf} specification is supplied, the problem object must contain
 \code{x$data$pu_sf}, and planning units are matched spatially using
 \code{sf::st_intersects()}.
@@ -125,7 +119,7 @@ dist_features <- data.frame(
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

@@ -4,13 +4,12 @@
 \alias{add_profit}
 \title{Add profit to a planning problem}
 \usage{
-add_profit(x, profit = NULL, keep_zero = FALSE, na_to_zero = TRUE)
+add_profit(x, profit = NULL)
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}}. It must
-already contain
-\code{x$data$dist_actions} and \code{x$data$actions}; run
-\code{\link{add_actions}} first.}
+\item{x}{A \code{Problem} object created with \code{\link{input_data}}. It
+must already contain \code{x$data$dist_actions} and \code{x$data$actions};
+run \code{\link{add_actions}} first.}
 
 \item{profit}{Profit specification. One of:
 \itemize{
@@ -23,19 +22,12 @@ action-level profit,
 \item a \code{data.frame(pu, action, profit)} defining pair-specific
 profit.
 }}
-
-\item{keep_zero}{Logical. If \code{TRUE}, rows with \code{profit == 0} are
-kept in the stored table. If \code{FALSE}, zero-profit rows are dropped
-before storing. Default is \code{FALSE}.}
-
-\item{na_to_zero}{Logical. If \code{TRUE}, missing profit values produced
-during matching or joins are treated as zero. Default is \code{TRUE}.}
 }
 \value{
 An updated \code{Problem} object with \code{x$data$dist_profit}
 created or replaced. The stored table contains columns \code{pu},
 \code{action}, \code{profit}, \code{internal_pu}, and
-\code{internal_action}.
+\code{internal_action}, and includes only rows with non-zero profit.
 }
 \description{
 Define economic profit values for feasible planning unit--action pairs and
@@ -95,7 +87,14 @@ values.
 When action-level profit is supplied, the same profit value is assigned to
 all feasible planning units for that action. When pair-specific profit is
 supplied, only the listed \code{(pu, action)} pairs receive explicit values;
-unmatched feasible pairs are set to zero if \code{na_to_zero = TRUE}.
+unmatched feasible pairs are interpreted as zero-profit pairs.
+
+\strong{Storage behaviour}
+
+This function stores only rows with non-zero profit values. Feasible pairs
+whose final profit is zero are omitted from \code{x$data$dist_profit}.
+Missing values produced during matching or joins are treated as zero before
+this filtering step.
 
 \strong{Data-only behaviour}
 
@@ -145,7 +144,7 @@ dist_features <- data.frame(
   amount = c(1, 2, 1, 3)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
@@ -162,7 +161,7 @@ p1$data$dist_profit
 
 # 2) Profit per action using a named vector
 pr <- c(harvest = 50, restoration = -5)
-p2 <- add_profit(p, profit = pr, keep_zero = TRUE)
+p2 <- add_profit(p, profit = pr)
 p2$data$dist_profit
 
 # 3) Profit per action using a data frame
@@ -179,7 +178,7 @@ pr_pair <- data.frame(
   action = c("harvest", "harvest", "restoration"),
   profit = c(100, 80, 30)
 )
-p4 <- add_profit(p, profit = pr_pair, keep_zero = TRUE)
+p4 <- add_profit(p, profit = pr_pair)
 p4$data$dist_profit
 
 }

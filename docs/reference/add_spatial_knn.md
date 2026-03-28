@@ -14,9 +14,9 @@ add_spatial_knn(
   x,
   coords = NULL,
   k = 8,
-  name = "default",
-  weight_fn = c("constant", "inverse", "inverse_sq"),
-  eps = 1e-09
+  name = "knn",
+  weight_mode = c("constant", "inverse", "inverse_sq"),
+  distance_eps = 1e-09
 )
 ```
 
@@ -25,7 +25,7 @@ add_spatial_knn(
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md).
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
 
 - coords:
 
@@ -48,12 +48,12 @@ add_spatial_knn(
 
   Character string giving the key under which the relation is stored.
 
-- weight_fn:
+- weight_mode:
 
   Character string indicating how distance is converted to weight. Must
   be one of `"constant"`, `"inverse"`, or `"inverse_sq"`.
 
-- eps:
+- distance_eps:
 
   Small positive numeric constant used to avoid division by zero in
   inverse-distance weighting.
@@ -72,7 +72,7 @@ If \\d\_{ij}\\ denotes the Euclidean distance between units \\i\\ and
 \\j\\, then the k-nearest-neighbours relation is constructed by adding
 an edge from \\i\\ to each of its `k` nearest neighbours.
 
-Edge weights are then assigned according to `weight_fn`:
+Edge weights are then assigned according to `weight_mode`:
 
 - `"constant"`: \$\$\omega\_{ij} = 1,\$\$
 
@@ -82,8 +82,8 @@ Edge weights are then assigned according to `weight_fn`:
 - `"inverse_sq"`: \$\$\omega\_{ij} = \frac{1}{\max(d\_{ij},
   \varepsilon)^2},\$\$
 
-where \\\varepsilon = \code{eps}\\ is a small constant to avoid division
-by zero.
+where \\\varepsilon = \code{distance_eps}\\ is a small constant to avoid
+division by zero.
 
 The raw k-nearest-neighbours structure is directional by construction,
 but the stored relation is registered as undirected by default through
@@ -106,7 +106,7 @@ p <- add_spatial_knn(
   x = p,
   k = 8,
   name = "knn8",
-  weight_fn = "inverse"
+  weight_mode = "inverse"
 )
 } # }
 ```

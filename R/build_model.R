@@ -6,7 +6,7 @@
 #' Materializes (builds) the optimization model using the current state of the `Problem` object:
 #' prepared data tables, stored objective settings, and stored constraints (e.g., targets).
 #'
-#' @param x Problem object (class "Problem") created with inputData()/inputDataSpatial().
+#' @param x Problem object (class "Problem") created with input_data().
 #'
 #' @return Updated `Problem` object with model pointer and model snapshot.
 #' @keywords internal
@@ -1213,7 +1213,7 @@
       stop(".pa_apply_targets_if_present() is missing.", call. = FALSE)
     }
 
-    x <- .pa_apply_targets_if_present(x, allow_multiple_rows_per_feature = TRUE)
+    x <- .pa_apply_targets_if_present(x)
   }
 
   x <- .pa_apply_action_max_per_pu_default(x)

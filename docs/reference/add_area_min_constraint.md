@@ -14,8 +14,7 @@ add_area_min_constraint(
   area_min,
   area_col = NULL,
   area_unit = c("m2", "ha", "km2"),
-  name = "area_min",
-  overwrite = FALSE
+  name = "area_min"
 )
 ```
 
@@ -43,12 +42,8 @@ add_area_min_constraint(
 
 - name:
 
-  Character string used as a label for the stored constraint.
-
-- overwrite:
-
-  Logical. If `TRUE`, replace an existing stored minimum area
-  constraint.
+  Character string used as the label of the stored linear constraint
+  when it is later added to the optimization model.
 
 ## Value
 
@@ -78,13 +73,13 @@ This function only stores the constraint specification in
 `x$data$constraints$area_min`; it does not validate the feasibility of
 the threshold against the available planning units at this stage.
 
-If a minimum-area constraint has already been stored, it is replaced
-only when `overwrite = TRUE`.
+At most one minimum-area constraint can be stored in a `Problem` object.
+If one already exists, this function raises an error.
 
 ## See also
 
 [`add_area_max_constraint`](https://josesalgr.github.io/mosap/reference/add_area_max_constraint.md),
-[`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md),
+[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md)
 
 ## Examples
 
@@ -96,21 +91,21 @@ pu <- data.frame(
 )
 
 features <- data.frame(
-  id = c("sp1", "sp2")
+  id = 1:2,
+  name = c("sp1", "sp2")
 )
 
 dist_features <- data.frame(
   pu = c(1, 1, 2, 3, 4, 4),
-  feature = c("sp1", "sp2", "sp1", "sp2", "sp1", "sp2"),
+  feature = c(1, 2, 1, 2, 1, 2),
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
 )
-#> Error: features$id must be numeric/integer ids (got non-numeric strings).
 
 p <- add_area_min_constraint(
   x = p,
@@ -118,8 +113,21 @@ p <- add_area_min_constraint(
   area_col = "area_ha",
   area_unit = "ha"
 )
-#> Error: object 'p' not found
 
 p$data$constraints$area_min
-#> Error: object 'p' not found
+#> $type
+#> [1] "area_min"
+#> 
+#> $value
+#> [1] 25
+#> 
+#> $unit
+#> [1] "ha"
+#> 
+#> $area_col
+#> [1] "area_ha"
+#> 
+#> $name
+#> [1] "area_min"
+#> 
 ```

@@ -29,11 +29,7 @@ add_effects(
   effects = NULL,
   effect_type = c("delta", "after"),
   effect_aggregation = c("sum", "mean"),
-  align_rasters = TRUE,
-  keep_zero = FALSE,
-  drop_locked_out = TRUE,
-  na_to_zero = TRUE,
-  filter = c("any", "benefit", "loss")
+  component = c("any", "benefit", "loss")
 )
 ```
 
@@ -42,9 +38,8 @@ add_effects(
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md)
-  or `inputDataSpatial`. It must already contain `x$data$dist_actions`;
-  run
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  It must already contain `x$data$dist_actions`; run
   [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md)
   first.
 
@@ -77,31 +72,10 @@ add_effects(
   Character string giving the aggregation used when converting raster
   values to planning-unit level. Must be one of `"sum"` or `"mean"`.
 
-- align_rasters:
+- component:
 
-  Logical. If `TRUE`, effect rasters are aligned to the planning-unit
-  raster grid before raster extraction or zonal aggregation.
-
-- keep_zero:
-
-  Logical. If `TRUE`, keep rows for which both `benefit == 0` and
-  `loss == 0`. Default is `FALSE`.
-
-- drop_locked_out:
-
-  Logical. If `TRUE`, rows associated with `(pu, action)` pairs marked
-  as locked out (`status == 3`) in `x$data$dist_actions` are removed
-  before storing effects.
-
-- na_to_zero:
-
-  Logical. If `TRUE`, missing values are interpreted as zero when
-  constructing or validating effects.
-
-- filter:
-
-  Character string controlling which rows are retained after
-  canonicalization. Must be one of:
+  Character string controlling which component of the canonical effects
+  table is retained. Must be one of:
 
   - `"any"`: keep all non-zero rows,
 
@@ -205,9 +179,8 @@ Missing baseline values are treated as zero.
 Effects are only retained for feasible `(pu, action)` pairs listed in
 `x$data$dist_actions`. Thus,
 [`add_actions()`](https://josesalgr.github.io/mosap/reference/add_actions.md)
-must be called first. If `drop_locked_out = TRUE` and
-`x$data$dist_actions$status` exists, rows associated with `status == 3`
-are removed before storing the final effects table.
+must be called first. Pairs marked as locked out (`status == 3`) are
+removed before storing the final effects table.
 
 **Duplicate rows and semantic validation**
 
@@ -217,11 +190,23 @@ The resulting triple must still respect the package semantics, namely
 that both components cannot be strictly positive simultaneously. Inputs
 violating this rule are rejected.
 
-**Filtering**
+**Component selection**
 
-After canonicalization and validation, rows can be filtered using
-`filter = "any"`, `"benefit"`, or `"loss"`. By default, zero-effect rows
-are removed unless `keep_zero = TRUE`.
+After canonicalization and validation, rows can be restricted to:
+
+- `component = "any"`: keep all non-zero effects,
+
+- `component = "benefit"`: keep only rows with `benefit > 0`,
+
+- `component = "loss"`: keep only rows with `loss > 0`.
+
+Rows with `benefit = 0` and `loss = 0` are always removed.
+
+**Raster handling**
+
+When effects are supplied as rasters, they are automatically aligned to
+the planning-unit raster or geometry when needed before extraction or
+zonal aggregation.
 
 **Stored output**
 
@@ -239,7 +224,9 @@ are written to `x$data$effects_meta`.
 ## Examples
 
 ``` r
-# Minimal problem
+# ------------------------------------------------------
+# Minimal problem with actions
+# ------------------------------------------------------
 pu <- data.frame(
   id = 1:3,
   cost = c(1, 2, 3)
@@ -256,14 +243,15 @@ dist_features <- data.frame(
   amount = c(10, 5, 8, 4)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
 )
 
 actions <- data.frame(
-  id = c("conservation", "restoration")
+  id = c("conservation", "restoration"),
+  name = c("Conservation", "Restoration")
 )
 
 p <- add_actions(
@@ -272,7 +260,38 @@ p <- add_actions(
   cost = c(conservation = 2, restoration = 4)
 )
 
+print(p)
+#> A mosap object (<Problem>)
+#> ├─data
+#> │├─planning units: <data.frame> (3 total)
+#> │├─costs: min: 1, max: 3
+#> │└─features: 2 total ("sp1", "sp2")
+#> └─actions and effects
+#> │├─actions: 2 total ("Conservation", "Restoration")
+#> │├─dist_actions: 6 feasible rows
+#> │├─action costs: min: 2, max: 4
+#> │├─dist_effects: none specified
+#> │└─dist_profit: none specified
+#> └─spatial
+#> │├─geometry: none
+#> │├─pu_coords: none
+#> │└─relations: none
+#> └─targets and constraints
+#> │├─targets: none
+#> │├─area constraints: none
+#> │├─pu_locks: none
+#> │└─action_locks: none
+#> └─model
+#> │├─status: not built yet (will build in solve())
+#> │├─objectives: none
+#> │├─method: single-objective
+#> │├─solver: not set (auto)
+#> │└─checks: incomplete (no objective registered)
+#> # ℹ Use `x$data` to inspect stored tables and model snapshots.
+
+# ------------------------------------------------------
 # 1) Empty effects
+# ------------------------------------------------------
 p0 <- add_effects(p, effects = NULL)
 #> Warning: All effect values are zero after filtering.
 p0$data$dist_effects
@@ -281,11 +300,15 @@ p0$data$dist_effects
 #>  [9] feature_name     action_name     
 #> <0 rows> (or 0-length row.names)
 
+# ------------------------------------------------------
 # 2) Multipliers by action and feature
+# delta = baseline amount * multiplier
+# ------------------------------------------------------
 mult <- data.frame(
-  action = c("conservation", "restoration"),
-  feature = c("sp1", "sp2"),
-  multiplier = c(0.10, -0.25)
+  action = c("conservation", "conservation",
+             "restoration", "restoration"),
+  feature = c("sp1", "sp2", "sp1", "sp2"),
+  multiplier = c(0.10, 0.00, -0.20, 0.25)
 )
 
 p1 <- add_effects(
@@ -296,42 +319,90 @@ p1 <- add_effects(
 
 p1$data$dist_effects
 #>   pu       action feature benefit loss internal_pu internal_action
-#> 1  1 conservation       1     1.0 0.00           1               1
-#> 2  2 conservation       1     0.8 0.00           2               1
-#> 7  1  restoration       2     0.0 1.25           1               2
-#> 8  3  restoration       2     0.0 1.00           3               2
+#> 1  1 conservation       1    1.00  0.0           1               1
+#> 2  2 conservation       1    0.80  0.0           2               1
+#> 3  1  restoration       1    0.00  2.0           1               2
+#> 4  2  restoration       1    0.00  1.6           2               2
+#> 7  1  restoration       2    1.25  0.0           1               2
+#> 8  3  restoration       2    1.00  0.0           3               2
 #>   internal_feature feature_name  action_name
-#> 1                1          sp1 conservation
-#> 2                1          sp1 conservation
-#> 7                2          sp2  restoration
-#> 8                2          sp2  restoration
+#> 1                1          sp1 Conservation
+#> 2                1          sp1 Conservation
+#> 3                1          sp1  Restoration
+#> 4                1          sp1  Restoration
+#> 7                2          sp2  Restoration
+#> 8                2          sp2  Restoration
 
-# 3) Explicit net effects
-eff <- data.frame(
+# ------------------------------------------------------
+# 3) Explicit net effects using signed deltas
+# ------------------------------------------------------
+eff_delta <- data.frame(
+  pu = c(1, 2, 3, 3),
+  action = c("conservation", "restoration", "restoration", "conservation"),
+  feature = c(1, 1, 2, 2),
+  delta = c(2, -3, 1, 0.5)
+)
+
+p2 <- add_effects(
+  x = p,
+  effects = eff_delta
+)
+
+p2$data$dist_effects
+#>   pu       action feature benefit loss internal_pu internal_action
+#> 1  1 conservation       1     2.0    0           1               1
+#> 2  2  restoration       1     0.0    3           2               2
+#> 3  3 conservation       2     0.5    0           3               1
+#> 4  3  restoration       2     1.0    0           3               2
+#>   internal_feature feature_name  action_name
+#> 1                1          sp1 Conservation
+#> 2                1          sp1  Restoration
+#> 3                2          sp2 Conservation
+#> 4                2          sp2  Restoration
+
+# ------------------------------------------------------
+# 4) Explicit after-action amounts
+# delta = after - baseline
+# ------------------------------------------------------
+eff_after <- data.frame(
   pu = c(1, 2, 3),
   action = c("conservation", "restoration", "restoration"),
   feature = c(1, 1, 2),
-  delta = c(2, -3, 1)
+  after = c(12, 5, 6)
 )
 
-p2 <- add_effects(p, effects = eff)
-p2$data$dist_effects
-#>   pu       action feature benefit loss internal_pu internal_action
-#> 1  1 conservation       1       2    0           1               1
-#> 2  2  restoration       1       0    3           2               2
-#> 3  3  restoration       2       1    0           3               2
-#>   internal_feature feature_name  action_name
-#> 1                1          sp1 conservation
-#> 2                1          sp1  restoration
-#> 3                2          sp2  restoration
+p3 <- add_effects(
+  x = p,
+  effects = eff_after,
+  effect_type = "after"
+)
 
-# 4) Keep only beneficial effects
-p3 <- add_effects(p, effects = eff, filter = "benefit")
 p3$data$dist_effects
 #>   pu       action feature benefit loss internal_pu internal_action
 #> 1  1 conservation       1       2    0           1               1
-#> 3  3  restoration       2       1    0           3               2
+#> 2  2  restoration       1       0    3           2               2
+#> 3  3  restoration       2       2    0           3               2
 #>   internal_feature feature_name  action_name
-#> 1                1          sp1 conservation
-#> 3                2          sp2  restoration
+#> 1                1          sp1 Conservation
+#> 2                1          sp1  Restoration
+#> 3                2          sp2  Restoration
+
+# ------------------------------------------------------
+# 5) Keep only beneficial effects
+# ------------------------------------------------------
+p4 <- add_effects(
+  x = p,
+  effects = eff_delta,
+  component = "benefit"
+)
+
+p4$data$dist_effects
+#>   pu       action feature benefit loss internal_pu internal_action
+#> 1  1 conservation       1     2.0    0           1               1
+#> 3  3 conservation       2     0.5    0           3               1
+#> 4  3  restoration       2     1.0    0           3               2
+#>   internal_feature feature_name  action_name
+#> 1                1          sp1 Conservation
+#> 3                2          sp2 Conservation
+#> 4                2          sp2  Restoration
 ```

@@ -4,14 +4,14 @@
 \alias{add_spatial_queen}
 \title{Add queen adjacency from polygons}
 \usage{
-add_spatial_queen(x, pu_sf = NULL, name = "default", weight = 1)
+add_spatial_queen(x, geometry = NULL, name = "queen", weight = 1)
 }
 \arguments{
 \item{x}{A \code{Problem} object created with
-\code{\link{inputData}} or another object containing aligned
+\code{\link{input_data}} or another object containing aligned
 planning-unit polygons.}
 
-\item{pu_sf}{Optional \code{sf} object with planning-unit polygons and an
+\item{geometry}{Optional \code{sf} object with planning-unit polygons and an
 \code{id} column. If \code{NULL}, \code{x$data$pu_sf} is used.}
 
 \item{name}{Character string giving the key under which the relation is

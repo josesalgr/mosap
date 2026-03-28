@@ -6,8 +6,7 @@
 - Provides a modular workflow for exact multi-objective spatial planning
   based on mixed-integer programming (MIP).
 - Introduces the core `Problem`, `Solution`, and `SolutionSet` classes.
-- Adds support for modular problem construction through
-  [`inputData()`](https://josesalgr.github.io/mosap/reference/inputData.md),
+- Adds support for modular problem construction through `inputData()`,
   `add_*()`, `set_*()`, and
   [`solve()`](https://josesalgr.github.io/mosap/reference/solve.md).
 - Supports atomic objective registration and multi-objective solution

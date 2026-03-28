@@ -5,7 +5,7 @@
 #include <cmath>     // std::isfinite
 
 // [[Rcpp::export]]
-Rcpp::List rcpp_reset_objective(SEXP x, std::string modelsense = "", bool clear_blocks = true) {
+Rcpp::List rcpp_reset_objective(SEXP x, std::string modelsense = "") {
   Rcpp::XPtr<OptimizationProblem> op = Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
 
   if (!modelsense.empty()) {
@@ -15,10 +15,6 @@ Rcpp::List rcpp_reset_objective(SEXP x, std::string modelsense = "", bool clear_
 
   std::fill(op->_obj.begin(), op->_obj.end(), 0.0);
 
-  if (clear_blocks) {
-    // si tienes algo tipo op->clear_objective_blocks();
-    // o deja esto en no-op si aún no lo implementas.
-  }
 
   return Rcpp::List::create(Rcpp::Named("ok") = true);
 }

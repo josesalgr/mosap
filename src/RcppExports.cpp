@@ -340,40 +340,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rcpp_add_target_conservation
-Rcpp::List rcpp_add_target_conservation(SEXP x, Rcpp::DataFrame features_data, Rcpp::DataFrame dist_features_data, SEXP target_col_sexp, double tol, std::string block_name, std::string tag);
-RcppExport SEXP _mosap_rcpp_add_target_conservation(SEXP xSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP target_col_sexpSEXP, SEXP tolSEXP, SEXP block_nameSEXP, SEXP tagSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type features_data(features_dataSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type target_col_sexp(target_col_sexpSEXP);
-    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    Rcpp::traits::input_parameter< std::string >::type block_name(block_nameSEXP);
-    Rcpp::traits::input_parameter< std::string >::type tag(tagSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_target_conservation(x, features_data, dist_features_data, target_col_sexp, tol, block_name, tag));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_add_target_mixed_total
-Rcpp::List rcpp_add_target_mixed_total(SEXP x, Rcpp::DataFrame features_data, Rcpp::DataFrame dist_features_data, Rcpp::DataFrame dist_benefit_data, Rcpp::DataFrame dist_actions_data, SEXP target_col_sexp, double tol);
-RcppExport SEXP _mosap_rcpp_add_target_mixed_total(SEXP xSEXP, SEXP features_dataSEXP, SEXP dist_features_dataSEXP, SEXP dist_benefit_dataSEXP, SEXP dist_actions_dataSEXP, SEXP target_col_sexpSEXP, SEXP tolSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type features_data(features_dataSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_features_data(dist_features_dataSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_benefit_data(dist_benefit_dataSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type target_col_sexp(target_col_sexpSEXP);
-    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_target_mixed_total(x, features_data, dist_features_data, dist_benefit_data, dist_actions_data, target_col_sexp, tol));
-    return rcpp_result_gen;
-END_RCPP
-}
 // rcpp_add_target_recovery
 Rcpp::List rcpp_add_target_recovery(SEXP x, Rcpp::DataFrame features_data, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_benefit_data, SEXP target_col_sexp, double tol);
 RcppExport SEXP _mosap_rcpp_add_target_recovery(SEXP xSEXP, SEXP features_dataSEXP, SEXP dist_actions_dataSEXP, SEXP dist_benefit_dataSEXP, SEXP target_col_sexpSEXP, SEXP tolSEXP) {
@@ -436,15 +402,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_reset_objective
-Rcpp::List rcpp_reset_objective(SEXP x, std::string modelsense, bool clear_blocks);
-RcppExport SEXP _mosap_rcpp_reset_objective(SEXP xSEXP, SEXP modelsenseSEXP, SEXP clear_blocksSEXP) {
+Rcpp::List rcpp_reset_objective(SEXP x, std::string modelsense);
+RcppExport SEXP _mosap_rcpp_reset_objective(SEXP xSEXP, SEXP modelsenseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
     Rcpp::traits::input_parameter< std::string >::type modelsense(modelsenseSEXP);
-    Rcpp::traits::input_parameter< bool >::type clear_blocks(clear_blocksSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_reset_objective(x, modelsense, clear_blocks));
+    rcpp_result_gen = Rcpp::wrap(rcpp_reset_objective(x, modelsense));
     return rcpp_result_gen;
 END_RCPP
 }

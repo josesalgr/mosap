@@ -48,14 +48,10 @@
 #' case, each unordered pair is typically stored once, usually with
 #' \eqn{i < j}, unless self-edges are explicitly allowed.
 #'
-#' If \code{symmetric = TRUE} is used in \code{\link{add_spatial_relations}},
-#' an undirected relation can be expanded into a directed representation by
-#' duplicating off-diagonal edges in both directions.
-#'
 #' \strong{Boundary relations and diagonal terms}
 #'
 #' The function \code{\link{add_spatial_boundary}} supports boundary-length
-#' relations derived either from a boundary table or from \code{sf} polygons.
+#' relations derived either from a boundary table or from polygon geometry.
 #'
 #' If \code{include_self = TRUE}, diagonal entries \eqn{(i,i)} are added to
 #' represent exposed boundary. These diagonal weights are intended for
@@ -109,8 +105,8 @@ NULL
 #' Most users will typically prefer one of the convenience constructors such as
 #' \code{\link{add_spatial_boundary}}, \code{\link{add_spatial_rook}},
 #' \code{\link{add_spatial_queen}}, \code{\link{add_spatial_knn}}, or
-#' \code{\link{add_spatial_distance}}. This function is the core low-level entry
-#' point for adding an already computed relation.
+#' \code{\link{add_spatial_distance}}. This function is the advanced low-level
+#' entry point for adding an already computed relation.
 #'
 #' @details
 #' The input relation may be provided either in terms of external planning-unit
@@ -128,24 +124,17 @@ NULL
 #' Let \eqn{E} denote the set of rows supplied in \code{relations}. If
 #' \code{directed = FALSE}, each edge is treated as undirected, so pairs
 #' \eqn{(i,j)} and \eqn{(j,i)} are interpreted as the same edge. In that case,
-#' duplicated undirected edges are collapsed according to
-#' \code{duplicate_agg}.
+#' duplicated undirected edges are collapsed automatically using the maximum
+#' weight observed for each unordered pair.
 #'
 #' If \code{directed = TRUE}, edges are preserved as ordered pairs, so
 #' \eqn{(i,j)} and \eqn{(j,i)} are distinct unless the user provides both.
-#'
-#' If \code{symmetric = TRUE} and \code{directed = FALSE}, the final undirected
-#' relation is expanded into a directed representation by duplicating each
-#' off-diagonal edge:
-#' \deqn{
-#' (i,j,\omega_{ij}) \mapsto (i,j,\omega_{ij}), (j,i,\omega_{ij}).
-#' }
 #'
 #' Self-edges \eqn{(i,i)} are permitted only if \code{allow_self = TRUE}.
 #'
 #' The final relation is stored in \code{x$data$spatial_relations[[name]]}.
 #'
-#' @param x A \code{Problem} object created with \code{\link{inputData}}.
+#' @param x A \code{Problem} object created with \code{\link{input_data}}.
 #' @param relations A \code{data.frame} describing relation edges. It must
 #'   contain either:
 #'   \itemize{
@@ -163,12 +152,6 @@ NULL
 #'   ordered pairs.
 #' @param allow_self Logical. If \code{TRUE}, allow self-edges
 #'   \eqn{(i,i)}. Default is \code{FALSE}.
-#' @param duplicate_agg Character string specifying how to aggregate duplicated
-#'   undirected edges when \code{directed = FALSE}. Must be one of
-#'   \code{"sum"}, \code{"max"}, \code{"min"}, or \code{"mean"}.
-#' @param symmetric Logical. If \code{TRUE}, expand an undirected relation into
-#'   a directed representation by duplicating off-diagonal edges in both
-#'   directions. Default is \code{FALSE}.
 #'
 #' @return An updated \code{Problem} object with the relation stored in
 #'   \code{x$data$spatial_relations[[name]]}.
@@ -178,7 +161,7 @@ NULL
 #' features <- data.frame(id = "sp1")
 #' dist_features <- data.frame(pu = 1:3, feature = "sp1", amount = c(1, 1, 1))
 #'
-#' p <- inputData(
+#' p <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -208,11 +191,9 @@ NULL
 #' @export
 add_spatial_relations <- function(x,
                                   relations,
-                                  name = "default",
+                                  name,
                                   directed = FALSE,
-                                  allow_self = FALSE,
-                                  duplicate_agg = c("sum", "max", "min", "mean"),
-                                  symmetric = FALSE) {
+                                  allow_self = FALSE) {
 
   stopifnot(inherits(x, "Problem"))
 
@@ -220,7 +201,9 @@ add_spatial_relations <- function(x,
   x <- .pa_ensure_pu_index(x)
   n_pu <- nrow(x$data$pu)
 
-  duplicate_agg <- match.arg(duplicate_agg)
+  if (!is.character(name) || length(name) != 1 || is.na(name) || !nzchar(name)) {
+    stop("name must be a non-empty character string.", call. = FALSE)
+  }
 
   stopifnot(inherits(relations, "data.frame"), nrow(relations) > 0)
   rel <- relations
@@ -245,18 +228,11 @@ add_spatial_relations <- function(x,
   keep_cols <- c("internal_pu1","internal_pu2","weight","pu1","pu2","distance","source")
   rel <- rel[, intersect(keep_cols, names(rel)), drop = FALSE]
 
-  .pa_swap_edges_noself <- function(df) {
-    df2 <- df
-    has_pu <- all(c("pu1","pu2") %in% names(df2))
-    tmp <- df2$internal_pu1
-    df2$internal_pu1 <- df2$internal_pu2
-    df2$internal_pu2 <- tmp
-    if (has_pu) {
-      tmp <- df2$pu1
-      df2$pu1 <- df2$pu2
-      df2$pu2 <- tmp
-    }
-    df2
+  if (!all(c("internal_pu1","internal_pu2","weight") %in% names(rel))) {
+    stop(
+      "relations must contain either (pu1, pu2, weight) or (internal_pu1, internal_pu2, weight).",
+      call. = FALSE
+    )
   }
 
   .pa_rbind_samecols <- function(a, b) {
@@ -269,23 +245,52 @@ add_spatial_relations <- function(x,
     base::rbind(a2, b2)
   }
 
-  if (!directed) {
+  rel$internal_pu1 <- as.integer(rel$internal_pu1)
+  rel$internal_pu2 <- as.integer(rel$internal_pu2)
+  rel$weight <- as.numeric(rel$weight)
 
-    self_edges <- NULL
-    if (isTRUE(allow_self)) {
-      self <- rel$internal_pu1 == rel$internal_pu2
-      if (any(self, na.rm = TRUE)) {
-        self_edges <- rel[self, , drop = FALSE]
-        rel <- rel[!self, , drop = FALSE]
+  if (any(rel$internal_pu1 < 1L | rel$internal_pu1 > n_pu)) stop("internal_pu1 out of range.", call. = FALSE)
+  if (any(rel$internal_pu2 < 1L | rel$internal_pu2 > n_pu)) stop("internal_pu2 out of range.", call. = FALSE)
+  if (!allow_self && any(rel$internal_pu1 == rel$internal_pu2)) stop("Self-edges are not allowed.", call. = FALSE)
+  #if (any(!is.finite(rel$weight)) || any(rel$weight < 0)) stop("weight must be finite and >= 0.", call. = FALSE)
+
+  if (!directed) {
+    self_edges <- rel[rel$internal_pu1 == rel$internal_pu2, , drop = FALSE]
+    off_edges  <- rel[rel$internal_pu1 != rel$internal_pu2, , drop = FALSE]
+
+    if (nrow(off_edges) > 0) {
+      a <- pmin(off_edges$internal_pu1, off_edges$internal_pu2)
+      b <- pmax(off_edges$internal_pu1, off_edges$internal_pu2)
+      off_edges$internal_pu1 <- a
+      off_edges$internal_pu2 <- b
+
+      key <- paste(off_edges$internal_pu1, off_edges$internal_pu2, sep = "_")
+      wmax <- tapply(off_edges$weight, key, max)
+
+      parts <- strsplit(names(wmax), "_", fixed = TRUE)
+      i1 <- as.integer(vapply(parts, `[`, "", 1))
+      j1 <- as.integer(vapply(parts, `[`, "", 2))
+
+      rel_u <- data.frame(
+        internal_pu1 = i1,
+        internal_pu2 = j1,
+        weight = as.numeric(wmax),
+        stringsAsFactors = FALSE
+      )
+
+      extra_cols <- intersect(names(off_edges), c("pu1","pu2","distance","source"))
+      if (length(extra_cols) > 0) {
+        rep_idx <- match(names(wmax), key)
+        extras <- off_edges[rep_idx, extra_cols, drop = FALSE]
+        rel_u <- cbind(rel_u, extras)
       }
+    } else {
+      rel_u <- off_edges
     }
 
-    rel_u <- .pa_validate_relation(rel, n_pu = n_pu, allow_self = FALSE, dup_agg = duplicate_agg)
-
-    if (!is.null(self_edges)) {
+    if (nrow(self_edges) > 0) {
       key <- as.character(self_edges$internal_pu1)
-      agg_fun <- switch(duplicate_agg, sum=sum, max=max, min=min, mean=mean)
-      wself <- tapply(self_edges$weight, key, agg_fun)
+      wself <- tapply(self_edges$weight, key, max)
 
       self_fix <- data.frame(
         internal_pu1 = as.integer(names(wself)),
@@ -294,7 +299,6 @@ add_spatial_relations <- function(x,
         stringsAsFactors = FALSE
       )
 
-      # si hay columnas extra, recupera la primera ocurrencia
       extra_cols <- intersect(names(self_edges), c("pu1","pu2","distance","source"))
       if (length(extra_cols) > 0) {
         rep_idx <- match(names(wself), as.character(self_edges$internal_pu1))
@@ -302,27 +306,10 @@ add_spatial_relations <- function(x,
         self_fix <- cbind(self_fix, extras)
       }
 
-      rel_u <- .pa_rbind_samecols(rel_u, self_fix)
-    }
-
-    if (isTRUE(symmetric)) {
-      off <- rel_u$internal_pu1 != rel_u$internal_pu2
-      rel_sw <- .pa_swap_edges_noself(rel_u[off, , drop = FALSE])
-      rel <- .pa_rbind_samecols(rel_u, rel_sw)
-      directed <- TRUE
+      rel <- if (nrow(rel_u) == 0) self_fix else .pa_rbind_samecols(rel_u, self_fix)
     } else {
       rel <- rel_u
     }
-
-  } else {
-    rel$internal_pu1 <- as.integer(rel$internal_pu1)
-    rel$internal_pu2 <- as.integer(rel$internal_pu2)
-    rel$weight <- as.numeric(rel$weight)
-
-    if (any(rel$internal_pu1 < 1L | rel$internal_pu1 > n_pu)) stop("internal_pu1 out of range.", call. = FALSE)
-    if (any(rel$internal_pu2 < 1L | rel$internal_pu2 > n_pu)) stop("internal_pu2 out of range.", call. = FALSE)
-    if (!allow_self && any(rel$internal_pu1 == rel$internal_pu2)) stop("Self-edges are not allowed.", call. = FALSE)
-    if (any(!is.finite(rel$weight)) || any(rel$weight < 0)) stop("weight must be finite and >= 0.", call. = FALSE)
   }
 
   rel$relation_name <- name
@@ -342,7 +329,6 @@ add_spatial_relations <- function(x,
   out
 }
 
-
 #' @title Add spatial boundary-length relations
 #'
 #' @description
@@ -360,7 +346,7 @@ add_spatial_relations <- function(x,
 #'   \code{bound.dat}.
 #'
 #'   \item \strong{Geometry mode.} If \code{boundary = NULL}, boundary lengths
-#'   are derived from polygon geometry using \code{pu_sf} or
+#'   are derived from polygon geometry using \code{geometry} or
 #'   \code{x$data$pu_sf}.
 #' }
 #'
@@ -424,7 +410,7 @@ add_spatial_relations <- function(x,
 #'     \item \code{(id1, id2, boundary)}, or
 #'     \item \code{(pu1, pu2, weight)}.
 #'   }
-#' @param pu_sf Optional \code{sf} object with planning-unit polygons and an
+#' @param geometry Optional \code{sf} object with planning-unit polygons and an
 #'   \code{id} column. If \code{NULL}, \code{x$data$pu_sf} is used.
 #' @param name Character string giving the key under which the relation is
 #'   stored.
@@ -433,8 +419,6 @@ add_spatial_relations <- function(x,
 #'   from \code{"boundary"} or \code{"weight"}.
 #' @param weight_multiplier Positive numeric scalar applied to all boundary
 #'   weights.
-#' @param progress Logical. If \code{TRUE}, print simple progress messages in
-#'   geometry mode.
 #' @param include_self Logical. If \code{TRUE}, include diagonal entries
 #'   representing exposed boundary.
 #' @param edge_factor Numeric scalar greater than or equal to zero. Multiplier
@@ -455,7 +439,7 @@ add_spatial_relations <- function(x,
 #' # From sf polygons
 #' p <- add_spatial_boundary(
 #'   x = p,
-#'   pu_sf = pu_sf,
+#'   geometry = pu_sf,
 #'   include_self = TRUE,
 #'   edge_factor = 1
 #' )
@@ -469,11 +453,10 @@ add_spatial_relations <- function(x,
 #' @export
 add_spatial_boundary <- function(x,
                                  boundary = NULL,
-                                 pu_sf = NULL,
+                                 geometry = NULL,
                                  name = "boundary",
                                  weight_col = NULL,
                                  weight_multiplier = 1,
-                                 progress = FALSE,
                                  include_self = TRUE,
                                  edge_factor = 1) {
 
@@ -533,7 +516,6 @@ add_spatial_boundary <- function(x,
 
     n_pu <- nrow(x$data$pu)
 
-    # split diagonal / off-diagonal
     diag_rows <- rel0$internal_pu1 == rel0$internal_pu2
 
     total <- numeric(n_pu)
@@ -569,7 +551,6 @@ add_spatial_boundary <- function(x,
       off_u <- off
     }
 
-    # incident shared boundary by planning unit
     incident <- numeric(n_pu)
     if (nrow(off_u) > 0) {
       incident <- .sum_incident_by_pu(
@@ -580,7 +561,6 @@ add_spatial_boundary <- function(x,
       )
     }
 
-    # If self terms are not requested, return only off-diagonal relations
     if (!isTRUE(include_self)) {
       if (nrow(off_u) == 0) {
         stop("Boundary table has no off-diagonal edges and include_self=FALSE.", call. = FALSE)
@@ -591,28 +571,10 @@ add_spatial_boundary <- function(x,
       return(add_spatial_relations(
         x, rel, name = name,
         directed = FALSE,
-        allow_self = FALSE,
-        duplicate_agg = "max",
-        symmetric = FALSE
+        allow_self = FALSE
       ))
     }
 
-    # ------------------------------------------------------------
-    # Algebraic self-diagonal construction:
-    #
-    # - if there is useful positive diagonal information, interpret it as
-    #   total boundary and build:
-    #       diag_eff = edge_factor * (total - incident)
-    #
-    # - if diagonal is absent or all zeros, build:
-    #       diag_eff = -incident
-    #
-    # so that the current objective:
-    #   sum_i (incident_i + diag_i) w_i - 2 sum_ij s_ij y_ij
-    # collapses algebraically to:
-    #   -2 sum_ij s_ij y_ij
-    # in the no-diagonal / zero-diagonal case.
-    # ------------------------------------------------------------
     has_useful_diagonal <- any(total > 0)
 
     if (has_useful_diagonal) {
@@ -638,9 +600,7 @@ add_spatial_boundary <- function(x,
     return(add_spatial_relations(
       x, rel, name = name,
       directed = FALSE,
-      allow_self = TRUE,
-      duplicate_agg = "max",
-      symmetric = FALSE
+      allow_self = TRUE
     ))
   }
 
@@ -651,30 +611,26 @@ add_spatial_boundary <- function(x,
     stop("add_spatial_boundary(boundary=NULL) requires the 'sf' package.", call. = FALSE)
   }
 
-  if (is.null(pu_sf)) pu_sf <- x$data$pu_sf
-  if (is.null(pu_sf)) stop("boundary is NULL and pu_sf is missing.", call. = FALSE)
-  if (!inherits(pu_sf, "sf")) stop("pu_sf must be an sf object.", call. = FALSE)
-  if (!("id" %in% names(pu_sf))) stop("pu_sf must contain an 'id' column.", call. = FALSE)
+  if (is.null(geometry)) geometry <- x$data$pu_sf
+  if (is.null(geometry)) stop("boundary is NULL and geometry is missing.", call. = FALSE)
+  if (!inherits(geometry, "sf")) stop("geometry must be an sf object.", call. = FALSE)
+  if (!("id" %in% names(geometry))) stop("geometry must contain an 'id' column.", call. = FALSE)
 
-  pu_sf$id <- as.integer(pu_sf$id)
-  ord <- match(x$data$pu$id, pu_sf$id)
-  if (anyNA(ord)) stop("pu_sf$id does not match x$data$pu$id.", call. = FALSE)
-  pu_sf <- pu_sf[ord, , drop = FALSE]
+  geometry$id <- as.integer(geometry$id)
+  ord <- match(x$data$pu$id, geometry$id)
+  if (anyNA(ord)) stop("geometry$id does not match x$data$pu$id.", call. = FALSE)
+  geometry <- geometry[ord, , drop = FALSE]
 
-  geom <- sf::st_make_valid(sf::st_geometry(pu_sf))
-  pu_sf <- sf::st_set_geometry(pu_sf, geom)
-  geom <- sf::st_geometry(pu_sf)
+  geom <- sf::st_make_valid(sf::st_geometry(geometry))
+  geometry <- sf::st_set_geometry(geometry, geom)
+  geom <- sf::st_geometry(geometry)
 
-  nb <- sf::st_intersects(pu_sf, pu_sf, sparse = TRUE)
+  nb <- sf::st_intersects(geometry, geometry, sparse = TRUE)
 
   pu1 <- integer(0)
   pu2 <- integer(0)
   w <- numeric(0)
   n <- length(nb)
-
-  if (isTRUE(progress)) {
-    message("Computing shared boundary lengths for ", n, " planning units...")
-  }
 
   for (i in seq_len(n)) {
     js <- nb[[i]]
@@ -682,16 +638,29 @@ add_spatial_boundary <- function(x,
     if (!length(js)) next
 
     for (j in js) {
-      inter <- sf::st_intersection(geom[i], geom[j])
+      inter <- suppressWarnings(sf::st_intersection(geom[i], geom[j]))
       if (length(inter) == 0) next
 
-      inter_line <- suppressWarnings(sf::st_cast(inter, "MULTILINESTRING"))
+      gtype <- as.character(sf::st_geometry_type(inter, by_geometry = TRUE))
+
+      if (all(gtype %in% c("LINESTRING", "MULTILINESTRING"))) {
+        inter_line <- inter
+      } else if (any(gtype == "GEOMETRYCOLLECTION")) {
+        inter_line <- suppressWarnings(
+          sf::st_collection_extract(inter, "LINESTRING")
+        )
+        if (length(inter_line) == 0) next
+      } else {
+        next
+      }
+
+      inter_line <- suppressWarnings(sf::st_cast(inter_line, "MULTILINESTRING"))
       len <- suppressWarnings(sf::st_length(inter_line))
       len <- sum(as.numeric(len), na.rm = TRUE)
 
       if (is.finite(len) && len > 0) {
-        pu1 <- c(pu1, pu_sf$id[i])
-        pu2 <- c(pu2, pu_sf$id[j])
+        pu1 <- c(pu1, geometry$id[i])
+        pu2 <- c(pu2, geometry$id[j])
         w   <- c(w, len)
       }
     }
@@ -715,19 +684,17 @@ add_spatial_boundary <- function(x,
     return(add_spatial_relations(
       x, rel_off, name = name,
       directed = FALSE,
-      allow_self = FALSE,
-      duplicate_agg = "max",
-      symmetric = FALSE
+      allow_self = FALSE
     ))
   }
 
-  total <- as.numeric(sf::st_length(sf::st_boundary(sf::st_geometry(pu_sf))))
+  total <- as.numeric(sf::st_length(sf::st_boundary(sf::st_geometry(geometry))))
   total <- round(total, 6) * weight_multiplier
 
-  incident <- numeric(nrow(pu_sf))
+  incident <- numeric(nrow(geometry))
   if (nrow(rel_off) > 0) {
-    idx_map <- seq_len(nrow(pu_sf))
-    names(idx_map) <- as.character(pu_sf$id)
+    idx_map <- seq_len(nrow(geometry))
+    names(idx_map) <- as.character(geometry$id)
 
     i_int <- idx_map[as.character(rel_off$pu1)]
     j_int <- idx_map[as.character(rel_off$pu2)]
@@ -736,7 +703,7 @@ add_spatial_boundary <- function(x,
       i = i_int,
       j = j_int,
       w = rel_off$weight,
-      n_pu = nrow(pu_sf)
+      n_pu = nrow(geometry)
     )
   }
 
@@ -751,8 +718,8 @@ add_spatial_boundary <- function(x,
   }
 
   rel_self <- data.frame(
-    pu1 = pu_sf$id,
-    pu2 = pu_sf$id,
+    pu1 = geometry$id,
+    pu2 = geometry$id,
     weight = as.numeric(diag_eff),
     source = diag_source,
     stringsAsFactors = FALSE
@@ -763,12 +730,9 @@ add_spatial_boundary <- function(x,
   add_spatial_relations(
     x, rel, name = name,
     directed = FALSE,
-    symmetric = FALSE,
-    allow_self = TRUE,
-    duplicate_agg = "max"
+    allow_self = TRUE
   )
 }
-
 
 #' @title Add rook adjacency from polygons
 #'
@@ -794,9 +758,9 @@ add_spatial_boundary <- function(x,
 #' The resulting relation is stored as an undirected spatial relation.
 #'
 #' @param x A \code{Problem} object created with
-#'   \code{\link{inputData}} or another object containing aligned
+#'   \code{\link{input_data}} or another object containing aligned
 #'   planning-unit polygons.
-#' @param pu_sf Optional \code{sf} object with planning-unit polygons and an
+#' @param geometry Optional \code{sf} object with planning-unit polygons and an
 #'   \code{id} column. If \code{NULL}, \code{x$data$pu_sf} is used.
 #' @param name Character string giving the key under which the relation is
 #'   stored.
@@ -820,8 +784,8 @@ add_spatial_boundary <- function(x,
 #'
 #' @export
 add_spatial_rook <- function(x,
-                             pu_sf = NULL,
-                             name = "default",
+                             geometry = NULL,
+                             name = "rook",
                              weight = 1) {
 
   stopifnot(inherits(x, "Problem"))
@@ -830,21 +794,19 @@ add_spatial_rook <- function(x,
   x <- .pa_ensure_pu_index(x)
   if (!.pa_has_sf()) stop("add_spatial_rook requires the 'sf' package.", call. = FALSE)
 
-  pu_sf <- .pa_get_pu_sf_aligned(x, pu_sf = pu_sf, arg_name = "pu_sf")
+  geometry <- .pa_get_pu_sf_aligned(x, pu_sf = geometry, arg_name = "geometry")
   weight <- as.numeric(weight)[1]
   if (!is.finite(weight) || weight < 0) stop("weight must be finite and >= 0.", call. = FALSE)
 
-  # Rook = shared edge (DE-9IM)
-  nb <- sf::st_relate(pu_sf, pu_sf, pattern = "F***1****", sparse = TRUE)
+  nb <- sf::st_relate(geometry, geometry, pattern = "F***1****", sparse = TRUE)
 
   edges <- vector("list", length(nb))
   for (i in seq_along(nb)) {
     js <- nb[[i]]
-    #js <- js[js > i]  # upper triangle to avoid duplicates
     if (!length(js)) next
     edges[[i]] <- data.frame(
-      pu1 = pu_sf$id[i],
-      pu2 = pu_sf$id[js],
+      pu1 = geometry$id[i],
+      pu2 = geometry$id[js],
       weight = weight,
       source = "rook_sf",
       stringsAsFactors = FALSE
@@ -856,8 +818,7 @@ add_spatial_rook <- function(x,
 
   add_spatial_relations(
     x, rel, name = name,
-    directed = FALSE, allow_self = FALSE,
-    duplicate_agg = "max"
+    directed = FALSE, allow_self = FALSE
   )
 }
 
@@ -888,9 +849,9 @@ add_spatial_rook <- function(x,
 #' The resulting relation is stored as an undirected spatial relation.
 #'
 #' @param x A \code{Problem} object created with
-#'   \code{\link{inputData}} or another object containing aligned
+#'   \code{\link{input_data}} or another object containing aligned
 #'   planning-unit polygons.
-#' @param pu_sf Optional \code{sf} object with planning-unit polygons and an
+#' @param geometry Optional \code{sf} object with planning-unit polygons and an
 #'   \code{id} column. If \code{NULL}, \code{x$data$pu_sf} is used.
 #' @param name Character string giving the key under which the relation is
 #'   stored.
@@ -914,8 +875,8 @@ add_spatial_rook <- function(x,
 #'
 #' @export
 add_spatial_queen <- function(x,
-                              pu_sf = NULL,
-                              name = "default",
+                              geometry = NULL,
+                              name = "queen",
                               weight = 1) {
 
   stopifnot(inherits(x, "Problem"))
@@ -924,20 +885,20 @@ add_spatial_queen <- function(x,
   x <- .pa_ensure_pu_index(x)
   if (!.pa_has_sf()) stop("add_spatial_queen requires the 'sf' package.", call. = FALSE)
 
-  pu_sf <- .pa_get_pu_sf_aligned(x, pu_sf = pu_sf, arg_name = "pu_sf")
+  geometry <- .pa_get_pu_sf_aligned(x, pu_sf = geometry, arg_name = "geometry")
   weight <- as.numeric(weight)[1]
   if (!is.finite(weight) || weight < 0) stop("weight must be finite and >= 0.", call. = FALSE)
 
-  nb <- sf::st_touches(pu_sf, pu_sf, sparse = TRUE)
+  nb <- sf::st_touches(geometry, geometry, sparse = TRUE)
 
   edges <- vector("list", length(nb))
   for (i in seq_along(nb)) {
     js <- nb[[i]]
-    js <- js[js > i]  # upper triangle
+    js <- js[js > i]
     if (!length(js)) next
     edges[[i]] <- data.frame(
-      pu1 = pu_sf$id[i],
-      pu2 = pu_sf$id[js],
+      pu1 = geometry$id[i],
+      pu2 = geometry$id[js],
       weight = weight,
       source = "queen_sf",
       stringsAsFactors = FALSE
@@ -949,11 +910,9 @@ add_spatial_queen <- function(x,
 
   add_spatial_relations(
     x, rel, name = name,
-    directed = FALSE, allow_self = FALSE,
-    duplicate_agg = "max"
+    directed = FALSE, allow_self = FALSE
   )
 }
-
 
 #' @title Add k-nearest-neighbours spatial relations
 #'
@@ -973,7 +932,7 @@ add_spatial_queen <- function(x,
 #' \eqn{j}, then the k-nearest-neighbours relation is constructed by adding an
 #' edge from \eqn{i} to each of its \code{k} nearest neighbours.
 #'
-#' Edge weights are then assigned according to \code{weight_fn}:
+#' Edge weights are then assigned according to \code{weight_mode}:
 #' \itemize{
 #'   \item \code{"constant"}:
 #'   \deqn{\omega_{ij} = 1,}
@@ -982,8 +941,8 @@ add_spatial_queen <- function(x,
 #'   \item \code{"inverse_sq"}:
 #'   \deqn{\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},}
 #' }
-#' where \eqn{\varepsilon = \code{eps}} is a small constant to avoid division
-#' by zero.
+#' where \eqn{\varepsilon = \code{distance_eps}} is a small constant to avoid
+#' division by zero.
 #'
 #' The raw k-nearest-neighbours structure is directional by construction, but
 #' the stored relation is registered as undirected by default through
@@ -993,7 +952,7 @@ add_spatial_queen <- function(x,
 #' If the \pkg{RANN} package is available, it is used for efficient nearest
 #' neighbour search. Otherwise, a full distance matrix is computed.
 #'
-#' @param x A \code{Problem} object created with \code{\link{inputData}}.
+#' @param x A \code{Problem} object created with \code{\link{input_data}}.
 #' @param coords Optional coordinates specification. This may be:
 #'   \itemize{
 #'     \item a \code{data.frame(id, x, y)}, or
@@ -1006,11 +965,11 @@ add_spatial_queen <- function(x,
 #'   at least 1 and strictly less than the number of planning units.
 #' @param name Character string giving the key under which the relation is
 #'   stored.
-#' @param weight_fn Character string indicating how distance is converted to
+#' @param weight_mode Character string indicating how distance is converted to
 #'   weight. Must be one of \code{"constant"}, \code{"inverse"}, or
 #'   \code{"inverse_sq"}.
-#' @param eps Small positive numeric constant used to avoid division by zero in
-#'   inverse-distance weighting.
+#' @param distance_eps Small positive numeric constant used to avoid division by
+#'   zero in inverse-distance weighting.
 #'
 #' @return An updated \code{Problem} object.
 #'
@@ -1020,7 +979,7 @@ add_spatial_queen <- function(x,
 #'   x = p,
 #'   k = 8,
 #'   name = "knn8",
-#'   weight_fn = "inverse"
+#'   weight_mode = "inverse"
 #' )
 #' }
 #'
@@ -1032,15 +991,15 @@ add_spatial_queen <- function(x,
 add_spatial_knn <- function(x,
                             coords = NULL,
                             k = 8,
-                            name = "default",
-                            weight_fn = c("constant", "inverse", "inverse_sq"),
-                            eps = 1e-9) {
+                            name = "knn",
+                            weight_mode = c("constant", "inverse", "inverse_sq"),
+                            distance_eps = 1e-9) {
 
   stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   x <- .pa_ensure_pu_index(x)
-  weight_fn <- match.arg(weight_fn)
+  weight_mode <- match.arg(weight_mode)
   k <- as.integer(k)
   if (k < 1) stop("k must be >= 1.", call. = FALSE)
 
@@ -1052,29 +1011,26 @@ add_spatial_knn <- function(x,
   n <- nrow(X)
   if (k >= n) stop("k must be < number of PUs.", call. = FALSE)
 
-  # Find neighbours
   if (requireNamespace("RANN", quietly = TRUE)) {
-    nn <- RANN::nn2(X, k = k + 1) # includes self
+    nn <- RANN::nn2(X, k = k + 1)
     idx_mat <- nn$nn.idx[, -1, drop = FALSE]
     dist_mat <- nn$nn.dists[, -1, drop = FALSE]
   } else {
-    # fallback: full distance (OK for small n)
     D <- as.matrix(stats::dist(X))
     diag(D) <- Inf
     idx_mat <- t(apply(D, 1, function(d) order(d)[seq_len(k)]))
     dist_mat <- matrix(D[cbind(rep(seq_len(n), each = k), as.vector(t(idx_mat)))], nrow = n, byrow = TRUE)
   }
 
-  # Convert to edges
   pu1 <- rep(C$id, each = k)
   pu2 <- C$id[as.vector(t(idx_mat))]
   dist <- as.vector(t(dist_mat))
 
   w <- switch(
-    weight_fn,
+    weight_mode,
     constant = rep(1, length(dist)),
-    inverse = 1 / pmax(dist, eps),
-    inverse_sq = 1 / pmax(dist, eps)^2
+    inverse = 1 / pmax(dist, distance_eps),
+    inverse_sq = 1 / pmax(dist, distance_eps)^2
   )
 
   rel <- data.frame(
@@ -1082,11 +1038,11 @@ add_spatial_knn <- function(x,
     pu2 = as.integer(pu2),
     weight = as.numeric(w),
     distance = as.numeric(dist),
-    source = paste0("knn_", weight_fn),
+    source = paste0("knn_", weight_mode),
     stringsAsFactors = FALSE
   )
 
-  add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE, duplicate_agg = "max")
+  add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE)
 }
 
 #' @title Add distance-threshold spatial relations
@@ -1109,7 +1065,7 @@ add_spatial_knn <- function(x,
 #' d_{ij} \le d_{\max}.
 #' }
 #'
-#' Edge weights are assigned according to \code{weight_fn}:
+#' Edge weights are assigned according to \code{weight_mode}:
 #' \itemize{
 #'   \item \code{"constant"}:
 #'   \deqn{\omega_{ij} = 1,}
@@ -1118,7 +1074,7 @@ add_spatial_knn <- function(x,
 #'   \item \code{"inverse_sq"}:
 #'   \deqn{\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},}
 #' }
-#' where \eqn{\varepsilon = \code{eps}} is a small constant.
+#' where \eqn{\varepsilon = \code{distance_eps}} is a small constant.
 #'
 #' The implementation computes an \eqn{O(n^2)} distance matrix and is therefore
 #' best suited to small or moderate numbers of planning units. For large
@@ -1126,17 +1082,18 @@ add_spatial_knn <- function(x,
 #'
 #' The resulting relation is registered as undirected.
 #'
-#' @param x A \code{Problem} object created with \code{\link{inputData}}.
+#' @param x A \code{Problem} object created with \code{\link{input_data}}.
 #' @param coords Optional coordinates specification, following the same rules as
 #'   in \code{\link{add_spatial_knn}}.
-#' @param dmax Positive numeric scalar giving the maximum distance for an edge.
+#' @param max_distance Positive numeric scalar giving the maximum distance for
+#'   an edge.
 #' @param name Character string giving the key under which the relation is
 #'   stored.
-#' @param weight_fn Character string indicating how distance is converted to
+#' @param weight_mode Character string indicating how distance is converted to
 #'   weight. Must be one of \code{"constant"}, \code{"inverse"}, or
 #'   \code{"inverse_sq"}.
-#' @param eps Small positive numeric constant used to avoid division by zero in
-#'   inverse-distance weighting.
+#' @param distance_eps Small positive numeric constant used to avoid division by
+#'   zero in inverse-distance weighting.
 #'
 #' @return An updated \code{Problem} object.
 #'
@@ -1144,9 +1101,9 @@ add_spatial_knn <- function(x,
 #' \dontrun{
 #' p <- add_spatial_distance(
 #'   x = p,
-#'   dmax = 1000,
+#'   max_distance = 1000,
 #'   name = "within_1km",
-#'   weight_fn = "constant"
+#'   weight_mode = "constant"
 #' )
 #' }
 #'
@@ -1157,18 +1114,20 @@ add_spatial_knn <- function(x,
 #' @export
 add_spatial_distance <- function(x,
                                  coords = NULL,
-                                 dmax,
+                                 max_distance,
                                  name = "distance",
-                                 weight_fn = c("constant", "inverse", "inverse_sq"),
-                                 eps = 1e-9) {
+                                 weight_mode = c("constant", "inverse", "inverse_sq"),
+                                 distance_eps = 1e-9) {
 
   stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
   x <- .pa_ensure_pu_index(x)
-  weight_fn <- match.arg(weight_fn)
-  dmax <- as.numeric(dmax)
-  if (!is.finite(dmax) || dmax <= 0) stop("dmax must be a positive finite number.", call. = FALSE)
+  weight_mode <- match.arg(weight_mode)
+  max_distance <- as.numeric(max_distance)
+  if (!is.finite(max_distance) || max_distance <= 0) {
+    stop("max_distance must be a positive finite number.", call. = FALSE)
+  }
 
   C <- .pa_coords_from_input(x, coords = coords)
   C <- C[match(x$data$pu$id, C$id), , drop = FALSE]
@@ -1177,22 +1136,21 @@ add_spatial_distance <- function(x,
   X <- as.matrix(C[, c("x", "y")])
   n <- nrow(X)
 
-  # O(n^2) fallback: OK for small/moderate n
   D <- as.matrix(stats::dist(X))
   diag(D) <- Inf
-  which_edges <- which(D <= dmax, arr.ind = TRUE)
+  which_edges <- which(D <= max_distance, arr.ind = TRUE)
 
-  if (nrow(which_edges) == 0) stop("No edges found under dmax. Try a larger dmax.", call. = FALSE)
+  if (nrow(which_edges) == 0) stop("No edges found under max_distance. Try a larger threshold.", call. = FALSE)
 
   pu1 <- C$id[which_edges[, 1]]
   pu2 <- C$id[which_edges[, 2]]
   dist <- D[which_edges]
 
   w <- switch(
-    weight_fn,
+    weight_mode,
     constant = rep(1, length(dist)),
-    inverse = 1 / pmax(dist, eps),
-    inverse_sq = 1 / pmax(dist, eps)^2
+    inverse = 1 / pmax(dist, distance_eps),
+    inverse_sq = 1 / pmax(dist, distance_eps)^2
   )
 
   rel <- data.frame(
@@ -1200,9 +1158,9 @@ add_spatial_distance <- function(x,
     pu2 = as.integer(pu2),
     weight = as.numeric(w),
     distance = as.numeric(dist),
-    source = paste0("distance_", weight_fn),
+    source = paste0("distance_", weight_mode),
     stringsAsFactors = FALSE
   )
 
-  add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE, duplicate_agg = "max")
+  add_spatial_relations(x, rel, name = name, directed = FALSE, allow_self = FALSE)
 }

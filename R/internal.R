@@ -164,7 +164,7 @@ pproto <- function(`_class` = NULL, `_inherit` = NULL, ...) {
 #' sim_boundary_data)
 #'
 #' ## Create data instance
-#' problem_data <- inputData(
+#' problem_data <- input_data(
 #'   pu = sim_pu_data, features = sim_features_data, dist_features = sim_dist_features_data,
 #'   threats = sim_threats_data, dist_threats = sim_dist_threats_data,
 #'   sensitivity = sim_sensitivity_data, boundary = sim_boundary_data
@@ -351,10 +351,14 @@ available_to_solve <- function(package = ""){
 # -------------------------------------------------------------------------
 # Internal helpers TARGETS
 # -------------------------------------------------------------------------
-.pa_parse_targets <- function(x, targets) {
+.pa_parse_targets <- function(x, targets, features = NULL) {
   feats <- x$data$features
-  if (is.null(feats) || nrow(feats) == 0) stop("x$data$features is missing/empty.", call. = FALSE)
-  if (!("id" %in% names(feats))) stop("x$data$features must contain column 'id'.", call. = FALSE)
+  if (is.null(feats) || nrow(feats) == 0) {
+    stop("x$data$features is missing/empty.", call. = FALSE)
+  }
+  if (!("id" %in% names(feats))) {
+    stop("x$data$features must contain column 'id'.", call. = FALSE)
+  }
 
   feat_ids <- as.numeric(feats$id)
   feat_names <- if ("name" %in% names(feats)) as.character(feats$name) else rep(NA_character_, length(feat_ids))
@@ -366,6 +370,7 @@ available_to_solve <- function(package = ""){
 
   # helper: map a feature identifier (id or name) to numeric id
   .map_feature <- function(v) {
+    if (is.null(v)) return(NULL)
     if (is.factor(v)) v <- as.character(v)
 
     if (is.numeric(v) || is.integer(v)) {
@@ -399,7 +404,7 @@ available_to_solve <- function(package = ""){
           stop(
             "Unknown feature name(s): ", paste0("'", unique(bad), "'", collapse = ", "),
             ". Valid names include: ", paste0("'", head(feat_names, 10), "'", collapse = ", "),
-            if (length(feat_names) > 10) " ...",
+            if (length(feat_names) > 10) " ..." else "",
             call. = FALSE
           )
         }
@@ -409,7 +414,17 @@ available_to_solve <- function(package = ""){
       return(as.numeric(out))
     }
 
-    stop("Unsupported feature identifier type in targets.", call. = FALSE)
+    stop("Unsupported feature identifier type.", call. = FALSE)
+  }
+
+  .resolve_target_features <- function(features) {
+    if (is.null(features)) return(feat_ids)
+    f <- .map_feature(features)
+    if (length(f) == 0) {
+      stop("features resolved to an empty set.", call. = FALSE)
+    }
+    f <- unique(as.numeric(f))
+    f
   }
 
   .finalize_targets <- function(f, t) {
@@ -426,10 +441,19 @@ available_to_solve <- function(package = ""){
     dt
   }
 
+  selected_features <- .resolve_target_features(features)
+
   # 1) data.frame(feature, target)
   if (inherits(targets, "data.frame")) {
     if (!all(c("feature", "target") %in% names(targets))) {
       stop("If targets is a data.frame it must contain columns 'feature' and 'target'.", call. = FALSE)
+    }
+    if (!is.null(features)) {
+      warning(
+        "'features' was supplied but targets is a data.frame with an explicit 'feature' column. ",
+        "Ignoring 'features'.",
+        call. = FALSE
+      )
     }
     f <- .map_feature(targets$feature)
     t <- as.numeric(targets$target)
@@ -437,29 +461,46 @@ available_to_solve <- function(package = ""){
     return(.finalize_targets(f, t))
   }
 
-  # 2) matrix (one column) with rownames
+  # 2) matrix (one column) with optional rownames
   if (is.matrix(targets)) {
-    if (ncol(targets) != 1) stop("If targets is a matrix it must have exactly 1 column.", call. = FALSE)
+    if (ncol(targets) != 1) {
+      stop("If targets is a matrix it must have exactly 1 column.", call. = FALSE)
+    }
     t <- as.numeric(targets[, 1])
     if (any(is.na(t))) stop("Targets contain NA values.", call. = FALSE)
 
     rn <- rownames(targets)
     if (!is.null(rn) && length(rn) == length(t)) {
+      if (!is.null(features)) {
+        warning(
+          "'features' was supplied but targets is a matrix with rownames. Ignoring 'features'.",
+          call. = FALSE
+        )
+      }
       f <- .map_feature(rn)
       return(.finalize_targets(f, t))
     }
 
-    if (length(t) != length(feat_ids)) {
-      stop("Matrix targets without rownames must have nrow = number of features.", call. = FALSE)
+    if (length(t) == 1) {
+      return(.finalize_targets(selected_features, rep(t, length(selected_features))))
     }
-    return(.finalize_targets(feat_ids, t))
+
+    if (length(t) != length(selected_features)) {
+      stop(
+        "Matrix targets without rownames must have nrow = 1 or nrow = number of targeted features (",
+        length(selected_features), ").",
+        call. = FALSE
+      )
+    }
+
+    return(.finalize_targets(selected_features, t))
   }
 
   # 3) scalar numeric -> recycle
   if (is.numeric(targets) && length(targets) == 1) {
     t <- as.numeric(targets)
     if (is.na(t)) stop("Target is NA.", call. = FALSE)
-    return(.finalize_targets(feat_ids, rep(t, length(feat_ids))))
+    return(.finalize_targets(selected_features, rep(t, length(selected_features))))
   }
 
   # 4) numeric vector
@@ -469,40 +510,62 @@ available_to_solve <- function(package = ""){
 
     nm <- names(targets)
     if (!is.null(nm) && any(nzchar(nm))) {
+      if (!is.null(features)) {
+        warning(
+          "'features' was supplied but targets is a named vector. Ignoring 'features'.",
+          call. = FALSE
+        )
+      }
       f <- .map_feature(nm)
       return(.finalize_targets(f, t))
     }
 
-    if (length(t) != length(feat_ids)) {
-      stop("Un-named numeric targets must have length equal to number of features.", call. = FALSE)
+    if (length(t) != length(selected_features)) {
+      stop(
+        "Un-named numeric targets must have length 1 or length equal to the number of targeted features (",
+        length(selected_features), ").",
+        call. = FALSE
+      )
     }
-    return(.finalize_targets(feat_ids, t))
+
+    return(.finalize_targets(selected_features, t))
   }
 
   # 5) character
   if (is.character(targets)) {
     if (length(targets) == 1 && grepl("^\\s*[-+]?[0-9]*\\.?[0-9]+\\s*$", targets)) {
       t <- as.numeric(targets)
-      return(.finalize_targets(feat_ids, rep(t, length(feat_ids))))
+      return(.finalize_targets(selected_features, rep(t, length(selected_features))))
     }
 
     if (any(grepl("=", targets, fixed = TRUE))) {
+      if (!is.null(features)) {
+        warning(
+          "'features' was supplied but targets uses 'feature=target' syntax. Ignoring 'features'.",
+          call. = FALSE
+        )
+      }
       parts <- strsplit(targets, "=", fixed = TRUE)
       feat_part <- vapply(parts, `[[`, character(1), 1)
       val_part  <- vapply(parts, `[[`, character(1), 2)
       f <- .map_feature(trimws(feat_part))
       t <- as.numeric(trimws(val_part))
-      if (any(is.na(t))) stop("Could not parse numeric target values from character input.", call. = FALSE)
+      if (any(is.na(t))) {
+        stop("Could not parse numeric target values from character input.", call. = FALSE)
+      }
       return(.finalize_targets(f, t))
     }
 
-    stop("Unsupported character targets format. Use 'feature=target' pairs or a single numeric string.", call. = FALSE)
+    stop(
+      "Unsupported character targets format. Use 'feature=target' pairs or a single numeric string.",
+      call. = FALSE
+    )
   }
 
   stop("Unsupported targets format.", call. = FALSE)
 }
 
-.pa_store_targets <- function(x, targets_df, overwrite = FALSE) {
+.pa_store_targets <- function(x, targets_df) {
   stopifnot(inherits(x, "Problem"))
   stopifnot(inherits(targets_df, "data.frame"))
   stopifnot(all(c("feature", "type", "target_value") %in% names(targets_df)))
@@ -512,13 +575,12 @@ available_to_solve <- function(package = ""){
   targets_df$type <- as.character(targets_df$type)
   targets_df$target_value <- as.numeric(targets_df$target_value)
 
-  # ensure subset column exists
-  if (!("subset" %in% names(targets_df))) {
-    targets_df$subset <- NA_character_
+  # ensure actions column exists
+  if (!("actions" %in% names(targets_df))) {
+    targets_df$actions <- NA_character_
   }
-  targets_df$subset <- as.character(targets_df$subset)
+  targets_df$actions <- as.character(targets_df$actions)
 
-  # valid target types in the new API
   valid_types <- c("actions")
   bad_type <- setdiff(unique(targets_df$type), valid_types)
   if (length(bad_type) > 0) {
@@ -542,30 +604,28 @@ available_to_solve <- function(package = ""){
   old$type <- as.character(old$type)
   old$target_value <- as.numeric(old$target_value)
 
-  if (!("subset" %in% names(old))) {
-    old$subset <- NA_character_
+  # backward compatibility: migrate old subset column if present
+  if (!("actions" %in% names(old))) {
+    if ("subset" %in% names(old)) {
+      old$actions <- as.character(old$subset)
+    } else {
+      old$actions <- NA_character_
+    }
   }
-  old$subset <- as.character(old$subset)
+  old$actions <- as.character(old$actions)
 
-  # key: feature + type + subset
-  key_old <- paste0(old$feature, "||", old$type, "||", old$subset)
-  key_new <- paste0(targets_df$feature, "||", targets_df$type, "||", targets_df$subset)
+  # optional informative warning for repeated keys
+  key_old <- paste0(old$feature, "||", old$type, "||", old$actions)
+  key_new <- paste0(targets_df$feature, "||", targets_df$type, "||", targets_df$actions)
 
   overlap <- intersect(key_old, key_new)
-
   if (length(overlap) > 0) {
-    if (isTRUE(overwrite)) {
-      keep <- !(key_old %in% overlap)
-      old <- old[keep, , drop = FALSE]
-    } else {
-      ex <- overlap[1]
-      warning(
-        "Targets already exist for some (feature, type, subset) combinations ",
-        "(e.g., ", ex, "). Appending additional rows; they will be aggregated at apply time. ",
-        "Use overwrite=TRUE to replace instead.",
-        call. = FALSE
-      )
-    }
+    warning(
+      "Additional targets were added for existing (feature, type, actions) combinations. ",
+      "These target rows remain stored simultaneously and will be handled downstream. ",
+      "Example key: ", overlap[1],
+      call. = FALSE
+    )
   }
 
   x$data$targets <- rbind(old, targets_df)
@@ -740,7 +800,6 @@ available_to_solve <- function(package = ""){
 
 
 .pa_apply_targets_if_present <- function(x,
-                                         allow_multiple_rows_per_feature = TRUE,
                                          zero_tol = 1e-12) {
 
   stopifnot(inherits(x, "Problem"))
@@ -759,13 +818,18 @@ available_to_solve <- function(package = ""){
     stop("x$data$targets is missing required columns: ", paste(miss, collapse = ", "), call. = FALSE)
   }
 
-  if (!("subset" %in% names(t))) {
-    t$subset <- NA_character_
+  # backward compatibility: migrate subset -> actions
+  if (!("actions" %in% names(t))) {
+    if ("subset" %in% names(t)) {
+      t$actions <- as.character(t$subset)
+    } else {
+      t$actions <- NA_character_
+    }
   }
 
   t$feature <- as.integer(t$feature)
   t$type <- as.character(t$type)
-  t$subset <- as.character(t$subset)
+  t$actions <- as.character(t$actions)
   t$target_value <- as.numeric(t$target_value)
 
   bad_type <- setdiff(unique(t$type), c("actions"))
@@ -773,49 +837,63 @@ available_to_solve <- function(package = ""){
     stop("Unknown target types in x$data$targets: ", paste(bad_type, collapse = ", "), call. = FALSE)
   }
 
-  # detect duplicates (feature, type, subset)
-  dup_keys <- duplicated(t[, c("feature", "type", "subset")]) |
-    duplicated(t[, c("feature", "type", "subset")], fromLast = TRUE)
+  # ------------------------------------------------------------------
+  # 1) exact duplicates by (feature, type, actions) are NOT allowed
+  # ------------------------------------------------------------------
+  key_exact <- paste0(
+    t$feature, "||",
+    t$type, "||",
+    ifelse(is.na(t$actions), "", t$actions)
+  )
 
-  if (any(dup_keys)) {
-    if (!isTRUE(allow_multiple_rows_per_feature)) {
-      stop(
-        "Multiple target rows found for the same (feature, type, subset). ",
-        "Set allow_multiple_rows_per_feature=TRUE to aggregate them at apply time.",
-        call. = FALSE
-      )
-    } else {
-      warning(
-        "Multiple target rows found for the same (feature, type, subset). ",
-        "They will be aggregated by SUM before applying.",
-        call. = FALSE
-      )
+  dup_exact <- duplicated(key_exact) | duplicated(key_exact, fromLast = TRUE)
 
-      keep_cols <- intersect(
-        c("target_unit", "target_raw", "basis_total", "label", "created_at"),
-        names(t)
-      )
+  if (any(dup_exact)) {
+    bad <- t[dup_exact, c("feature", "type", "actions", "target_value"), drop = FALSE]
+    ex <- utils::head(
+      paste0(
+        "(feature=", bad$feature,
+        ", type='", bad$type,
+        "', actions='", ifelse(is.na(bad$actions) | !nzchar(bad$actions), "ALL", bad$actions),
+        "', target_value=", bad$target_value, ")"
+      ),
+      8
+    )
 
-      agg_num <- stats::aggregate(
-        target_value ~ feature + type + subset,
-        data = t,
-        FUN = sum
-      )
-
-      if (length(keep_cols) > 0) {
-        meta <- t[!duplicated(t[, c("feature", "type", "subset")]),
-                  c("feature", "type", "subset", keep_cols),
-                  drop = FALSE]
-        t <- merge(agg_num, meta,
-                   by = c("feature", "type", "subset"),
-                   all.x = TRUE, sort = FALSE)
-      } else {
-        t <- agg_num
-      }
-    }
+    stop(
+      "Multiple targets were defined for the same (feature, type, actions) combination.\n",
+      "This is ambiguous and is not allowed.\n",
+      "Examples: ", paste(ex, collapse = ", "),
+      if (nrow(bad) > 8) paste0(" ... (", nrow(bad), " rows)") else "",
+      call. = FALSE
+    )
   }
 
-  # drop near-zero targets
+  # ------------------------------------------------------------------
+  # 2) same (feature, actions) with different type: allowed, but warn
+  # ------------------------------------------------------------------
+  key_feature_actions <- paste0(
+    t$feature, "||",
+    ifelse(is.na(t$actions), "", t$actions)
+  )
+
+  split_fa <- split(t$type, key_feature_actions, drop = TRUE)
+  multi_type_keys <- names(split_fa)[vapply(split_fa, function(z) length(unique(z)) > 1, logical(1))]
+
+  if (length(multi_type_keys) > 0) {
+    ex_keys <- utils::head(multi_type_keys, 8)
+    warning(
+      "Multiple targets were defined for the same (feature, actions) combination with different target types.\n",
+      "They will be applied as separate constraints, and the strongest one may dominate in practice.\n",
+      "Examples: ", paste(ex_keys, collapse = ", "),
+      if (length(multi_type_keys) > 8) paste0(" ... (", length(multi_type_keys), " combinations)") else "",
+      call. = FALSE
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # 3) drop near-zero targets
+  # ------------------------------------------------------------------
   idx_zero <- is.finite(t$target_value) & abs(t$target_value) <= zero_tol
   if (any(idx_zero)) {
     z <- t[idx_zero, , drop = FALSE]
@@ -861,54 +939,54 @@ available_to_solve <- function(package = ""){
     invisible(TRUE)
   }
 
-  .filter_effects_by_subset <- function(de, subset_string) {
-    if (is.na(subset_string) || !nzchar(subset_string)) {
+  .filter_effects_by_actions <- function(de, actions_string) {
+    if (is.na(actions_string) || !nzchar(actions_string)) {
       return(de)
     }
 
-    subset_vals <- strsplit(subset_string, "\\|")[[1]]
-    subset_vals <- unique(subset_vals[nzchar(subset_vals)])
+    actions_vals <- strsplit(actions_string, "\\|")[[1]]
+    actions_vals <- unique(actions_vals[nzchar(actions_vals)])
 
-    matched <- .pa_resolve_action_subset(x, subset_vals)
+    matched <- .pa_resolve_action_subset(x, actions_vals)
     keep_internal <- as.integer(matched$internal_id)
 
     de[de$internal_action %in% keep_internal, , drop = FALSE]
   }
 
-  # split by subset, because each subset becomes a different target block
-  split_key <- ifelse(is.na(t$subset) | !nzchar(t$subset), "__ALL__", t$subset)
-  t_split <- split(t, split_key, drop = TRUE)
+  dbm <- .get_dist_benefit_model_from_effects(x, benefit_col = "benefit")
+  if (is.null(dbm) || nrow(dbm) == 0) {
+    stop("Targets present but no benefit column available in dist_effects.", call. = FALSE)
+  }
 
+  if (!("feature" %in% names(dbm))) {
+    stop("dist_benefit_data must contain a 'feature' column for validation.", call. = FALSE)
+  }
+
+  if (!exists("rcpp_add_target_recovery", mode = "function")) {
+    stop("Missing rcpp_add_target_recovery() in the package.", call. = FALSE)
+  }
+
+  # ------------------------------------------------------------------
+  # 4) Apply each row as a separate constraint
+  # ------------------------------------------------------------------
   n_applied <- 0L
 
-  for (nm in names(t_split)) {
-    tt <- t_split[[nm]]
-    subset_string <- tt$subset[1]
+  for (ii in seq_len(nrow(t))) {
+    tt <- t[ii, , drop = FALSE]
+    actions_string <- tt$actions[1]
 
-    dbm <- .get_dist_benefit_model_from_effects(x, benefit_col = "benefit")
-    if (is.null(dbm) || nrow(dbm) == 0) {
-      stop("Targets present but no benefit column available in dist_effects.", call. = FALSE)
-    }
-
-    dbm_sub <- .filter_effects_by_subset(dbm, subset_string)
+    dbm_sub <- .filter_effects_by_actions(dbm, actions_string)
 
     if (nrow(dbm_sub) == 0) {
-      subset_lab <- if (is.na(subset_string) || !nzchar(subset_string)) "ALL actions" else subset_string
+      actions_lab <- if (is.na(actions_string) || !nzchar(actions_string)) "ALL actions" else actions_string
       stop(
-        "Targets for subset '", subset_lab, "' cannot be applied because no matching effect rows remain after filtering.",
+        "Target for feature ", tt$feature[1], " and actions subset '", actions_lab,
+        "' cannot be applied because no matching effect rows remain after filtering.",
         call. = FALSE
       )
     }
 
-    if (!("feature" %in% names(dbm_sub))) {
-      stop("dist_benefit_data must contain a 'feature' column for validation.", call. = FALSE)
-    }
-
     .check_feature_present_in_df(tt$feature, dbm_sub, "feature", what = "actions")
-
-    if (!exists("rcpp_add_target_recovery", mode = "function")) {
-      stop("Missing rcpp_add_target_recovery() in the package.", call. = FALSE)
-    }
 
     rcpp_add_target_recovery(
       op,
@@ -918,7 +996,7 @@ available_to_solve <- function(package = ""){
       target_col        = "target_actions"
     )
 
-    n_applied <- n_applied + nrow(tt)
+    n_applied <- n_applied + 1L
   }
 
   x$data$model_args$targets_applied <- TRUE
@@ -926,7 +1004,6 @@ available_to_solve <- function(package = ""){
 
   invisible(x)
 }
-
 
 
 # -------------------------------------------------------------------------
@@ -2417,7 +2494,7 @@ available_to_solve <- function(package = ""){
 # -------------------------------------------------------------------------
 # Internal helpers spatial relations
 # -------------------------------------------------------------------------
-.pa_inputData_tabular_impl <- function(pu, features, dist_features, boundary = NULL, ...) {
+.pa_input_data_tabular_impl <- function(pu, features, dist_features, boundary = NULL, ...) {
 
   dots <- list(...)
   `%||%` <- function(a, b) if (!is.null(a)) a else b
@@ -2875,7 +2952,7 @@ available_to_solve <- function(package = ""){
 .pa_ensure_pu_index <- function(x) {
   stopifnot(inherits(x, "Problem"))
   if (is.null(x$data$pu) || !inherits(x$data$pu, "data.frame")) {
-    stop("x$data$pu is missing. Create the problem with inputData()/inputDataSpatial().", call. = FALSE)
+    stop("x$data$pu is missing. Create the problem with input_data().", call. = FALSE)
   }
   if (is.null(x$data$pu$internal_id)) x$data$pu$internal_id <- seq_len(nrow(x$data$pu))
   if (is.null(x$data$pu$id)) {
@@ -2965,7 +3042,7 @@ available_to_solve <- function(package = ""){
   if (is.null(pu_sf)) {
     stop(
       arg_name, " is NULL and x$data$pu_sf is missing.\n",
-      "Provide ", arg_name, " (sf polygons with an 'id' column) or make sure inputData() stored x$data$pu_sf.",
+      "Provide ", arg_name, " (sf polygons with an 'id' column) or make sure input_data() stored x$data$pu_sf.",
       call. = FALSE
     )
   }
@@ -3641,7 +3718,7 @@ NULL
 
 
   # ---- ensure model is built
-  if (is.null(x$data$model_ptr) || !isTRUE(x$data$has_model) || isTRUE(x$data$meta$model_dirty)) {
+  if (is.null(x$data$model_ptr) || isTRUE(x$data$meta$model_dirty)) {
     x <- .pa_build_model(x)
     x$data$meta$model_dirty <- FALSE
   }
@@ -4040,4 +4117,20 @@ NULL
   }
 
   tbl
+}
+
+
+
+.pa_model_is_current <- function(x) {
+  stopifnot(inherits(x, "Problem"))
+
+  has_ptr <- !is.null(x$data$model_ptr)
+  has_list <- !is.null(x$data$model_list) && is.list(x$data$model_list)
+  dirty <- isTRUE(x$data$meta$model_dirty)
+
+  isTRUE(has_ptr && has_list && !dirty)
+}
+
+.pa_compile_problem <- function(x, ...) {
+  .pa_build_model(x)
 }

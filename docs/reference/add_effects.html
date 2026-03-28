@@ -101,11 +101,7 @@ Consequently, after validation and aggregation, a stored row cannot have both
 <span>  effects <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  effect_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"delta"</span>, <span class="st">"after"</span><span class="op">)</span>,</span>
 <span>  effect_aggregation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sum"</span>, <span class="st">"mean"</span><span class="op">)</span>,</span>
-<span>  align_rasters <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  keep_zero <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  drop_locked_out <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  na_to_zero <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"any"</span>, <span class="st">"benefit"</span>, <span class="st">"loss"</span><span class="op">)</span></span>
+<span>  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"any"</span>, <span class="st">"benefit"</span>, <span class="st">"loss"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -114,9 +110,9 @@ Consequently, after validation and aggregation, a stored row cannot have both
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>A <code>Problem</code> object created with <code><a href="inputData.html">inputData</a></code> or
-<code>inputDataSpatial</code>. It must already contain
-<code>x$data$dist_actions</code>; run <code><a href="add_actions.html">add_actions</a></code> first.</p></dd>
+<dd><p>A <code>Problem</code> object created with <code><a href="input_data.html">input_data</a></code>. It
+must already contain <code>x$data$dist_actions</code>; run
+<code><a href="add_actions.html">add_actions</a></code> first.</p></dd>
 
 
 <dt id="arg-effects">effects<a class="anchor" aria-label="anchor" href="#arg-effects"></a></dt>
@@ -141,31 +137,9 @@ converting raster values to planning-unit level. Must be one of
 <code>"sum"</code> or <code>"mean"</code>.</p></dd>
 
 
-<dt id="arg-align-rasters">align_rasters<a class="anchor" aria-label="anchor" href="#arg-align-rasters"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, effect rasters are aligned to
-the planning-unit raster grid before raster extraction or zonal
-aggregation.</p></dd>
-
-
-<dt id="arg-keep-zero">keep_zero<a class="anchor" aria-label="anchor" href="#arg-keep-zero"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, keep rows for which both
-<code>benefit == 0</code> and <code>loss == 0</code>. Default is <code>FALSE</code>.</p></dd>
-
-
-<dt id="arg-drop-locked-out">drop_locked_out<a class="anchor" aria-label="anchor" href="#arg-drop-locked-out"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, rows associated with
-<code>(pu, action)</code> pairs marked as locked out (<code>status == 3</code>) in
-<code>x$data$dist_actions</code> are removed before storing effects.</p></dd>
-
-
-<dt id="arg-na-to-zero">na_to_zero<a class="anchor" aria-label="anchor" href="#arg-na-to-zero"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, missing values are interpreted as
-zero when constructing or validating effects.</p></dd>
-
-
-<dt id="arg-filter">filter<a class="anchor" aria-label="anchor" href="#arg-filter"></a></dt>
-<dd><p>Character string controlling which rows are retained after
-canonicalization. Must be one of:</p><ul><li><p><code>"any"</code>: keep all non-zero rows,</p></li>
+<dt id="arg-component">component<a class="anchor" aria-label="anchor" href="#arg-component"></a></dt>
+<dd><p>Character string controlling which component of the
+canonical effects table is retained. Must be one of:</p><ul><li><p><code>"any"</code>: keep all non-zero rows,</p></li>
 <li><p><code>"benefit"</code>: keep only rows with <code>benefit &gt; 0</code>,</p></li>
 <li><p><code>"loss"</code>: keep only rows with <code>loss &gt; 0</code>.</p></li>
 </ul></dd>
@@ -248,8 +222,7 @@ $$</p>
 <p><strong>Feasibility and locked-out decisions</strong></p>
 <p>Effects are only retained for feasible <code>(pu, action)</code> pairs listed in
 <code>x$data$dist_actions</code>. Thus, <code><a href="add_actions.html">add_actions()</a></code> must be called first.
-If <code>drop_locked_out = TRUE</code> and <code>x$data$dist_actions$status</code>
-exists, rows associated with <code>status == 3</code> are removed before storing
+Pairs marked as locked out (<code>status == 3</code>) are removed before storing
 the final effects table.</p>
 <p><strong>Duplicate rows and semantic validation</strong></p>
 <p>If multiple rows are supplied for the same <code>(pu, action, feature)</code>
@@ -257,10 +230,15 @@ triple, they are aggregated by summing <code>benefit</code> and <code>loss</code
 separately. The resulting triple must still respect the package semantics,
 namely that both components cannot be strictly positive simultaneously.
 Inputs violating this rule are rejected.</p>
-<p><strong>Filtering</strong></p>
-<p>After canonicalization and validation, rows can be filtered using
-<code>filter = "any"</code>, <code>"benefit"</code>, or <code>"loss"</code>. By default,
-zero-effect rows are removed unless <code>keep_zero = TRUE</code>.</p>
+<p><strong>Component selection</strong></p>
+<p>After canonicalization and validation, rows can be restricted to:</p><ul><li><p><code>component = "any"</code>: keep all non-zero effects,</p></li>
+<li><p><code>component = "benefit"</code>: keep only rows with <code>benefit &gt; 0</code>,</p></li>
+<li><p><code>component = "loss"</code>: keep only rows with <code>loss &gt; 0</code>.</p></li>
+</ul><p>Rows with <code>benefit = 0</code> and <code>loss = 0</code> are always removed.</p>
+<p><strong>Raster handling</strong></p>
+<p>When effects are supplied as rasters, they are automatically aligned to the
+planning-unit raster or geometry when needed before extraction or zonal
+aggregation.</p>
 <p><strong>Stored output</strong></p>
 <p>The resulting table <code>x$data$dist_effects</code> contains user-facing ids,
 internal integer ids, and optional labels for actions and features. Metadata
@@ -276,7 +254,9 @@ describing the stored representation and input interpretation are written to
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Minimal problem</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="co"># Minimal problem with actions</span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
 <span class="r-in"><span><span class="va">pu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>,</span></span>
 <span class="r-in"><span>  cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span></span></span>
@@ -293,14 +273,15 @@ describing the stored representation and input interpretation are written to
 <span class="r-in"><span>  amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">5</span>, <span class="fl">8</span>, <span class="fl">4</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="inputData.html">inputData</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="input_data.html">input_data</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
 <span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
 <span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">actions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Conservation"</span>, <span class="st">"Restoration"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="add_actions.html">add_actions</a></span><span class="op">(</span></span></span>
@@ -309,7 +290,38 @@ describing the stored representation and input interpretation are written to
 <span class="r-in"><span>  cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>conservation <span class="op">=</span> <span class="fl">2</span>, restoration <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="print.html">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> A mosap object (<span style="color: #5F87AF; font-weight: bold;">&lt;Problem&gt;</span>)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ├─<span style="color: #87AF5F; font-weight: bold;">data</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─planning units: <span style="color: #5F87AF; font-weight: bold;">&lt;data.frame&gt;</span> (3 total)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─costs: min: 1, max: 3</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─features: 2 total ("sp1", "sp2")</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">actions and effects</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─actions: 2 total ("Conservation", "Restoration")</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─dist_actions: 6 feasible rows</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─action costs: min: 2, max: 4</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─dist_effects: <span style="color: #949494;">none specified</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─dist_profit: <span style="color: #949494;">none specified</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">spatial</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─geometry: <span style="color: #949494;">none</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─pu_coords: <span style="color: #949494;">none</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─relations: <span style="color: #949494;">none</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">targets and constraints</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─targets: <span style="color: #949494;">none</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─area constraints: <span style="color: #949494;">none</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─pu_locks: <span style="color: #949494;">none</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─action_locks: <span style="color: #949494;">none</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">model</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─status: <span style="color: #D7AF00; font-weight: bold;">not built yet (will build in solve())</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─objectives: <span style="color: #949494;">none</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─method: <span style="color: #87AF5F; font-weight: bold;">single-objective</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─solver: <span style="color: #949494;">not set (auto)</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─checks: <span style="color: #D7AF00; font-weight: bold;">incomplete (no objective registered)</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #555555;"># ℹ Use </span><span style="color: #5F875F;">`x$data`</span> to inspect stored tables and model snapshots.</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
 <span class="r-in"><span><span class="co"># 1) Empty effects</span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
 <span class="r-in"><span><span class="va">p0</span> <span class="op">&lt;-</span> <span class="fu">add_effects</span><span class="op">(</span><span class="va">p</span>, effects <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>All effect values are zero after filtering.</span>
 <span class="r-in"><span><span class="va">p0</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_effects</span></span></span>
@@ -318,11 +330,15 @@ describing the stored representation and input interpretation are written to
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [9] feature_name     action_name     </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;0 rows&gt; (or 0-length row.names)</span>
 <span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
 <span class="r-in"><span><span class="co"># 2) Multipliers by action and feature</span></span></span>
+<span class="r-in"><span><span class="co"># delta = baseline amount * multiplier</span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
 <span class="r-in"><span><span class="va">mult</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  feature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sp1"</span>, <span class="st">"sp2"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  multiplier <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="op">-</span><span class="fl">0.25</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"conservation"</span>,</span></span>
+<span class="r-in"><span>             <span class="st">"restoration"</span>, <span class="st">"restoration"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  feature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sp1"</span>, <span class="st">"sp2"</span>, <span class="st">"sp1"</span>, <span class="st">"sp2"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  multiplier <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.00</span>, <span class="op">-</span><span class="fl">0.20</span>, <span class="fl">0.25</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu">add_effects</span><span class="op">(</span></span></span>
@@ -333,44 +349,92 @@ describing the stored representation and input interpretation are written to
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">p1</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_effects</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   pu       action feature benefit loss internal_pu internal_action</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  1 conservation       1     1.0 0.00           1               1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  2 conservation       1     0.8 0.00           2               1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7  1  restoration       2     0.0 1.25           1               2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8  3  restoration       2     0.0 1.00           3               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  1 conservation       1    1.00  0.0           1               1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  2 conservation       1    0.80  0.0           2               1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  1  restoration       1    0.00  2.0           1               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  2  restoration       1    0.00  1.6           2               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  1  restoration       2    1.25  0.0           1               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  3  restoration       2    1.00  0.0           3               2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   internal_feature feature_name  action_name</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                1          sp1 conservation</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                1          sp1 conservation</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7                2          sp2  restoration</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8                2          sp2  restoration</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                1          sp1 Conservation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                1          sp1 Conservation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                1          sp1  Restoration</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                1          sp1  Restoration</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7                2          sp2  Restoration</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8                2          sp2  Restoration</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># 3) Explicit net effects</span></span></span>
-<span class="r-in"><span><span class="va">eff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="co"># 3) Explicit net effects using signed deltas</span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="va">eff_delta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  pu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span>, <span class="st">"restoration"</span>, <span class="st">"conservation"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  feature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  delta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="op">-</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">0.5</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">add_effects</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
+<span class="r-in"><span>  effects <span class="op">=</span> <span class="va">eff_delta</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">p2</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_effects</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   pu       action feature benefit loss internal_pu internal_action</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  1 conservation       1     2.0    0           1               1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  2  restoration       1     0.0    3           2               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  3 conservation       2     0.5    0           3               1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  3  restoration       2     1.0    0           3               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   internal_feature feature_name  action_name</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                1          sp1 Conservation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                1          sp1  Restoration</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                2          sp2 Conservation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                2          sp2  Restoration</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="co"># 4) Explicit after-action amounts</span></span></span>
+<span class="r-in"><span><span class="co"># delta = after - baseline</span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="va">eff_after</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span>, <span class="st">"restoration"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  feature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  delta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="op">-</span><span class="fl">3</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  after <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">12</span>, <span class="fl">5</span>, <span class="fl">6</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">add_effects</span><span class="op">(</span><span class="va">p</span>, effects <span class="op">=</span> <span class="va">eff</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">p2</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_effects</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   pu       action feature benefit loss internal_pu internal_action</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  1 conservation       1       2    0           1               1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  2  restoration       1       0    3           2               2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3  3  restoration       2       1    0           3               2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   internal_feature feature_name  action_name</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                1          sp1 conservation</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                1          sp1  restoration</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                2          sp2  restoration</span>
+<span class="r-in"><span><span class="va">p3</span> <span class="op">&lt;-</span> <span class="fu">add_effects</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
+<span class="r-in"><span>  effects <span class="op">=</span> <span class="va">eff_after</span>,</span></span>
+<span class="r-in"><span>  effect_type <span class="op">=</span> <span class="st">"after"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># 4) Keep only beneficial effects</span></span></span>
-<span class="r-in"><span><span class="va">p3</span> <span class="op">&lt;-</span> <span class="fu">add_effects</span><span class="op">(</span><span class="va">p</span>, effects <span class="op">=</span> <span class="va">eff</span>, filter <span class="op">=</span> <span class="st">"benefit"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">p3</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_effects</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   pu       action feature benefit loss internal_pu internal_action</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1  1 conservation       1       2    0           1               1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3  3  restoration       2       1    0           3               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  2  restoration       1       0    3           2               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  3  restoration       2       2    0           3               2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   internal_feature feature_name  action_name</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                1          sp1 conservation</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                2          sp2  restoration</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                1          sp1 Conservation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                1          sp1  Restoration</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                2          sp2  Restoration</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="co"># 5) Keep only beneficial effects</span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="va">p4</span> <span class="op">&lt;-</span> <span class="fu">add_effects</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
+<span class="r-in"><span>  effects <span class="op">=</span> <span class="va">eff_delta</span>,</span></span>
+<span class="r-in"><span>  component <span class="op">=</span> <span class="st">"benefit"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">p4</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_effects</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   pu       action feature benefit loss internal_pu internal_action</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  1 conservation       1     2.0    0           1               1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  3 conservation       2     0.5    0           3               1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  3  restoration       2     1.0    0           3               2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   internal_feature feature_name  action_name</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                1          sp1 Conservation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                2          sp2 Conservation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                2          sp2  Restoration</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

@@ -52,17 +52,12 @@ Some relation constructors create undirected relations by default. In
 that case, each unordered pair is typically stored once, usually with
 \\i \< j\\, unless self-edges are explicitly allowed.
 
-If `symmetric = TRUE` is used in
-[`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md),
-an undirected relation can be expanded into a directed representation by
-duplicating off-diagonal edges in both directions.
-
 **Boundary relations and diagonal terms**
 
 The function
 [`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md)
 supports boundary-length relations derived either from a boundary table
-or from `sf` polygons.
+or from polygon geometry.
 
 If `include_self = TRUE`, diagonal entries \\(i,i)\\ are added to
 represent exposed boundary. These diagonal weights are intended for

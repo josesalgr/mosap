@@ -101,12 +101,9 @@ columns are preserved when possible.</p>
 <p>Some relation constructors create undirected relations by default. In that
 case, each unordered pair is typically stored once, usually with
 \(i &lt; j\), unless self-edges are explicitly allowed.</p>
-<p>If <code>symmetric = TRUE</code> is used in <code><a href="add_spatial_relations.html">add_spatial_relations</a></code>,
-an undirected relation can be expanded into a directed representation by
-duplicating off-diagonal edges in both directions.</p>
 <p><strong>Boundary relations and diagonal terms</strong></p>
 <p>The function <code><a href="add_spatial_boundary.html">add_spatial_boundary</a></code> supports boundary-length
-relations derived either from a boundary table or from <code>sf</code> polygons.</p>
+relations derived either from a boundary table or from polygon geometry.</p>
 <p>If <code>include_self = TRUE</code>, diagonal entries \((i,i)\) are added to
 represent exposed boundary. These diagonal weights are intended for
 boundary-based compactness or fragmentation formulations, where perimeter

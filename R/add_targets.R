@@ -14,7 +14,13 @@ NULL
 #'
 #' By default, all actions are allowed to contribute toward target achievement.
 #' Optionally, the set of contributing actions can be restricted through the
-#' \code{subset} argument.
+#' \code{actions} argument.
+#'
+#' A problem may contain multiple simultaneous targets. Each call to
+#' \code{add_targets_absolute()} or \code{add_targets_relative()} appends one or
+#' more target definitions to \code{x$data$targets}. This makes it possible to
+#' combine, for example, relative targets counted only from conservation actions
+#' with absolute targets counted only from restoration actions.
 #'
 #' @details
 #' Let \eqn{\mathcal{P}} denote the set of planning units, \eqn{\mathcal{A}} the
@@ -37,21 +43,34 @@ NULL
 #' where \eqn{\mathcal{S}_f} is the set of planning unit--action pairs allowed to
 #' count toward achievement of the target for feature \eqn{f}.
 #'
-#' By default, \eqn{\mathcal{S}_f} includes all feasible actions. If a
-#' \code{subset} is supplied, then \eqn{\mathcal{S}_f} is restricted to the
-#' actions matching that subset.
+#' By default, \eqn{\mathcal{S}_f} includes all feasible actions. If
+#' \code{actions} is supplied, then \eqn{\mathcal{S}_f} is restricted to the
+#' actions matching that specification.
 #'
-#' \strong{Subset semantics}
+#' \strong{Feature and action semantics}
 #'
-#' The \code{subset} argument does \emph{not} change the target value itself. It
+#' Targets are always defined for one or more features.
+#'
+#' The \code{features} argument determines which features the supplied target
+#' values refer to when the \code{targets} specification does not already
+#' identify features explicitly.
+#'
+#' The \code{actions} argument does \emph{not} change the target value itself. It
 #' only determines which actions are allowed to contribute toward target
 #' achievement when the model is built.
 #'
-#' A subset specification may contain:
+#' An \code{actions} specification may contain:
 #' \itemize{
 #'   \item action identifiers from \code{x$data$actions$id},
 #'   \item action-set labels from \code{x$data$actions$action_set},
 #'   \item or a mixture of both.
+#' }
+#'
+#' A \code{features} specification may contain:
+#' \itemize{
+#'   \item feature identifiers from \code{x$data$features$id},
+#'   \item feature names from \code{x$data$features$name}, if present,
+#'   \item or a mixture of both, if supported by the resolver.
 #' }
 #'
 #' \strong{Stored fields}
@@ -67,7 +86,7 @@ NULL
 #'   relative target into an absolute threshold.}
 #'   \item{\code{target_value}}{The final absolute threshold stored for model
 #'   building.}
-#'   \item{\code{subset}}{A text representation of the action subset allowed to
+#'   \item{\code{actions}}{A text representation of the action subset allowed to
 #'   contribute.}
 #'   \item{\code{label}}{Optional user label.}
 #'   \item{\code{created_at}}{Creation timestamp.}
@@ -90,23 +109,19 @@ NULL
 #' where \eqn{B_f} is the current total amount of feature \eqn{f} in the
 #' landscape, computed by \code{.pa_feature_totals()}.
 #'
-#' \strong{Overwrite behaviour}
-#'
-#' If \code{overwrite = TRUE}, existing targets for the same feature and subset
-#' specification may be replaced. If \code{overwrite = FALSE}, new target rows
-#' are appended and any conflict handling is delegated to
-#' \code{.pa_store_targets()}.
-#'
 #' \strong{Input format}
 #'
 #' The \code{targets} argument is parsed internally by \code{.pa_parse_targets()}
 #' and may typically be provided as:
 #' \itemize{
-#'   \item a single numeric value recycled to all features,
-#'   \item a numeric vector aligned to feature order,
+#'   \item a single numeric value recycled to all selected features,
+#'   \item a numeric vector aligned to \code{features},
 #'   \item a named numeric vector where names identify features,
 #'   \item a \code{data.frame} with feature identifiers and target values.
 #' }
+#'
+#' If \code{targets} does not explicitly identify features, then
+#' \code{features = NULL} means that all features are targeted.
 #'
 #' @keywords internal
 NULL
@@ -122,8 +137,12 @@ NULL
 #' Absolute targets are interpreted directly in the same units as the feature
 #' contributions used by the model.
 #'
+#' Each call appends one or more target definitions to the problem. This makes
+#' it possible to combine multiple target rules, including targets associated
+#' with different action subsets.
+#'
 #' @details
-#' Let \eqn{\mathcal{F}} denote the set of features. For each feature
+#' Let \eqn{\mathcal{F}} denote the set of features. For each targeted feature
 #' \eqn{f \in \mathcal{F}}, this function stores an absolute target threshold
 #' \eqn{T_f \ge 0}.
 #'
@@ -148,17 +167,24 @@ NULL
 #' }
 #' where \eqn{t_f} is the user-supplied target value for feature \eqn{f}.
 #'
-#' The \code{subset} argument restricts which actions may contribute toward
+#' The \code{actions} argument restricts which actions may contribute toward
 #' achievement of the target, but it does not modify the value of \eqn{T_f}
 #' itself.
 #'
 #' The \code{targets} argument is parsed by \code{.pa_parse_targets()} and may be
 #' supplied in several equivalent forms, including:
 #' \itemize{
-#'   \item a single numeric value recycled to all features,
-#'   \item a numeric vector aligned to feature order,
+#'   \item a single numeric value recycled to all selected features,
+#'   \item a numeric vector aligned to \code{features},
 #'   \item a named numeric vector where names identify features,
 #'   \item a \code{data.frame} with \code{feature} and \code{target} columns.
+#' }
+#'
+#' If \code{targets} does not explicitly identify features:
+#' \itemize{
+#'   \item if \code{features = NULL}, the target is applied to all features,
+#'   \item if \code{features} is supplied, the target values are interpreted with
+#'   respect to that feature set.
 #' }
 #'
 #' Internally, targets added by this function are stored with:
@@ -172,17 +198,18 @@ NULL
 #'
 #' @param x A \code{Problem} object.
 #' @param targets Target specification. This is interpreted as an absolute target
-#'   value in the same units as the modelled feature contributions. See Details.
-#' @param subset Optional character vector indicating which actions count toward
+#'   value in the same units as the modelled feature contributions. It may be a
+#'   scalar, vector, named vector, or \code{data.frame}. See Details.
+#' @param features Optional feature specification indicating which features the
+#'   supplied target values refer to when \code{targets} does not identify
+#'   features explicitly. If \code{NULL}, all features are targeted.
+#' @param actions Optional character vector indicating which actions count toward
 #'   target achievement. Entries may match action ids, \code{action_set} labels,
 #'   or both. If \code{NULL}, all actions count.
-#' @param overwrite Logical. If \code{TRUE}, replace existing stored targets for
-#'   the same feature and subset combination. If \code{FALSE}, new rows are
-#'   appended and overlap handling is delegated to \code{.pa_store_targets()}.
 #' @param label Optional character string stored with the targets for reporting
 #'   and bookkeeping.
 #'
-#' @return An updated \code{Problem} object with absolute targets stored in
+#' @return An updated \code{Problem} object with absolute targets appended to
 #'   \code{x$data$targets}.
 #'
 #' @examples
@@ -196,19 +223,24 @@ NULL
 #'   c("1" = 5, "2" = 8, "3" = 12)
 #' )
 #'
+#' # Same target for a selected subset of features
+#' p <- add_targets_absolute(
+#'   p,
+#'   5,
+#'   features = c("sp1", "sp2")
+#' )
+#'
 #' # Only actions in the "recovery" set count toward target achievement
 #' p <- add_targets_absolute(
 #'   p,
 #'   5,
-#'   subset = "recovery"
+#'   actions = "recovery"
 #' )
 #'
-#' # Mix action sets and specific actions
-#' p <- add_targets_absolute(
-#'   p,
-#'   5,
-#'   subset = c("recovery", "conservation_action")
-#' )
+#' # Combine target rules with different action subsets
+#' p <- p |>
+#'   add_targets_relative(0.1, actions = "conservation") |>
+#'   add_targets_absolute(100, actions = "restoration")
 #' }
 #'
 #' @seealso
@@ -216,15 +248,15 @@ NULL
 #'
 #' @export
 add_targets_absolute <- function(x, targets,
-                                 subset = NULL,
-                                 overwrite = FALSE,
+                                 features = NULL,
+                                 actions = NULL,
                                  label = NULL) {
   stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
-  dt <- .pa_parse_targets(x, targets)
+  dt <- .pa_parse_targets(x, targets, features = features)
 
-  subset_txt <- .pa_subset_to_string(subset)
+  actions_txt <- .pa_subset_to_string(actions)
 
   out <- data.frame(
     feature      = as.numeric(dt$feature),
@@ -234,7 +266,7 @@ add_targets_absolute <- function(x, targets,
     target_raw   = as.numeric(dt$target_raw),
     basis_total  = NA_real_,
     target_value = as.numeric(dt$target_raw),
-    subset       = subset_txt,
+    actions      = actions_txt,
     label        = if (is.null(label)) NA_character_ else as.character(label),
     created_at   = as.character(Sys.time()),
     stringsAsFactors = FALSE
@@ -249,7 +281,7 @@ add_targets_absolute <- function(x, targets,
   )
 
   x$data$meta$model_dirty <- TRUE
-  .pa_store_targets(x, out, overwrite = overwrite)
+  .pa_store_targets(x, out)
 }
 
 #' @title Add relative targets
@@ -264,8 +296,12 @@ add_targets_absolute <- function(x, targets,
 #' internally into absolute thresholds using the current total amount of each
 #' feature in the landscape.
 #'
+#' Each call appends one or more target definitions to the problem. This makes
+#' it possible to combine multiple target rules, including targets associated
+#' with different action subsets.
+#'
 #' @details
-#' Let \eqn{\mathcal{F}} denote the set of features. For each feature
+#' Let \eqn{\mathcal{F}} denote the set of features. For each targeted feature
 #' \eqn{f \in \mathcal{F}}, let \eqn{B_f} denote the current baseline total
 #' amount of that feature in the landscape, as computed by
 #' \code{.pa_feature_totals()}.
@@ -297,7 +333,7 @@ add_targets_absolute <- function(x, targets,
 #'   to count toward achievement of the target.
 #' }
 #'
-#' The \code{subset} argument restricts which actions may contribute toward
+#' The \code{actions} argument restricts which actions may contribute toward
 #' target achievement, but it does not affect the baseline amount \eqn{B_f} used
 #' to compute the threshold. In other words, relative targets are always scaled
 #' against the current full landscape baseline computed by
@@ -306,10 +342,17 @@ add_targets_absolute <- function(x, targets,
 #' The \code{targets} argument is parsed by \code{.pa_parse_targets()} and may be
 #' supplied in several equivalent forms, including:
 #' \itemize{
-#'   \item a single numeric value recycled to all features,
-#'   \item a numeric vector aligned to feature order,
+#'   \item a single numeric value recycled to all selected features,
+#'   \item a numeric vector aligned to \code{features},
 #'   \item a named numeric vector where names identify features,
 #'   \item a \code{data.frame} with \code{feature} and \code{target} columns.
+#' }
+#'
+#' If \code{targets} does not explicitly identify features:
+#' \itemize{
+#'   \item if \code{features = NULL}, the target is applied to all features,
+#'   \item if \code{features} is supplied, the target values are interpreted with
+#'   respect to that feature set.
 #' }
 #'
 #' Relative targets must lie in \eqn{[0,1]}.
@@ -325,18 +368,18 @@ add_targets_absolute <- function(x, targets,
 #' }
 #'
 #' @param x A \code{Problem} object.
-#' @param targets Target specification as proportions in \eqn{[0,1]}. See
-#'   Details.
-#' @param subset Optional character vector indicating which actions count toward
+#' @param targets Target specification as proportions in \eqn{[0,1]}. It may be
+#'   a scalar, vector, named vector, or \code{data.frame}. See Details.
+#' @param features Optional feature specification indicating which features the
+#'   supplied target values refer to when \code{targets} does not identify
+#'   features explicitly. If \code{NULL}, all features are targeted.
+#' @param actions Optional character vector indicating which actions count toward
 #'   target achievement. Entries may match action ids, \code{action_set} labels,
 #'   or both. If \code{NULL}, all actions count.
-#' @param overwrite Logical. If \code{TRUE}, replace existing stored targets for
-#'   the same feature and subset combination. If \code{FALSE}, new rows are
-#'   appended and overlap handling is delegated to \code{.pa_store_targets()}.
 #' @param label Optional character string stored with the targets for reporting
 #'   and bookkeeping.
 #'
-#' @return An updated \code{Problem} object with relative targets stored in
+#' @return An updated \code{Problem} object with relative targets appended to
 #'   \code{x$data$targets}.
 #'
 #' @examples
@@ -344,19 +387,24 @@ add_targets_absolute <- function(x, targets,
 #' # Require 30% of the current baseline total for all features
 #' p <- add_targets_relative(p, 0.3)
 #'
+#' # Require 20% of baseline totals for selected features only
+#' p <- add_targets_relative(
+#'   p,
+#'   0.2,
+#'   features = c("sp1", "sp2")
+#' )
+#'
 #' # Require 20% of baseline totals, counting only recovery actions
 #' p <- add_targets_relative(
 #'   p,
 #'   0.2,
-#'   subset = "recovery"
+#'   actions = "recovery"
 #' )
 #'
-#' # Require 50% of baseline totals, counting a mix of groups and actions
-#' p <- add_targets_relative(
-#'   p,
-#'   0.5,
-#'   subset = c("recovery", "conservation_action")
-#' )
+#' # Combine multiple target rules
+#' p <- p |>
+#'   add_targets_relative(0.1, actions = "conservation") |>
+#'   add_targets_absolute(100, actions = "restoration")
 #' }
 #'
 #' @seealso
@@ -364,13 +412,13 @@ add_targets_absolute <- function(x, targets,
 #'
 #' @export
 add_targets_relative <- function(x, targets,
-                                 subset = NULL,
-                                 overwrite = FALSE,
+                                 features = NULL,
+                                 actions = NULL,
                                  label = NULL) {
   stopifnot(inherits(x, "Problem"))
 
   x <- .pa_clone_data(x)
-  dt <- .pa_parse_targets(x, targets)
+  dt <- .pa_parse_targets(x, targets, features = features)
 
   rel <- as.numeric(dt$target_raw)
   if (any(rel < 0 | rel > 1, na.rm = TRUE)) {
@@ -382,7 +430,7 @@ add_targets_relative <- function(x, targets,
   basis_v[is.na(basis_v)] <- 0
   abs_target <- rel * as.numeric(basis_v)
 
-  subset_txt <- .pa_subset_to_string(subset)
+  actions_txt <- .pa_subset_to_string(actions)
 
   out <- data.frame(
     feature      = as.numeric(dt$feature),
@@ -392,7 +440,7 @@ add_targets_relative <- function(x, targets,
     target_raw   = rel,
     basis_total  = as.numeric(basis_v),
     target_value = as.numeric(abs_target),
-    subset       = subset_txt,
+    actions      = actions_txt,
     label        = if (is.null(label)) NA_character_ else as.character(label),
     created_at   = as.character(Sys.time()),
     stringsAsFactors = FALSE
@@ -407,5 +455,5 @@ add_targets_relative <- function(x, targets,
   )
 
   x$data$meta$model_dirty <- TRUE
-  .pa_store_targets(x, out, overwrite = overwrite)
+  .pa_store_targets(x, out)
 }

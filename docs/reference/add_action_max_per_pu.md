@@ -15,8 +15,8 @@ model builder (e.g., `.pa_build_model_apply_constraints()`).
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md)
-  or `inputDataSpatial`. Must already contain actions (i.e., run
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  Must already contain actions (i.e., run
   [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md)
   first).
 

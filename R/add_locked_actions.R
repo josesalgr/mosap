@@ -58,6 +58,10 @@ NULL
 #'   vectors of planning unit ids or \code{sf} objects.
 #' }
 #'
+#' If a \code{feasible} column is supplied in a \code{data.frame}, only rows
+#' with \code{feasible = TRUE} are used. Missing values in \code{feasible} are
+#' treated as \code{FALSE}.
+#'
 #' If an \code{sf} specification is supplied, the problem object must contain
 #' \code{x$data$pu_sf}, and planning units are matched spatially using
 #' \code{sf::st_intersects()}.
@@ -90,11 +94,6 @@ NULL
 #'   pairs that must not be selected. It may be \code{NULL}, a
 #'   \code{data.frame}, or a named list.
 #'
-#' @param na_is_infeasible Logical. Only relevant when \code{locked_in} or
-#'   \code{locked_out} is supplied as a \code{data.frame} with a
-#'   \code{feasible} column. If \code{TRUE}, missing values in
-#'   \code{feasible} are treated as \code{FALSE}.
-#'
 #' @return An updated \code{Problem} object in which
 #'   \code{x$data$dist_actions$status} has been modified to reflect locked-in and
 #'   locked-out decisions.
@@ -115,7 +114,7 @@ NULL
 #'   amount = c(1, 2, 1, 3, 2, 1)
 #' )
 #'
-#' p <- inputData(
+#' p <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -163,8 +162,7 @@ NULL
 add_locked_actions <- function(
     x,
     locked_in = NULL,
-    locked_out = NULL,
-    na_is_infeasible = TRUE
+    locked_out = NULL
 ) {
 
   .as_int_id <- function(v, what) {
@@ -204,7 +202,8 @@ add_locked_actions <- function(
       f <- as.logical(f)
     }
 
-    if (na_is_infeasible) f[is.na(f)] <- FALSE
+    # if (na_is_infeasible)
+    f[is.na(f)] <- FALSE
     df$feasible <- as.logical(f)
     df
   }

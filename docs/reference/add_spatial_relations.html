@@ -10,14 +10,14 @@ object using the unified internal representation adopted by mosap.
 Most users will typically prefer one of the convenience constructors such as
 add_spatial_boundary, add_spatial_rook,
 add_spatial_queen, add_spatial_knn, or
-add_spatial_distance. This function is the core low-level entry
-point for adding an already computed relation."><meta property="og:description" content="Register an externally computed spatial relation inside a Problem
+add_spatial_distance. This function is the advanced low-level
+entry point for adding an already computed relation."><meta property="og:description" content="Register an externally computed spatial relation inside a Problem
 object using the unified internal representation adopted by mosap.
 Most users will typically prefer one of the convenience constructors such as
 add_spatial_boundary, add_spatial_rook,
 add_spatial_queen, add_spatial_knn, or
-add_spatial_distance. This function is the core low-level entry
-point for adding an already computed relation."><meta property="og:image" content="https://josesalgr.github.io/mosap/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
+add_spatial_distance. This function is the advanced low-level
+entry point for adding an already computed relation."><meta property="og:image" content="https://josesalgr.github.io/mosap/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
@@ -60,21 +60,13 @@ object using the unified internal representation adopted by <code>mosap</code>.<
 <p>Most users will typically prefer one of the convenience constructors such as
 <code><a href="add_spatial_boundary.html">add_spatial_boundary</a></code>, <code><a href="add_spatial_rook.html">add_spatial_rook</a></code>,
 <code><a href="add_spatial_queen.html">add_spatial_queen</a></code>, <code><a href="add_spatial_knn.html">add_spatial_knn</a></code>, or
-<code><a href="add_spatial_distance.html">add_spatial_distance</a></code>. This function is the core low-level entry
-point for adding an already computed relation.</p>
+<code><a href="add_spatial_distance.html">add_spatial_distance</a></code>. This function is the advanced low-level
+entry point for adding an already computed relation.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_spatial_relations</span><span class="op">(</span></span>
-<span>  <span class="va">x</span>,</span>
-<span>  <span class="va">relations</span>,</span>
-<span>  name <span class="op">=</span> <span class="st">"default"</span>,</span>
-<span>  directed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  allow_self <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  duplicate_agg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sum"</span>, <span class="st">"max"</span>, <span class="st">"min"</span>, <span class="st">"mean"</span><span class="op">)</span>,</span>
-<span>  symmetric <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_spatial_relations</span><span class="op">(</span><span class="va">x</span>, <span class="va">relations</span>, <span class="va">name</span>, directed <span class="op">=</span> <span class="cn">FALSE</span>, allow_self <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -82,7 +74,7 @@ point for adding an already computed relation.</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>A <code>Problem</code> object created with <code><a href="inputData.html">inputData</a></code>.</p></dd>
+<dd><p>A <code>Problem</code> object created with <code><a href="input_data.html">input_data</a></code>.</p></dd>
 
 
 <dt id="arg-relations">relations<a class="anchor" aria-label="anchor" href="#arg-relations"></a></dt>
@@ -110,18 +102,6 @@ ordered pairs.</p></dd>
 <dd><p>Logical. If <code>TRUE</code>, allow self-edges
 \((i,i)\). Default is <code>FALSE</code>.</p></dd>
 
-
-<dt id="arg-duplicate-agg">duplicate_agg<a class="anchor" aria-label="anchor" href="#arg-duplicate-agg"></a></dt>
-<dd><p>Character string specifying how to aggregate duplicated
-undirected edges when <code>directed = FALSE</code>. Must be one of
-<code>"sum"</code>, <code>"max"</code>, <code>"min"</code>, or <code>"mean"</code>.</p></dd>
-
-
-<dt id="arg-symmetric">symmetric<a class="anchor" aria-label="anchor" href="#arg-symmetric"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, expand an undirected relation into
-a directed representation by duplicating off-diagonal edges in both
-directions. Default is <code>FALSE</code>.</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -139,16 +119,10 @@ identifiers or in terms of internal planning-unit indices.</p>
 <p>Let \(E\) denote the set of rows supplied in <code>relations</code>. If
 <code>directed = FALSE</code>, each edge is treated as undirected, so pairs
 \((i,j)\) and \((j,i)\) are interpreted as the same edge. In that case,
-duplicated undirected edges are collapsed according to
-<code>duplicate_agg</code>.</p>
+duplicated undirected edges are collapsed automatically using the maximum
+weight observed for each unordered pair.</p>
 <p>If <code>directed = TRUE</code>, edges are preserved as ordered pairs, so
 \((i,j)\) and \((j,i)\) are distinct unless the user provides both.</p>
-<p>If <code>symmetric = TRUE</code> and <code>directed = FALSE</code>, the final undirected
-relation is expanded into a directed representation by duplicating each
-off-diagonal edge:
-$$
-(i,j,\omega_{ij}) \mapsto (i,j,\omega_{ij}), (j,i,\omega_{ij}).
-$$</p>
 <p>Self-edges \((i,i)\) are permitted only if <code>allow_self = TRUE</code>.</p>
 <p>The final relation is stored in <code>x$data$spatial_relations[[name]]</code>.</p>
     </div>
@@ -167,7 +141,7 @@ $$</p>
 <span class="r-in"><span><span class="va">features</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="st">"sp1"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">dist_features</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>pu <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, feature <span class="op">=</span> <span class="st">"sp1"</span>, amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="inputData.html">inputData</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="input_data.html">input_data</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
 <span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
 <span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>

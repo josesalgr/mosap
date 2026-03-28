@@ -13,11 +13,10 @@ segments of positive length and ignore point-only contacts.
 add_spatial_boundary(
   x,
   boundary = NULL,
-  pu_sf = NULL,
+  geometry = NULL,
   name = "boundary",
   weight_col = NULL,
   weight_multiplier = 1,
-  progress = FALSE,
   include_self = TRUE,
   edge_factor = 1
 )
@@ -38,7 +37,7 @@ add_spatial_boundary(
 
   - `(pu1, pu2, weight)`.
 
-- pu_sf:
+- geometry:
 
   Optional `sf` object with planning-unit polygons and an `id` column.
   If `NULL`, `x$data$pu_sf` is used.
@@ -56,10 +55,6 @@ add_spatial_boundary(
 - weight_multiplier:
 
   Positive numeric scalar applied to all boundary weights.
-
-- progress:
-
-  Logical. If `TRUE`, print simple progress messages in geometry mode.
 
 - include_self:
 
@@ -85,7 +80,7 @@ Two input modes are supported:
     `bound.dat`.
 
 2.  **Geometry mode.** If `boundary = NULL`, boundary lengths are
-    derived from polygon geometry using `pu_sf` or `x$data$pu_sf`.
+    derived from polygon geometry using `geometry` or `x$data$pu_sf`.
 
 Let \\\omega\_{ij} \ge 0\\ denote the shared boundary length between
 planning units \\i\\ and \\j\\, multiplied by `weight_multiplier`.
@@ -154,7 +149,7 @@ p <- add_spatial_boundary(
 # From sf polygons
 p <- add_spatial_boundary(
   x = p,
-  pu_sf = pu_sf,
+  geometry = pu_sf,
   include_self = TRUE,
   edge_factor = 1
 )

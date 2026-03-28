@@ -176,7 +176,7 @@ is checked later when solving.
 }
 \examples{
 \dontrun{
-x <- inputData(
+x <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

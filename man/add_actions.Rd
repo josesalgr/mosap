@@ -7,46 +7,32 @@
 add_actions(
   x,
   actions,
-  include = NULL,
-  exclude = NULL,
-  cost = NULL,
-  feasible_default = TRUE,
-  na_is_infeasible = TRUE
+  include_pairs = NULL,
+  exclude_pairs = NULL,
+  cost = NULL
 )
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}}.}
+\item{x}{A \code{Problem} object created with \code{\link{input_data}}.}
 
 \item{actions}{A \code{data.frame} defining the action catalogue. It must
 contain a unique \code{id} column. A column named \code{action} is also
 accepted and automatically renamed to \code{id}.}
 
-\item{include}{Optional feasibility specification defining which
-\code{(pu, action)} pairs are allowed. It can be \code{NULL}, a
-\code{data.frame} with columns \code{pu} and \code{action} (optionally also
-\code{feasible}), or a named list whose names are action ids and whose
-elements are vectors of planning unit ids or \code{sf} objects.}
+\item{include_pairs}{Optional specification of feasible \code{(pu, action)}
+pairs. It can be \code{NULL}, a \code{data.frame} with columns
+\code{pu} and \code{action} (optionally also \code{feasible}), or a named
+list whose names are action ids and whose elements are vectors of planning
+unit ids or \code{sf} objects.}
 
-\item{exclude}{Optional infeasibility specification. It uses the same formats
-as \code{include} and removes matching \code{(pu, action)} pairs from the
-feasible set.}
+\item{exclude_pairs}{Optional specification of infeasible \code{(pu, action)}
+pairs. It uses the same formats as \code{include_pairs} and removes
+matching pairs from the feasible set.}
 
 \item{cost}{Optional cost specification for feasible pairs. It may be
 \code{NULL}, a scalar numeric value, a named numeric vector indexed by
 action id, or a \code{data.frame} with columns \code{action, cost} or
 \code{pu, action, cost}.}
-
-\item{feasible_default}{Logical. If \code{TRUE} and \code{include} is
-\code{NULL}, all possible \code{(pu, action)} pairs are considered
-feasible.}
-
-\item{na_is_infeasible}{Logical. Relevant only when \code{include} or
-\code{exclude} is provided as a \code{data.frame} with a \code{feasible}
-column. If \code{TRUE}, missing values in \code{feasible} are treated as
-\code{FALSE}.}
-
-\item{sort_actions}{Logical. If \code{TRUE}, sort actions by \code{id} before
-storing them.}
 }
 \value{
 An updated \code{Problem} object with:
@@ -64,7 +50,7 @@ integer ids.}
 }
 \description{
 Define the action catalogue, the set of feasible planning unit--action pairs,
-and the corresponding implementation costs.
+and their implementation costs.
 
 This function adds two core components to a \code{Problem} object. First, it
 stores the action catalogue in \code{x$data$actions}. Second, it creates the
@@ -87,19 +73,23 @@ are preserved. If no \code{name} column is provided, action labels are taken
 from \code{id}. If an \code{action_set} column is present, it is also
 preserved and can later be used to refer to groups of actions.
 
-\strong{Feasibility.}
+Actions are stored sorted by \code{id} to ensure reproducible internal
+indexing.
 
-Feasibility is controlled through \code{include} and \code{exclude}.
+\strong{Feasible planning unit--action pairs.}
 
-If \code{include = NULL} and \code{feasible_default = TRUE}, all possible
-\code{(pu, action)} pairs are initially considered feasible, that is:
+Feasibility is controlled through \code{include_pairs} and
+\code{exclude_pairs}.
+
+If \code{include_pairs = NULL}, all possible \code{(pu, action)} pairs are
+initially considered feasible:
 \deqn{
 \mathcal{F} = \mathcal{P} \times \mathcal{A}.
 }
 
-If \code{include} is supplied, only those pairs are retained in the feasible
-set. If \code{exclude} is also supplied, matching pairs are removed after
-applying \code{include}. Thus, in general:
+If \code{include_pairs} is supplied, only those pairs are retained in the
+feasible set. If \code{exclude_pairs} is also supplied, matching pairs are
+removed after applying \code{include_pairs}. Thus, in general:
 \deqn{
 \mathcal{F} =
 \left(\mathcal{F}_{\mathrm{include}} \text{ or } \mathcal{P}\times\mathcal{A}\right)
@@ -107,7 +97,7 @@ applying \code{include}. Thus, in general:
 \mathcal{F}_{\mathrm{exclude}}.
 }
 
-Both \code{include} and \code{exclude} can be specified as:
+Both \code{include_pairs} and \code{exclude_pairs} can be specified as:
 \itemize{
 \item \code{NULL},
 \item a \code{data.frame} with columns \code{pu} and \code{action},
@@ -116,9 +106,9 @@ Both \code{include} and \code{exclude} can be specified as:
 
 When supplied as a \code{data.frame}, the object must contain columns
 \code{pu} and \code{action}. An optional logical-like column
-\code{feasible} may also be provided; rows with \code{feasible = FALSE} are
-ignored. If \code{na_is_infeasible = TRUE}, missing values in
-\code{feasible} are treated as \code{FALSE}.
+\code{feasible} may also be provided; only rows with \code{feasible = TRUE}
+are retained. Missing values in \code{feasible} are treated as
+\code{FALSE}.
 
 When supplied as a named list, names must match action ids. Each element may
 contain either:
@@ -191,7 +181,7 @@ dist_features <- data.frame(
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
@@ -213,7 +203,6 @@ print(p1)
 
 head(p1$data$dist_actions)
 
-
 # Example 2: specify feasible pairs explicitly
 include_df <- data.frame(
   pu = c(1, 2, 3, 4),
@@ -223,7 +212,7 @@ include_df <- data.frame(
 p2 <- add_actions(
   x = p,
   actions = actions,
-  include = include_df,
+  include_pairs = include_df,
   cost = 10
 )
 
@@ -238,7 +227,7 @@ exclude_df <- data.frame(
 p3 <- add_actions(
   x = p,
   actions = actions,
-  exclude = exclude_df,
+  exclude_pairs = exclude_df,
   cost = c(conservation = 3, restoration = 8)
 )
 
@@ -246,6 +235,6 @@ p3$data$dist_actions
 
 }
 \seealso{
-\code{\link{inputData}},
+\code{\link{input_data}},
 \code{\link{add_locked_actions}}
 }

@@ -9,7 +9,7 @@ positive length. Corner-only contact does not count as rook adjacency.
 ## Usage
 
 ``` r
-add_spatial_rook(x, pu_sf = NULL, name = "default", weight = 1)
+add_spatial_rook(x, geometry = NULL, name = "rook", weight = 1)
 ```
 
 ## Arguments
@@ -17,10 +17,10 @@ add_spatial_rook(x, pu_sf = NULL, name = "default", weight = 1)
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md)
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md)
   or another object containing aligned planning-unit polygons.
 
-- pu_sf:
+- geometry:
 
   Optional `sf` object with planning-unit polygons and an `id` column.
   If `NULL`, `x$data$pu_sf` is used.

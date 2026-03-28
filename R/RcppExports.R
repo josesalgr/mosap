@@ -89,14 +89,6 @@ rcpp_add_pu_locks <- function(x, pu_data, block_name = "pu_locks", tag = "") {
     .Call(`_mosap_rcpp_add_pu_locks`, x, pu_data, block_name, tag)
 }
 
-rcpp_add_target_conservation <- function(x, features_data, dist_features_data, target_col_sexp = NULL, tol = 1e-12, block_name = "targets_conservation", tag = "") {
-    .Call(`_mosap_rcpp_add_target_conservation`, x, features_data, dist_features_data, target_col_sexp, tol, block_name, tag)
-}
-
-rcpp_add_target_mixed_total <- function(x, features_data, dist_features_data, dist_benefit_data, dist_actions_data, target_col_sexp = NULL, tol = 1e-12) {
-    .Call(`_mosap_rcpp_add_target_mixed_total`, x, features_data, dist_features_data, dist_benefit_data, dist_actions_data, target_col_sexp, tol)
-}
-
 rcpp_add_target_recovery <- function(x, features_data, dist_actions_data, dist_benefit_data, target_col_sexp = NULL, tol = 1e-12) {
     .Call(`_mosap_rcpp_add_target_recovery`, x, features_data, dist_actions_data, dist_benefit_data, target_col_sexp, tol)
 }
@@ -113,8 +105,8 @@ rcpp_model_set_objective_vector <- function(x, obj, model_sense = "min") {
     invisible(.Call(`_mosap_rcpp_model_set_objective_vector`, x, obj, model_sense))
 }
 
-rcpp_reset_objective <- function(x, modelsense = "", clear_blocks = TRUE) {
-    .Call(`_mosap_rcpp_reset_objective`, x, modelsense, clear_blocks)
+rcpp_reset_objective <- function(x, modelsense = "") {
+    .Call(`_mosap_rcpp_reset_objective`, x, modelsense)
 }
 
 rcpp_add_to_objective <- function(x, ind, val) {

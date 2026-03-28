@@ -10,7 +10,7 @@ solve(x, ...)
 \method{solve}{Problem}(x, ...)
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}} and
+\item{x}{A \code{Problem} object created with \code{\link{input_data}} and
 optionally enriched with actions, effects, targets, constraints,
 objectives, spatial relations, method settings, and solver settings.}
 
@@ -41,7 +41,7 @@ single-objective or multi-objective.
 
 The typical \pkg{mosap} workflow is:
 \preformatted{
-x <- inputData(...)
+x <- input_data(...)
 x <- add_...(x, ...)
 x <- set_...(x, ...)
 res <- solve(x)
@@ -144,7 +144,7 @@ the only function that should normally materialize the optimization model.
 # ------------------------------------------------------------
 # Single-objective solve
 # ------------------------------------------------------------
-x <- inputData(
+x <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

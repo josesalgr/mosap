@@ -14,7 +14,7 @@ reporting summaries.
 ## Usage
 
 ``` r
-add_profit(x, profit = NULL, keep_zero = FALSE, na_to_zero = TRUE)
+add_profit(x, profit = NULL)
 ```
 
 ## Arguments
@@ -22,7 +22,7 @@ add_profit(x, profit = NULL, keep_zero = FALSE, na_to_zero = TRUE)
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md).
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
   It must already contain `x$data$dist_actions` and `x$data$actions`;
   run
   [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md)
@@ -43,22 +43,12 @@ add_profit(x, profit = NULL, keep_zero = FALSE, na_to_zero = TRUE)
 
   - a `data.frame(pu, action, profit)` defining pair-specific profit.
 
-- keep_zero:
-
-  Logical. If `TRUE`, rows with `profit == 0` are kept in the stored
-  table. If `FALSE`, zero-profit rows are dropped before storing.
-  Default is `FALSE`.
-
-- na_to_zero:
-
-  Logical. If `TRUE`, missing profit values produced during matching or
-  joins are treated as zero. Default is `TRUE`.
-
 ## Value
 
 An updated `Problem` object with `x$data$dist_profit` created or
 replaced. The stored table contains columns `pu`, `action`, `profit`,
-`internal_pu`, and `internal_action`.
+`internal_pu`, and `internal_action`, and includes only rows with
+non-zero profit.
 
 ## Details
 
@@ -113,8 +103,15 @@ The `profit` argument may be specified in several ways:
 When action-level profit is supplied, the same profit value is assigned
 to all feasible planning units for that action. When pair-specific
 profit is supplied, only the listed `(pu, action)` pairs receive
-explicit values; unmatched feasible pairs are set to zero if
-`na_to_zero = TRUE`.
+explicit values; unmatched feasible pairs are interpreted as zero-profit
+pairs.
+
+**Storage behaviour**
+
+This function stores only rows with non-zero profit values. Feasible
+pairs whose final profit is zero are omitted from `x$data$dist_profit`.
+Missing values produced during matching or joins are treated as zero
+before this filtering step.
 
 **Data-only behaviour**
 
@@ -175,7 +172,7 @@ dist_features <- data.frame(
   amount = c(1, 2, 1, 3)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
@@ -196,7 +193,7 @@ p1$data$dist_profit
 
 # 2) Profit per action using a named vector
 pr <- c(harvest = 50, restoration = -5)
-p2 <- add_profit(p, profit = pr, keep_zero = TRUE)
+p2 <- add_profit(p, profit = pr)
 #> Error: object 'p' not found
 p2$data$dist_profit
 #> Error: object 'p2' not found
@@ -217,7 +214,7 @@ pr_pair <- data.frame(
   action = c("harvest", "harvest", "restoration"),
   profit = c(100, 80, 30)
 )
-p4 <- add_profit(p, profit = pr_pair, keep_zero = TRUE)
+p4 <- add_profit(p, profit = pr_pair)
 #> Error: object 'p' not found
 p4$data$dist_profit
 #> Error: object 'p4' not found

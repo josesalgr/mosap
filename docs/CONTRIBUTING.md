@@ -126,8 +126,7 @@ the most recent development section.
 Please try to keep contributions consistent with the current design of
 `mosap`, especially its modular structure:
 
-- [`inputData()`](https://josesalgr.github.io/mosap/reference/inputData.md)
-  builds the problem object,
+- `inputData()` builds the problem object,
 - `add_*()` functions enrich the problem,
 - `set_*()` functions configure methods or solver settings,
 - [`solve()`](https://josesalgr.github.io/mosap/reference/solve.md)

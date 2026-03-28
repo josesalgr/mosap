@@ -4414,3 +4414,68 @@ add_objective <- function(x, objective) {
   base <- .pa_refresh_model_snapshot(base)
   base
 }
+
+
+.pamo_compile_problem <- function(x, method_name = NULL, ...) {
+  stopifnot(inherits(x, "Problem"))
+
+  method <- x$data$method %||% NULL
+  if (is.null(method) || !is.list(method) || length(method) == 0L) {
+    stop(
+      "Multi-objective compilation requires a valid x$data$method configuration.",
+      call. = FALSE
+    )
+  }
+
+  if (is.null(method_name)) {
+    method_name <- as.character(method$type %||% method$name %||% NA_character_)[1]
+  }
+
+  if (is.na(method_name) || !nzchar(method_name)) {
+    stop(
+      "Invalid multi-objective method configuration: missing method name.",
+      call. = FALSE
+    )
+  }
+
+  aliases <- switch(
+    method_name,
+    weighted = as.character(method$aliases %||% character(0)),
+    epsilon_constraint = unique(c(
+      as.character(method$primary %||% character(0)),
+      as.character(method$constrained %||% character(0))
+    )),
+    augmecon = unique(c(
+      as.character(method$primary %||% character(0)),
+      as.character(method$secondary %||% character(0))
+    )),
+    stop(
+      "Unknown/unsupported multi-objective method: '", method_name, "'.",
+      call. = FALSE
+    )
+  )
+
+  aliases <- aliases[!is.na(aliases) & nzchar(aliases)]
+
+  if (length(aliases) == 0L) {
+    stop(
+      "Could not determine the active objective aliases for multi-objective compilation.",
+      call. = FALSE
+    )
+  }
+
+  specs <- .pamo_get_objective_specs(x, aliases)
+  ir_list <- lapply(specs, function(sp) .pamo_objective_to_ir(x, sp))
+
+  out <- .pamo_prepare_superset_model(x, ir_list)
+
+  out$data$meta <- out$data$meta %||% list()
+  out$data$meta$model_dirty <- FALSE
+  out$data$has_model <- TRUE
+
+  out$data$mo_cache <- out$data$mo_cache %||% list()
+  out$data$mo_cache$compiled_method <- method_name
+  out$data$mo_cache$compiled_aliases <- aliases
+
+  out
+}

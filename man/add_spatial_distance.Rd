@@ -7,29 +7,30 @@
 add_spatial_distance(
   x,
   coords = NULL,
-  dmax,
+  max_distance,
   name = "distance",
-  weight_fn = c("constant", "inverse", "inverse_sq"),
-  eps = 1e-09
+  weight_mode = c("constant", "inverse", "inverse_sq"),
+  distance_eps = 1e-09
 )
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}}.}
+\item{x}{A \code{Problem} object created with \code{\link{input_data}}.}
 
 \item{coords}{Optional coordinates specification, following the same rules as
 in \code{\link{add_spatial_knn}}.}
 
-\item{dmax}{Positive numeric scalar giving the maximum distance for an edge.}
+\item{max_distance}{Positive numeric scalar giving the maximum distance for
+an edge.}
 
 \item{name}{Character string giving the key under which the relation is
 stored.}
 
-\item{weight_fn}{Character string indicating how distance is converted to
+\item{weight_mode}{Character string indicating how distance is converted to
 weight. Must be one of \code{"constant"}, \code{"inverse"}, or
 \code{"inverse_sq"}.}
 
-\item{eps}{Small positive numeric constant used to avoid division by zero in
-inverse-distance weighting.}
+\item{distance_eps}{Small positive numeric constant used to avoid division by
+zero in inverse-distance weighting.}
 }
 \value{
 An updated \code{Problem} object.
@@ -52,7 +53,7 @@ edge between \eqn{i} and \eqn{j} whenever:
 d_{ij} \le d_{\max}.
 }
 
-Edge weights are assigned according to \code{weight_fn}:
+Edge weights are assigned according to \code{weight_mode}:
 \itemize{
 \item \code{"constant"}:
 \deqn{\omega_{ij} = 1,}
@@ -61,7 +62,7 @@ Edge weights are assigned according to \code{weight_fn}:
 \item \code{"inverse_sq"}:
 \deqn{\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},}
 }
-where \eqn{\varepsilon = \code{eps}} is a small constant.
+where \eqn{\varepsilon = \code{distance_eps}} is a small constant.
 
 The implementation computes an \eqn{O(n^2)} distance matrix and is therefore
 best suited to small or moderate numbers of planning units. For large
@@ -73,9 +74,9 @@ The resulting relation is registered as undirected.
 \dontrun{
 p <- add_spatial_distance(
   x = p,
-  dmax = 1000,
+  max_distance = 1000,
   name = "within_1km",
-  weight_fn = "constant"
+  weight_mode = "constant"
 )
 }
 

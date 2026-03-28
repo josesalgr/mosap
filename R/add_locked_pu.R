@@ -12,12 +12,9 @@ NULL
 #' \code{locked_out}. These columns are later used by the model builder when
 #' translating the \code{Problem} object into optimization constraints.
 #'
-#' Lock information may be supplied directly as logical vectors, as vectors of
-#' planning-unit ids, or by referencing columns in the raw planning-unit data
-#' originally passed to \code{\link{inputData}}.
-#' In addition, a Marxan-style \code{pu_status} specification can be provided,
-#' where status code \code{2} denotes locked-in planning units and status code
-#' \code{3} denotes locked-out planning units.
+#' Lock information may be supplied either directly as logical vectors, as
+#' vectors of planning-unit ids, or by referencing columns in the raw
+#' planning-unit data originally passed to \code{\link{input_data}}.
 #'
 #' @details
 #' Let \eqn{\mathcal{P}} denote the set of planning units and let
@@ -44,58 +41,34 @@ NULL
 #'
 #' \strong{Philosophy}
 #'
-#' The role of \code{\link{inputData}} is to construct and normalize the basic
+#' The role of \code{\link{input_data}} is to construct and normalize the basic
 #' inputs of the planning problem. Locking planning units is treated as a
 #' separate modelling step so that users can define or revise selection
 #' restrictions after the \code{Problem} object has already been created.
 #'
 #' \strong{Supported input formats}
 #'
-#' For \code{locked_in} and \code{locked_out}, the function accepts:
+#' For both \code{locked_in} and \code{locked_out}, the function accepts:
 #' \itemize{
-#'   \item \code{NULL}, meaning that no explicit update is supplied for that
-#'   side,
+#'   \item \code{NULL}, meaning that no planning units are locked on that side,
 #'   \item a single character string, interpreted as a column name in
 #'   \code{x$data$pu_data_raw},
 #'   \item a logical vector of length \code{nrow(x$data$pu)},
 #'   \item a vector of planning-unit ids.
 #' }
 #'
-#' For \code{pu_status}, the function accepts:
-#' \itemize{
-#'   \item \code{NULL},
-#'   \item a single character string, interpreted as a column name in
-#'   \code{x$data$pu_data_raw},
-#'   \item a vector of length \code{nrow(x$data$pu)} containing status codes.
-#' }
+#' When a column name is supplied, the referenced column is coerced to logical.
+#' Numeric values are interpreted as non-zero = \code{TRUE}; character and
+#' factor values are interpreted using common logical strings such as
+#' \code{"true"}, \code{"t"}, \code{"1"}, \code{"yes"}, and \code{"y"}.
+#' Missing values are treated as \code{FALSE}.
 #'
-#' When \code{pu_status} is used, values are interpreted as follows:
-#' \itemize{
-#'   \item \code{2}: locked in,
-#'   \item \code{3}: locked out,
-#'   \item all other values: treated as free.
-#' }
+#' \strong{Replacement behaviour}
 #'
-#' \strong{Priority rules}
-#'
-#' By default, explicit \code{locked_in} and \code{locked_out} inputs take
-#' precedence over \code{pu_status}. This means that \code{pu_status} is first
-#' translated into candidate locked-in and locked-out sets, and then explicit
-#' \code{locked_in} and \code{locked_out} assignments are applied on top of
-#' those values.
-#'
-#' If \code{status_overrides = TRUE}, then \code{pu_status} overrides any
-#' existing or explicitly supplied \code{locked_in} and \code{locked_out}
-#' assignments.
-#'
-#' \strong{Overwrite behaviour}
-#'
-#' If \code{overwrite = TRUE}, the function replaces any existing
-#' \code{locked_in} and \code{locked_out} columns in \code{x$data$pu}.
-#'
-#' If \code{overwrite = FALSE}, new locked values are merged with any existing
-#' values using logical OR. This means that already locked planning units remain
-#' locked unless the object is rebuilt or overwritten explicitly.
+#' Each call to \code{add_locked_pu()} replaces any existing
+#' \code{locked_in} and \code{locked_out} columns in \code{x$data$pu}. In other
+#' words, the function defines the complete current set of locked planning
+#' units; it does not merge new values with previous ones.
 #'
 #' \strong{Consistency checks}
 #'
@@ -103,7 +76,7 @@ NULL
 #' \code{locked_in} and \code{locked_out}. If such conflicts are found, an error
 #' is raised.
 #'
-#' @param x A \code{Problem} object created with \code{\link{inputData}}.
+#' @param x A \code{Problem} object created with \code{\link{input_data}}.
 #'
 #' @param locked_in Optional locked-in specification. It may be \code{NULL}, a
 #'   column name in \code{x$data$pu_data_raw}, a logical vector, or a vector of
@@ -113,20 +86,6 @@ NULL
 #'   column name in \code{x$data$pu_data_raw}, a logical vector, or a vector of
 #'   planning-unit ids.
 #'
-#' @param pu_status Optional Marxan-style status specification. It may be
-#'   \code{NULL}, a column name in \code{x$data$pu_data_raw}, or a vector of
-#'   length \code{nrow(x$data$pu)}. Values \code{2} indicate locked-in planning
-#'   units and values \code{3} indicate locked-out planning units.
-#'
-#' @param overwrite Logical. If \code{TRUE}, replace any existing
-#'   \code{locked_in} and \code{locked_out} columns in \code{x$data$pu}. If
-#'   \code{FALSE}, merge new values with existing ones using logical OR.
-#'
-#' @param status_overrides Logical. If \code{TRUE}, \code{pu_status} overrides
-#'   explicit or existing \code{locked_in} and \code{locked_out} assignments. If
-#'   \code{FALSE}, explicit \code{locked_in} and \code{locked_out} inputs take
-#'   precedence over \code{pu_status}.
-#'
 #' @return An updated \code{Problem} object in which \code{x$data$pu} contains
 #'   logical columns \code{locked_in} and \code{locked_out}.
 #'
@@ -135,7 +94,7 @@ NULL
 #'   id = 1:5,
 #'   cost = c(2, 3, 1, 4, 2),
 #'   lock_col = c(TRUE, FALSE, FALSE, TRUE, FALSE),
-#'   status_col = c(0, 2, 0, 3, 0)
+#'   out_col = c(FALSE, FALSE, FALSE, FALSE, TRUE)
 #' )
 #'
 #' features <- data.frame(
@@ -148,7 +107,7 @@ NULL
 #'   amount = c(1, 2, 1, 3, 2, 1)
 #' )
 #'
-#' p <- inputData(
+#' p <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -167,32 +126,22 @@ NULL
 #' p2 <- add_locked_pu(
 #'   x = p,
 #'   locked_in = "lock_col",
-#'   overwrite = TRUE
+#'   locked_out = "out_col"
 #' )
 #'
 #' p2$data$pu[, c("id", "locked_in", "locked_out")]
 #'
-#' # 3) Use Marxan-style status codes
+#' # 3) Use logical vectors
 #' p3 <- add_locked_pu(
 #'   x = p,
-#'   pu_status = "status_col",
-#'   overwrite = TRUE
+#'   locked_in = c(TRUE, FALSE, TRUE, FALSE, FALSE),
+#'   locked_out = c(FALSE, FALSE, FALSE, TRUE, FALSE)
 #' )
 #'
 #' p3$data$pu[, c("id", "locked_in", "locked_out")]
 #'
-#' # 4) Use logical vectors
-#' p4 <- add_locked_pu(
-#'   x = p,
-#'   locked_in = c(TRUE, FALSE, TRUE, FALSE, FALSE),
-#'   locked_out = c(FALSE, FALSE, FALSE, TRUE, FALSE),
-#'   overwrite = TRUE
-#' )
-#'
-#' p4$data$pu[, c("id", "locked_in", "locked_out")]
-#'
 #' @seealso
-#' \code{\link{inputData}},
+#' \code{\link{input_data}},
 #' \code{\link{add_actions}},
 #' \code{\link{add_locked_actions}}
 #'
@@ -200,10 +149,7 @@ NULL
 add_locked_pu <- function(
     x,
     locked_in = NULL,
-    locked_out = NULL,
-    pu_status = NULL,
-    overwrite = TRUE,
-    status_overrides = FALSE
+    locked_out = NULL
 ) {
   stopifnot(inherits(x, "Problem"))
 
@@ -274,35 +220,8 @@ add_locked_pu <- function(
     out
   }
 
-  .as_status_vector <- function(z) {
-    if (is.null(z)) return(NULL)
-
-    if (is.character(z) && length(z) == 1L) {
-      if (is.null(pu_raw) || !inherits(pu_raw, "data.frame")) {
-        stop(
-          "pu_status was provided as a column name, but x$data$pu_data_raw is missing.",
-          call. = FALSE
-        )
-      }
-      if (!(z %in% names(pu_raw))) {
-        stop("pu_status column '", z, "' was not found in x$data$pu_data_raw.", call. = FALSE)
-      }
-      z <- pu_raw[[z]]
-    }
-
-    z <- as.integer(z)
-    if (length(z) != n_pu) {
-      stop(
-        "pu_status must have length ", n_pu, ".",
-        call. = FALSE
-      )
-    }
-
-    z
-  }
-
   .resolve_lock_spec <- function(spec, what) {
-    if (is.null(spec)) return(NULL)
+    if (is.null(spec)) return(rep(FALSE, n_pu))
 
     # case 1: single character -> column name in pu_data_raw
     if (is.character(spec) && length(spec) == 1L && !spec %in% as.character(pu_ids)) {
@@ -344,59 +263,8 @@ add_locked_pu <- function(
     pu_ids %in% ids
   }
 
-  lock_in_vec  <- .resolve_lock_spec(locked_in,  "locked_in")
-  lock_out_vec <- .resolve_lock_spec(locked_out, "locked_out")
-  status_vec   <- .as_status_vector(pu_status)
-
-  status_in  <- if (!is.null(status_vec)) status_vec == 2L else NULL
-  status_out <- if (!is.null(status_vec)) status_vec == 3L else NULL
-
-  # current values if they already exist
-  current_in <- if ("locked_in" %in% names(pu)) {
-    as.logical(pu$locked_in)
-  } else {
-    rep(FALSE, n_pu)
-  }
-  current_out <- if ("locked_out" %in% names(pu)) {
-    as.logical(pu$locked_out)
-  } else {
-    rep(FALSE, n_pu)
-  }
-
-  current_in[is.na(current_in)] <- FALSE
-  current_out[is.na(current_out)] <- FALSE
-
-  if (isTRUE(overwrite)) {
-    new_in  <- rep(FALSE, n_pu)
-    new_out <- rep(FALSE, n_pu)
-  } else {
-    new_in  <- current_in
-    new_out <- current_out
-  }
-
-  if (!is.null(status_in) && isTRUE(status_overrides)) {
-    new_in  <- status_in
-    new_out <- status_out
-  } else {
-    if (!is.null(status_in)) {
-      new_in  <- new_in  | status_in
-      new_out <- new_out | status_out
-    }
-    if (!is.null(lock_in_vec)) {
-      if (isTRUE(overwrite)) {
-        new_in <- lock_in_vec
-      } else {
-        new_in <- new_in | lock_in_vec
-      }
-    }
-    if (!is.null(lock_out_vec)) {
-      if (isTRUE(overwrite)) {
-        new_out <- lock_out_vec
-      } else {
-        new_out <- new_out | lock_out_vec
-      }
-    }
-  }
+  new_in  <- .resolve_lock_spec(locked_in,  "locked_in")
+  new_out <- .resolve_lock_spec(locked_out, "locked_out")
 
   if (any(new_in & new_out, na.rm = TRUE)) {
     bad_ids <- pu_ids[new_in & new_out]

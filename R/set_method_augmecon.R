@@ -243,7 +243,9 @@ set_method_augmecon <- function(
 
   # ---- aliases
   if (is.null(aliases)) {
-    aliases <- .pamo_list_objective_aliases(x)
+    aliases <- .pamo_get_specs(x)
+    obj_alias <- names(specs_all)
+    aliases <- obj_alias
   } else {
     if (!is.character(aliases) || length(aliases) == 0L || anyNA(aliases)) {
       stop("`aliases` must be NULL or a non-empty character vector without NA.", call. = FALSE)

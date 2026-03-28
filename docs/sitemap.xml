@@ -30,6 +30,7 @@
 <url><loc>https://josesalgr.github.io/mosap/reference/add_spatial_rook.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/add_targets_absolute.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/add_targets_relative.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/compile_model.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/dot-pa_build_model.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/get_actions.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/get_features.html</loc></url>
@@ -37,9 +38,17 @@
 <url><loc>https://josesalgr.github.io/mosap/reference/get_solution_vector.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/get_targets.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/index.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/inputData,ANY,ANY,missing-method.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/inputData,ANY,ANY,NULL-method.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/inputData,ANY,data.frame,data.frame-method.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/inputData,data.frame,data.frame,data.frame-method.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/inputData.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/input_data.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/pipe.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/plot_spatial.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/plot_spatial_actions.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/plot_spatial_features.html</loc></url>
+<url><loc>https://josesalgr.github.io/mosap/reference/plot_spatial_pu.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/plot_tradeoff.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/print.html</loc></url>
 <url><loc>https://josesalgr.github.io/mosap/reference/problem-class.html</loc></url>

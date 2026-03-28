@@ -14,8 +14,7 @@ and stored constraints (e.g., targets).
 
 - x:
 
-  Problem object (class "Problem") created with
-  inputData()/inputDataSpatial().
+  Problem object (class "Problem") created with input_data().
 
 ## Value
 

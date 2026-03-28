@@ -81,7 +81,7 @@ Rcpp::List rcpp_add_constraint_action_max_per_pu(
 
   // Add one row per PU that appears in cols_by_pu
   for (auto &kv : cols_by_pu) {
-    const int ipu = kv.first;
+    // const int ipu = kv.first;
     std::vector<int> &cols = kv.second;
 
     if (cols.empty()) continue; // 0 <= max, skip

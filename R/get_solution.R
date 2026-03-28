@@ -278,6 +278,17 @@ get_features <- function(x, run = NULL) {
     if (!("run_id" %in% names(f))) {
       stop("Features summary has no 'run_id' column.", call. = FALSE)
     }
+
+    runs_avail <- sort(unique(f$run_id))
+    if (!(run %in% runs_avail)) {
+      stop(
+        "run=", run, " is out of range. Available runs: ",
+        paste(runs_avail, collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+
     f <- f[f$run_id == run, , drop = FALSE]
   }
 

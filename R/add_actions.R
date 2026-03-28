@@ -4,7 +4,7 @@
 #'
 #' @description
 #' Define the action catalogue, the set of feasible planning unit--action pairs,
-#' and the corresponding implementation costs.
+#' and their implementation costs.
 #'
 #' This function adds two core components to a \code{Problem} object. First, it
 #' stores the action catalogue in \code{x$data$actions}. Second, it creates the
@@ -27,19 +27,23 @@
 #' from \code{id}. If an \code{action_set} column is present, it is also
 #' preserved and can later be used to refer to groups of actions.
 #'
-#' \strong{Feasibility.}
+#' Actions are stored sorted by \code{id} to ensure reproducible internal
+#' indexing.
 #'
-#' Feasibility is controlled through \code{include} and \code{exclude}.
+#' \strong{Feasible planning unit--action pairs.}
 #'
-#' If \code{include = NULL} and \code{feasible_default = TRUE}, all possible
-#' \code{(pu, action)} pairs are initially considered feasible, that is:
+#' Feasibility is controlled through \code{include_pairs} and
+#' \code{exclude_pairs}.
+#'
+#' If \code{include_pairs = NULL}, all possible \code{(pu, action)} pairs are
+#' initially considered feasible:
 #' \deqn{
 #' \mathcal{F} = \mathcal{P} \times \mathcal{A}.
 #' }
 #'
-#' If \code{include} is supplied, only those pairs are retained in the feasible
-#' set. If \code{exclude} is also supplied, matching pairs are removed after
-#' applying \code{include}. Thus, in general:
+#' If \code{include_pairs} is supplied, only those pairs are retained in the
+#' feasible set. If \code{exclude_pairs} is also supplied, matching pairs are
+#' removed after applying \code{include_pairs}. Thus, in general:
 #' \deqn{
 #' \mathcal{F} =
 #' \left(\mathcal{F}_{\mathrm{include}} \text{ or } \mathcal{P}\times\mathcal{A}\right)
@@ -47,7 +51,7 @@
 #' \mathcal{F}_{\mathrm{exclude}}.
 #' }
 #'
-#' Both \code{include} and \code{exclude} can be specified as:
+#' Both \code{include_pairs} and \code{exclude_pairs} can be specified as:
 #' \itemize{
 #'   \item \code{NULL},
 #'   \item a \code{data.frame} with columns \code{pu} and \code{action},
@@ -56,9 +60,9 @@
 #'
 #' When supplied as a \code{data.frame}, the object must contain columns
 #' \code{pu} and \code{action}. An optional logical-like column
-#' \code{feasible} may also be provided; rows with \code{feasible = FALSE} are
-#' ignored. If \code{na_is_infeasible = TRUE}, missing values in
-#' \code{feasible} are treated as \code{FALSE}.
+#' \code{feasible} may also be provided; only rows with \code{feasible = TRUE}
+#' are retained. Missing values in \code{feasible} are treated as
+#' \code{FALSE}.
 #'
 #' When supplied as a named list, names must match action ids. Each element may
 #' contain either:
@@ -111,38 +115,26 @@
 #' Calling \code{add_actions()} replaces any previous action catalogue and
 #' feasible action table stored in the problem object.
 #'
-#' @param x A \code{Problem} object created with \code{\link{inputData}}.
+#' @param x A \code{Problem} object created with \code{\link{input_data}}.
 #'
 #' @param actions A \code{data.frame} defining the action catalogue. It must
 #'   contain a unique \code{id} column. A column named \code{action} is also
 #'   accepted and automatically renamed to \code{id}.
 #'
-#' @param include Optional feasibility specification defining which
-#'   \code{(pu, action)} pairs are allowed. It can be \code{NULL}, a
-#'   \code{data.frame} with columns \code{pu} and \code{action} (optionally also
-#'   \code{feasible}), or a named list whose names are action ids and whose
-#'   elements are vectors of planning unit ids or \code{sf} objects.
+#' @param include_pairs Optional specification of feasible \code{(pu, action)}
+#'   pairs. It can be \code{NULL}, a \code{data.frame} with columns
+#'   \code{pu} and \code{action} (optionally also \code{feasible}), or a named
+#'   list whose names are action ids and whose elements are vectors of planning
+#'   unit ids or \code{sf} objects.
 #'
-#' @param exclude Optional infeasibility specification. It uses the same formats
-#'   as \code{include} and removes matching \code{(pu, action)} pairs from the
-#'   feasible set.
+#' @param exclude_pairs Optional specification of infeasible \code{(pu, action)}
+#'   pairs. It uses the same formats as \code{include_pairs} and removes
+#'   matching pairs from the feasible set.
 #'
 #' @param cost Optional cost specification for feasible pairs. It may be
 #'   \code{NULL}, a scalar numeric value, a named numeric vector indexed by
 #'   action id, or a \code{data.frame} with columns \code{action, cost} or
 #'   \code{pu, action, cost}.
-#'
-#' @param feasible_default Logical. If \code{TRUE} and \code{include} is
-#'   \code{NULL}, all possible \code{(pu, action)} pairs are considered
-#'   feasible.
-#'
-#' @param na_is_infeasible Logical. Relevant only when \code{include} or
-#'   \code{exclude} is provided as a \code{data.frame} with a \code{feasible}
-#'   column. If \code{TRUE}, missing values in \code{feasible} are treated as
-#'   \code{FALSE}.
-#'
-#' @param sort_actions Logical. If \code{TRUE}, sort actions by \code{id} before
-#'   storing them.
 #'
 #' @return An updated \code{Problem} object with:
 #' \describe{
@@ -158,7 +150,7 @@
 #' }
 #'
 #' @seealso
-#' \code{\link{inputData}},
+#' \code{\link{input_data}},
 #' \code{\link{add_locked_actions}}
 #'
 #' @examples
@@ -181,7 +173,7 @@
 #'   amount = c(1, 2, 1, 3, 2, 1)
 #' )
 #'
-#' p <- inputData(
+#' p <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -203,7 +195,6 @@
 #'
 #' head(p1$data$dist_actions)
 #'
-#'
 #' # Example 2: specify feasible pairs explicitly
 #' include_df <- data.frame(
 #'   pu = c(1, 2, 3, 4),
@@ -213,7 +204,7 @@
 #' p2 <- add_actions(
 #'   x = p,
 #'   actions = actions,
-#'   include = include_df,
+#'   include_pairs = include_df,
 #'   cost = 10
 #' )
 #'
@@ -228,7 +219,7 @@
 #' p3 <- add_actions(
 #'   x = p,
 #'   actions = actions,
-#'   exclude = exclude_df,
+#'   exclude_pairs = exclude_df,
 #'   cost = c(conservation = 3, restoration = 8)
 #' )
 #'
@@ -238,11 +229,9 @@
 add_actions <- function(
     x,
     actions,
-    include = NULL,
-    exclude = NULL,
-    cost = NULL,
-    feasible_default = TRUE,
-    na_is_infeasible = TRUE
+    include_pairs = NULL,
+    exclude_pairs = NULL,
+    cost = NULL
 ) {
 
   .as_int_id <- function(v, what) {
@@ -282,7 +271,7 @@ add_actions <- function(
       f <- as.logical(f)
     }
 
-    if (na_is_infeasible) f[is.na(f)] <- FALSE
+    f[is.na(f)] <- FALSE
     df$feasible <- as.logical(f)
     df
   }
@@ -423,7 +412,7 @@ add_actions <- function(
     !is.null(x$data$pu),
     !is.null(x$data$features),
     !is.null(x$data$dist_features),
-    msg = "x must be created with inputData()"
+    msg = "x must be created with input_data()"
   )
 
   if (is.null(x$data$pu$internal_id)) {
@@ -466,9 +455,7 @@ add_actions <- function(
     }
   }
 
-  # if (isTRUE(sort_actions)) {
-    actions <- actions[order(actions$id), , drop = FALSE]
-  # }
+  actions <- actions[order(actions$id), , drop = FALSE]
 
   if (!("internal_id" %in% names(actions))) {
     actions$internal_id <- seq_len(nrow(actions))
@@ -491,13 +478,10 @@ add_actions <- function(
 
   # ---- build feasible pairs
   pu_sf <- x$data$pu_sf
-  include_pairs <- .spec_to_pairs(include, "include", action_ids, pu_ids, pu_sf, .as_int_id)
-  exclude_pairs <- .spec_to_pairs(exclude, "exclude", action_ids, pu_ids, pu_sf, .as_int_id)
+  include_df <- .spec_to_pairs(include_pairs, "include_pairs", action_ids, pu_ids, pu_sf, .as_int_id)
+  exclude_df <- .spec_to_pairs(exclude_pairs, "exclude_pairs", action_ids, pu_ids, pu_sf, .as_int_id)
 
-  if (is.null(include_pairs)) {
-    if (!isTRUE(feasible_default)) {
-      stop("No feasible (pu, action) pairs were created: include is NULL and feasible_default=FALSE.", call. = FALSE)
-    }
+  if (is.null(include_df)) {
     dist_actions <- base::expand.grid(
       pu = pu_ids,
       action = action_ids,
@@ -505,18 +489,18 @@ add_actions <- function(
       stringsAsFactors = FALSE
     )
   } else {
-    dist_actions <- include_pairs
+    dist_actions <- include_df
   }
 
-  if (!is.null(exclude_pairs) && nrow(exclude_pairs) > 0) {
+  if (!is.null(exclude_df) && nrow(exclude_df) > 0) {
     key_da <- paste(dist_actions$pu, dist_actions$action)
-    key_ex <- paste(exclude_pairs$pu, exclude_pairs$action)
+    key_ex <- paste(exclude_df$pu, exclude_df$action)
     keep <- !(key_da %in% key_ex)
     dist_actions <- dist_actions[keep, , drop = FALSE]
   }
 
   if (nrow(dist_actions) == 0) {
-    stop("No feasible (pu, action) pairs were created after applying include/exclude.", call. = FALSE)
+    stop("No feasible (pu, action) pairs were created after applying include_pairs/exclude_pairs.", call. = FALSE)
   }
 
   dist_actions$pu <- .as_int_id(dist_actions$pu, "dist_actions$pu")
@@ -600,18 +584,18 @@ add_actions <- function(
   dist_actions$status <- 0L
 
   # ---- enforce PU locked_out
-  if ("locked_out" %in% names(x$data$pu)) {
-    pu_locked_out <- x$data$pu$locked_out
-    pu_locked_out[is.na(pu_locked_out)] <- FALSE
-    pu_locked_out <- as.logical(pu_locked_out)
-
-    locked_out_pus <- x$data$pu$id[pu_locked_out]
-
-    if (length(locked_out_pus) > 0) {
-      idx_pu_lo <- dist_actions$pu %in% locked_out_pus
-      dist_actions$status[idx_pu_lo] <- 3L
-    }
-  }
+  # if ("locked_out" %in% names(x$data$pu)) {
+  #   pu_locked_out <- x$data$pu$locked_out
+  #   pu_locked_out[is.na(pu_locked_out)] <- FALSE
+  #   pu_locked_out <- as.logical(pu_locked_out)
+  #
+  #   locked_out_pus <- x$data$pu$id[pu_locked_out]
+  #
+  #   if (length(locked_out_pus) > 0) {
+  #     idx_pu_lo <- dist_actions$pu %in% locked_out_pus
+  #     dist_actions$status[idx_pu_lo] <- 3L
+  #   }
+  # }
 
   # ---- add internal ids
   dist_actions$internal_pu <- unname(pu_index[as.character(dist_actions$pu)])

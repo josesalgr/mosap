@@ -12,7 +12,7 @@ optimization model or model snapshot.
 In other words, `Problem` is the persistent object that connects the
 full `mosap` workflow:
 
-    inputData()
+    input_data()
     -> add_*() / set_*()
     -> solve()
 
@@ -65,7 +65,7 @@ representation.
 **How objects are created**
 
 `Problem` objects are usually created by
-[`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md).
+[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
 
 After creation, downstream functions such as
 [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
@@ -259,7 +259,7 @@ already materialized as a built optimization model.
 
 ## See also
 
-[`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md),
+[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md),
 [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
 [`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md),
 [`add_targets_absolute`](https://josesalgr.github.io/mosap/reference/add_targets_absolute.md),

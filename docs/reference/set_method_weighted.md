@@ -189,7 +189,7 @@ dist_features <- data.frame(
   amount = c(1, 1, 1, 1)
 )
 
-x <- inputData(
+x <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

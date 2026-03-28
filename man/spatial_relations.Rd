@@ -48,14 +48,10 @@ Some relation constructors create undirected relations by default. In that
 case, each unordered pair is typically stored once, usually with
 \eqn{i < j}, unless self-edges are explicitly allowed.
 
-If \code{symmetric = TRUE} is used in \code{\link{add_spatial_relations}},
-an undirected relation can be expanded into a directed representation by
-duplicating off-diagonal edges in both directions.
-
 \strong{Boundary relations and diagonal terms}
 
 The function \code{\link{add_spatial_boundary}} supports boundary-length
-relations derived either from a boundary table or from \code{sf} polygons.
+relations derived either from a boundary table or from polygon geometry.
 
 If \code{include_self = TRUE}, diagonal entries \eqn{(i,i)} are added to
 represent exposed boundary. These diagonal weights are intended for

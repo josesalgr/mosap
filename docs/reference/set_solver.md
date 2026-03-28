@@ -219,7 +219,7 @@ backend is checked later when solving.
 
 ``` r
 if (FALSE) { # \dontrun{
-x <- inputData(
+x <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

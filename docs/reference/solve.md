@@ -26,7 +26,7 @@ solve(x, ...)
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md)
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md)
   and optionally enriched with actions, effects, targets, constraints,
   objectives, spatial relations, method settings, and solver settings.
 
@@ -53,7 +53,7 @@ Either:
 
 The typical mosap workflow is:
 
-    x <- inputData(...)
+    x <- input_data(...)
     x <- add_...(x, ...)
     x <- set_...(x, ...)
     res <- solve(x)
@@ -180,7 +180,7 @@ if (FALSE) { # \dontrun{
 # ------------------------------------------------------------
 # Single-objective solve
 # ------------------------------------------------------------
-x <- inputData(
+x <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features

@@ -4,33 +4,28 @@
 \alias{add_targets_absolute}
 \title{Add absolute targets}
 \usage{
-add_targets_absolute(
-  x,
-  targets,
-  subset = NULL,
-  overwrite = FALSE,
-  label = NULL
-)
+add_targets_absolute(x, targets, features = NULL, actions = NULL, label = NULL)
 }
 \arguments{
 \item{x}{A \code{Problem} object.}
 
 \item{targets}{Target specification. This is interpreted as an absolute target
-value in the same units as the modelled feature contributions. See Details.}
+value in the same units as the modelled feature contributions. It may be a
+scalar, vector, named vector, or \code{data.frame}. See Details.}
 
-\item{subset}{Optional character vector indicating which actions count toward
+\item{features}{Optional feature specification indicating which features the
+supplied target values refer to when \code{targets} does not identify
+features explicitly. If \code{NULL}, all features are targeted.}
+
+\item{actions}{Optional character vector indicating which actions count toward
 target achievement. Entries may match action ids, \code{action_set} labels,
 or both. If \code{NULL}, all actions count.}
-
-\item{overwrite}{Logical. If \code{TRUE}, replace existing stored targets for
-the same feature and subset combination. If \code{FALSE}, new rows are
-appended and overlap handling is delegated to \code{.pa_store_targets()}.}
 
 \item{label}{Optional character string stored with the targets for reporting
 and bookkeeping.}
 }
 \value{
-An updated \code{Problem} object with absolute targets stored in
+An updated \code{Problem} object with absolute targets appended to
 \code{x$data$targets}.
 }
 \description{
@@ -41,9 +36,13 @@ linear constraints when the optimization model is built.
 
 Absolute targets are interpreted directly in the same units as the feature
 contributions used by the model.
+
+Each call appends one or more target definitions to the problem. This makes
+it possible to combine multiple target rules, including targets associated
+with different action subsets.
 }
 \details{
-Let \eqn{\mathcal{F}} denote the set of features. For each feature
+Let \eqn{\mathcal{F}} denote the set of features. For each targeted feature
 \eqn{f \in \mathcal{F}}, this function stores an absolute target threshold
 \eqn{T_f \ge 0}.
 
@@ -68,17 +67,24 @@ T_f = t_f,
 }
 where \eqn{t_f} is the user-supplied target value for feature \eqn{f}.
 
-The \code{subset} argument restricts which actions may contribute toward
+The \code{actions} argument restricts which actions may contribute toward
 achievement of the target, but it does not modify the value of \eqn{T_f}
 itself.
 
 The \code{targets} argument is parsed by \code{.pa_parse_targets()} and may be
 supplied in several equivalent forms, including:
 \itemize{
-\item a single numeric value recycled to all features,
-\item a numeric vector aligned to feature order,
+\item a single numeric value recycled to all selected features,
+\item a numeric vector aligned to \code{features},
 \item a named numeric vector where names identify features,
 \item a \code{data.frame} with \code{feature} and \code{target} columns.
+}
+
+If \code{targets} does not explicitly identify features:
+\itemize{
+\item if \code{features = NULL}, the target is applied to all features,
+\item if \code{features} is supplied, the target values are interpreted with
+respect to that feature set.
 }
 
 Internally, targets added by this function are stored with:
@@ -101,19 +107,24 @@ p <- add_targets_absolute(
   c("1" = 5, "2" = 8, "3" = 12)
 )
 
+# Same target for a selected subset of features
+p <- add_targets_absolute(
+  p,
+  5,
+  features = c("sp1", "sp2")
+)
+
 # Only actions in the "recovery" set count toward target achievement
 p <- add_targets_absolute(
   p,
   5,
-  subset = "recovery"
+  actions = "recovery"
 )
 
-# Mix action sets and specific actions
-p <- add_targets_absolute(
-  p,
-  5,
-  subset = c("recovery", "conservation_action")
-)
+# Combine target rules with different action subsets
+p <- p |>
+  add_targets_relative(0.1, actions = "conservation") |>
+  add_targets_absolute(100, actions = "restoration")
 }
 
 }

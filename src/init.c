@@ -31,9 +31,7 @@ extern SEXP _mosap_rcpp_add_constraint_action_max_per_pu(SEXP, SEXP, SEXP, SEXP,
 extern SEXP _mosap_rcpp_add_linking_w_le_sum_x(SEXP, SEXP, SEXP, SEXP);
 
 //targets
-extern SEXP _mosap_rcpp_add_target_conservation(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _mosap_rcpp_add_target_recovery(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _mosap_rcpp_add_target_mixed_total(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 //objectives
 extern SEXP _mosap_rcpp_reset_objective(SEXP, SEXP);
@@ -79,9 +77,7 @@ static const R_CallMethodDef CallEntries[] = {
   {"_mosap_rcpp_add_base_variables", (DL_FUNC) &_mosap_rcpp_add_base_variables, 5},
   {"_mosap_rcpp_add_linking_z_le_w", (DL_FUNC) &_mosap_rcpp_add_linking_z_le_w, 4},
   {"_mosap_rcpp_fix_z_ineligible_by_positive_delta", (DL_FUNC) &_mosap_rcpp_fix_z_ineligible_by_positive_delta, 5},
-  {"_mosap_rcpp_add_target_conservation", (DL_FUNC) &_mosap_rcpp_add_target_conservation, 7},
   {"_mosap_rcpp_add_target_recovery", (DL_FUNC) &_mosap_rcpp_add_target_recovery, 6},
-  {"_mosap_rcpp_add_target_mixed_total", (DL_FUNC) &_mosap_rcpp_add_target_mixed_total, 7},
   {"_mosap_rcpp_add_linear_constraint", (DL_FUNC) &_mosap_rcpp_add_linear_constraint, 8},
   {"_mosap_rcpp_add_objective_min_cost", (DL_FUNC) &_mosap_rcpp_add_objective_min_cost, 8},
   {"_mosap_rcpp_reset_objective", (DL_FUNC) &_mosap_rcpp_reset_objective, 2},

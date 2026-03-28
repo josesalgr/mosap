@@ -12,10 +12,10 @@ planning-unit coordinates.
 add_spatial_distance(
   x,
   coords = NULL,
-  dmax,
+  max_distance,
   name = "distance",
-  weight_fn = c("constant", "inverse", "inverse_sq"),
-  eps = 1e-09
+  weight_mode = c("constant", "inverse", "inverse_sq"),
+  distance_eps = 1e-09
 )
 ```
 
@@ -24,14 +24,14 @@ add_spatial_distance(
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md).
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
 
 - coords:
 
   Optional coordinates specification, following the same rules as in
   [`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md).
 
-- dmax:
+- max_distance:
 
   Positive numeric scalar giving the maximum distance for an edge.
 
@@ -39,12 +39,12 @@ add_spatial_distance(
 
   Character string giving the key under which the relation is stored.
 
-- weight_fn:
+- weight_mode:
 
   Character string indicating how distance is converted to weight. Must
   be one of `"constant"`, `"inverse"`, or `"inverse_sq"`.
 
-- eps:
+- distance_eps:
 
   Small positive numeric constant used to avoid division by zero in
   inverse-distance weighting.
@@ -62,7 +62,7 @@ and \\j\\.
 For a user-supplied threshold \\d\_{\max}\\, this constructor creates an
 edge between \\i\\ and \\j\\ whenever: \$\$ d\_{ij} \le d\_{\max}. \$\$
 
-Edge weights are assigned according to `weight_fn`:
+Edge weights are assigned according to `weight_mode`:
 
 - `"constant"`: \$\$\omega\_{ij} = 1,\$\$
 
@@ -72,7 +72,7 @@ Edge weights are assigned according to `weight_fn`:
 - `"inverse_sq"`: \$\$\omega\_{ij} = \frac{1}{\max(d\_{ij},
   \varepsilon)^2},\$\$
 
-where \\\varepsilon = \code{eps}\\ is a small constant.
+where \\\varepsilon = \code{distance_eps}\\ is a small constant.
 
 The implementation computes an \\O(n^2)\\ distance matrix and is
 therefore best suited to small or moderate numbers of planning units.
@@ -93,9 +93,9 @@ The resulting relation is registered as undirected.
 if (FALSE) { # \dontrun{
 p <- add_spatial_distance(
   x = p,
-  dmax = 1000,
+  max_distance = 1000,
   name = "within_1km",
-  weight_fn = "constant"
+  weight_mode = "constant"
 )
 } # }
 ```

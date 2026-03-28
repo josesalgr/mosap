@@ -7,7 +7,7 @@ that keeps only positive effects, that is, rows with `benefit > 0`.
 This function is useful when the user wants to work only with beneficial
 consequences of actions. Internally, it calls
 [`add_effects()`](https://josesalgr.github.io/mosap/reference/add_effects.md)
-with `filter = "benefit"` and stores the resulting canonical effects
+with `component = "benefit"` and stores the resulting canonical effects
 table in `x$data$dist_effects`.
 
 For backwards compatibility, a mirror table containing only the benefit
@@ -19,13 +19,8 @@ component is also written to `x$data$dist_benefit`.
 add_benefits(
   x,
   benefits = NULL,
-  ...,
   effect_type = c("delta", "after"),
-  effect_aggregation = c("sum", "mean"),
-  align_rasters = TRUE,
-  keep_zero = FALSE,
-  drop_locked_out = TRUE,
-  na_to_zero = TRUE
+  effect_aggregation = c("sum", "mean")
 )
 ```
 
@@ -34,9 +29,8 @@ add_benefits(
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md)
-  or `inputDataSpatial`. It must already contain `x$data$dist_actions`;
-  run
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  It must already contain `x$data$dist_actions`; run
   [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md)
   first.
 
@@ -58,27 +52,6 @@ add_benefits(
 
   Character string giving the aggregation used when converting raster
   values to planning-unit level. Must be one of `"sum"` or `"mean"`.
-
-- align_rasters:
-
-  Logical. If `TRUE`, effect rasters are aligned to the planning-unit
-  raster grid before raster extraction or zonal aggregation.
-
-- keep_zero:
-
-  Logical. If `TRUE`, keep rows for which both `benefit == 0` and
-  `loss == 0`. Default is `FALSE`.
-
-- drop_locked_out:
-
-  Logical. If `TRUE`, rows associated with `(pu, action)` pairs marked
-  as locked out (`status == 3`) in `x$data$dist_actions` are removed
-  before storing effects.
-
-- na_to_zero:
-
-  Logical. If `TRUE`, missing values are interpreted as zero when
-  constructing or validating effects.
 
 ## Value
 
@@ -105,7 +78,7 @@ pu <- data.frame(id = 1:2, cost = c(1, 2))
 features <- data.frame(id = 1, name = "sp1")
 dist_features <- data.frame(pu = 1:2, feature = 1, amount = c(5, 10))
 
-p <- inputData(pu = pu, features = features, dist_features = dist_features)
+p <- input_data(pu = pu, features = features, dist_features = dist_features)
 p <- add_actions(p, data.frame(id = "restoration"))
 
 eff <- data.frame(

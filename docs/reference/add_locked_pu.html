@@ -11,23 +11,17 @@ This function updates the planning-unit table stored in x$data$pu by
 creating or replacing the logical columns locked_in and
 locked_out. These columns are later used by the model builder when
 translating the Problem object into optimization constraints.
-Lock information may be supplied directly as logical vectors, as vectors of
-planning-unit ids, or by referencing columns in the raw planning-unit data
-originally passed to inputData.
-In addition, a Marxan-style pu_status specification can be provided,
-where status code 2 denotes locked-in planning units and status code
-3 denotes locked-out planning units."><meta property="og:description" content="Define planning units that must be included in, or excluded from, the
+Lock information may be supplied either directly as logical vectors, as
+vectors of planning-unit ids, or by referencing columns in the raw
+planning-unit data originally passed to input_data."><meta property="og:description" content="Define planning units that must be included in, or excluded from, the
 optimization problem.
 This function updates the planning-unit table stored in x$data$pu by
 creating or replacing the logical columns locked_in and
 locked_out. These columns are later used by the model builder when
 translating the Problem object into optimization constraints.
-Lock information may be supplied directly as logical vectors, as vectors of
-planning-unit ids, or by referencing columns in the raw planning-unit data
-originally passed to inputData.
-In addition, a Marxan-style pu_status specification can be provided,
-where status code 2 denotes locked-in planning units and status code
-3 denotes locked-out planning units."><meta property="og:image" content="https://josesalgr.github.io/mosap/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
+Lock information may be supplied either directly as logical vectors, as
+vectors of planning-unit ids, or by referencing columns in the raw
+planning-unit data originally passed to input_data."><meta property="og:image" content="https://josesalgr.github.io/mosap/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
@@ -71,24 +65,14 @@ optimization problem.</p>
 creating or replacing the logical columns <code>locked_in</code> and
 <code>locked_out</code>. These columns are later used by the model builder when
 translating the <code>Problem</code> object into optimization constraints.</p>
-<p>Lock information may be supplied directly as logical vectors, as vectors of
-planning-unit ids, or by referencing columns in the raw planning-unit data
-originally passed to <code><a href="inputData.html">inputData</a></code>.
-In addition, a Marxan-style <code>pu_status</code> specification can be provided,
-where status code <code>2</code> denotes locked-in planning units and status code
-<code>3</code> denotes locked-out planning units.</p>
+<p>Lock information may be supplied either directly as logical vectors, as
+vectors of planning-unit ids, or by referencing columns in the raw
+planning-unit data originally passed to <code><a href="input_data.html">input_data</a></code>.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_locked_pu</span><span class="op">(</span></span>
-<span>  <span class="va">x</span>,</span>
-<span>  locked_in <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  locked_out <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  pu_status <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  overwrite <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  status_overrides <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_locked_pu</span><span class="op">(</span><span class="va">x</span>, locked_in <span class="op">=</span> <span class="cn">NULL</span>, locked_out <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -96,7 +80,7 @@ where status code <code>2</code> denotes locked-in planning units and status cod
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>A <code>Problem</code> object created with <code><a href="inputData.html">inputData</a></code>.</p></dd>
+<dd><p>A <code>Problem</code> object created with <code><a href="input_data.html">input_data</a></code>.</p></dd>
 
 
 <dt id="arg-locked-in">locked_in<a class="anchor" aria-label="anchor" href="#arg-locked-in"></a></dt>
@@ -109,26 +93,6 @@ planning-unit ids.</p></dd>
 <dd><p>Optional locked-out specification. It may be <code>NULL</code>, a
 column name in <code>x$data$pu_data_raw</code>, a logical vector, or a vector of
 planning-unit ids.</p></dd>
-
-
-<dt id="arg-pu-status">pu_status<a class="anchor" aria-label="anchor" href="#arg-pu-status"></a></dt>
-<dd><p>Optional Marxan-style status specification. It may be
-<code>NULL</code>, a column name in <code>x$data$pu_data_raw</code>, or a vector of
-length <code>nrow(x$data$pu)</code>. Values <code>2</code> indicate locked-in planning
-units and values <code>3</code> indicate locked-out planning units.</p></dd>
-
-
-<dt id="arg-overwrite">overwrite<a class="anchor" aria-label="anchor" href="#arg-overwrite"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, replace any existing
-<code>locked_in</code> and <code>locked_out</code> columns in <code>x$data$pu</code>. If
-<code>FALSE</code>, merge new values with existing ones using logical OR.</p></dd>
-
-
-<dt id="arg-status-overrides">status_overrides<a class="anchor" aria-label="anchor" href="#arg-status-overrides"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, <code>pu_status</code> overrides
-explicit or existing <code>locked_in</code> and <code>locked_out</code> assignments. If
-<code>FALSE</code>, explicit <code>locked_in</code> and <code>locked_out</code> inputs take
-precedence over <code>pu_status</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -151,39 +115,26 @@ that must be excluded.</p></li>
 are stored in <code>x$data$pu$locked_in</code> and <code>x$data$pu$locked_out</code> and
 enforced later when building the optimization model.</p>
 <p><strong>Philosophy</strong></p>
-<p>The role of <code><a href="inputData.html">inputData</a></code> is to construct and normalize the basic
+<p>The role of <code><a href="input_data.html">input_data</a></code> is to construct and normalize the basic
 inputs of the planning problem. Locking planning units is treated as a
 separate modelling step so that users can define or revise selection
 restrictions after the <code>Problem</code> object has already been created.</p>
 <p><strong>Supported input formats</strong></p>
-<p>For <code>locked_in</code> and <code>locked_out</code>, the function accepts:</p><ul><li><p><code>NULL</code>, meaning that no explicit update is supplied for that
-side,</p></li>
+<p>For both <code>locked_in</code> and <code>locked_out</code>, the function accepts:</p><ul><li><p><code>NULL</code>, meaning that no planning units are locked on that side,</p></li>
 <li><p>a single character string, interpreted as a column name in
 <code>x$data$pu_data_raw</code>,</p></li>
 <li><p>a logical vector of length <code>nrow(x$data$pu)</code>,</p></li>
 <li><p>a vector of planning-unit ids.</p></li>
-</ul><p>For <code>pu_status</code>, the function accepts:</p><ul><li><p><code>NULL</code>,</p></li>
-<li><p>a single character string, interpreted as a column name in
-<code>x$data$pu_data_raw</code>,</p></li>
-<li><p>a vector of length <code>nrow(x$data$pu)</code> containing status codes.</p></li>
-</ul><p>When <code>pu_status</code> is used, values are interpreted as follows:</p><ul><li><p><code>2</code>: locked in,</p></li>
-<li><p><code>3</code>: locked out,</p></li>
-<li><p>all other values: treated as free.</p></li>
-</ul><p><strong>Priority rules</strong></p>
-<p>By default, explicit <code>locked_in</code> and <code>locked_out</code> inputs take
-precedence over <code>pu_status</code>. This means that <code>pu_status</code> is first
-translated into candidate locked-in and locked-out sets, and then explicit
-<code>locked_in</code> and <code>locked_out</code> assignments are applied on top of
-those values.</p>
-<p>If <code>status_overrides = TRUE</code>, then <code>pu_status</code> overrides any
-existing or explicitly supplied <code>locked_in</code> and <code>locked_out</code>
-assignments.</p>
-<p><strong>Overwrite behaviour</strong></p>
-<p>If <code>overwrite = TRUE</code>, the function replaces any existing
-<code>locked_in</code> and <code>locked_out</code> columns in <code>x$data$pu</code>.</p>
-<p>If <code>overwrite = FALSE</code>, new locked values are merged with any existing
-values using logical OR. This means that already locked planning units remain
-locked unless the object is rebuilt or overwritten explicitly.</p>
+</ul><p>When a column name is supplied, the referenced column is coerced to logical.
+Numeric values are interpreted as non-zero = <code>TRUE</code>; character and
+factor values are interpreted using common logical strings such as
+<code>"true"</code>, <code>"t"</code>, <code>"1"</code>, <code>"yes"</code>, and <code>"y"</code>.
+Missing values are treated as <code>FALSE</code>.</p>
+<p><strong>Replacement behaviour</strong></p>
+<p>Each call to <code>add_locked_pu()</code> replaces any existing
+<code>locked_in</code> and <code>locked_out</code> columns in <code>x$data$pu</code>. In other
+words, the function defines the complete current set of locked planning
+units; it does not merge new values with previous ones.</p>
 <p><strong>Consistency checks</strong></p>
 <p>The function checks that no planning unit is simultaneously assigned to both
 <code>locked_in</code> and <code>locked_out</code>. If such conflicts are found, an error
@@ -191,7 +142,7 @@ is raised.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="inputData.html">inputData</a></code>,
+    <div class="dont-index"><p><code><a href="input_data.html">input_data</a></code>,
 <code><a href="add_actions.html">add_actions</a></code>,
 <code><a href="add_locked_actions.html">add_locked_actions</a></code></p></div>
     </div>
@@ -202,7 +153,7 @@ is raised.</p>
 <span class="r-in"><span>  id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,</span></span>
 <span class="r-in"><span>  cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">2</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  lock_col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  status_col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2</span>, <span class="fl">0</span>, <span class="fl">3</span>, <span class="fl">0</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  out_col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">FALSE</span>, <span class="cn">FALSE</span>, <span class="cn">FALSE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">features</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
@@ -215,7 +166,7 @@ is raised.</p>
 <span class="r-in"><span>  amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="inputData.html">inputData</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="input_data.html">input_data</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
 <span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
 <span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>
@@ -237,35 +188,23 @@ is raised.</p>
 <span class="r-in"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">add_locked_pu</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
 <span class="r-in"><span>  locked_in <span class="op">=</span> <span class="st">"lock_col"</span>,</span></span>
-<span class="r-in"><span>  overwrite <span class="op">=</span> <span class="cn">TRUE</span></span></span>
+<span class="r-in"><span>  locked_out <span class="op">=</span> <span class="st">"out_col"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p' not found</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">p2</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">pu</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"locked_in"</span>, <span class="st">"locked_out"</span><span class="op">)</span><span class="op">]</span></span></span>
 <span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p2' not found</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># 3) Use Marxan-style status codes</span></span></span>
+<span class="r-in"><span><span class="co"># 3) Use logical vectors</span></span></span>
 <span class="r-in"><span><span class="va">p3</span> <span class="op">&lt;-</span> <span class="fu">add_locked_pu</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
-<span class="r-in"><span>  pu_status <span class="op">=</span> <span class="st">"status_col"</span>,</span></span>
-<span class="r-in"><span>  overwrite <span class="op">=</span> <span class="cn">TRUE</span></span></span>
+<span class="r-in"><span>  locked_in <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  locked_out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">FALSE</span>, <span class="cn">FALSE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span>, <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p' not found</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">p3</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">pu</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"locked_in"</span>, <span class="st">"locked_out"</span><span class="op">)</span><span class="op">]</span></span></span>
 <span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p3' not found</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># 4) Use logical vectors</span></span></span>
-<span class="r-in"><span><span class="va">p4</span> <span class="op">&lt;-</span> <span class="fu">add_locked_pu</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
-<span class="r-in"><span>  locked_in <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  locked_out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">FALSE</span>, <span class="cn">FALSE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  overwrite <span class="op">=</span> <span class="cn">TRUE</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p' not found</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">p4</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">pu</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"locked_in"</span>, <span class="st">"locked_out"</span><span class="op">)</span><span class="op">]</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p4' not found</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

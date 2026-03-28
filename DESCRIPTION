@@ -30,12 +30,18 @@ Imports:
     Rcpp,
     rlang,
     cli,
-    sf
+    sf,
+    methods,
+    RANN,
+    exactextractr,
+    ggplot2,
+    ggrepel
 Suggests: 
     knitr,
     gurobi (>= 9.0),
     Rcplex,
     roxygen2,
+    prioritizr,
     rcbc,
     Rsymphony (>= 0.1-31),
     rmarkdown,
@@ -50,7 +56,6 @@ Suggests:
     readr,
     slam,
     tibble,
-    methods,
     reshape2,
     terra
 LinkingTo:
@@ -79,9 +84,11 @@ Collate:
     'add_spatial_relations.R'
     'add_targets.R'
     'build_model.R'
+    'compile_model.R'
     'internalMO.R'
     'get_solution.R'
-    'inputData.R'
+    'globals.R'
+    'input_data.R'
     'package.R'
     'plot.R'
     'presolve.R'

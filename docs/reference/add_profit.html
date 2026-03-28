@@ -66,7 +66,7 @@ consequences when building objectives, constraints, and reporting summaries.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_profit</span><span class="op">(</span><span class="va">x</span>, profit <span class="op">=</span> <span class="cn">NULL</span>, keep_zero <span class="op">=</span> <span class="cn">FALSE</span>, na_to_zero <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_profit</span><span class="op">(</span><span class="va">x</span>, profit <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -74,10 +74,9 @@ consequences when building objectives, constraints, and reporting summaries.</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>A <code>Problem</code> object created with <code><a href="inputData.html">inputData</a></code>. It must
-already contain
-<code>x$data$dist_actions</code> and <code>x$data$actions</code>; run
-<code><a href="add_actions.html">add_actions</a></code> first.</p></dd>
+<dd><p>A <code>Problem</code> object created with <code><a href="input_data.html">input_data</a></code>. It
+must already contain <code>x$data$dist_actions</code> and <code>x$data$actions</code>;
+run <code><a href="add_actions.html">add_actions</a></code> first.</p></dd>
 
 
 <dt id="arg-profit">profit<a class="anchor" aria-label="anchor" href="#arg-profit"></a></dt>
@@ -91,24 +90,13 @@ action-level profit,</p></li>
 profit.</p></li>
 </ul></dd>
 
-
-<dt id="arg-keep-zero">keep_zero<a class="anchor" aria-label="anchor" href="#arg-keep-zero"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, rows with <code>profit == 0</code> are
-kept in the stored table. If <code>FALSE</code>, zero-profit rows are dropped
-before storing. Default is <code>FALSE</code>.</p></dd>
-
-
-<dt id="arg-na-to-zero">na_to_zero<a class="anchor" aria-label="anchor" href="#arg-na-to-zero"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, missing profit values produced
-during matching or joins are treated as zero. Default is <code>TRUE</code>.</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An updated <code>Problem</code> object with <code>x$data$dist_profit</code>
 created or replaced. The stored table contains columns <code>pu</code>,
 <code>action</code>, <code>profit</code>, <code>internal_pu</code>, and
-<code>internal_action</code>.</p>
+<code>internal_action</code>, and includes only rows with non-zero profit.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -146,7 +134,12 @@ values.</p></li>
 </ul><p>When action-level profit is supplied, the same profit value is assigned to
 all feasible planning units for that action. When pair-specific profit is
 supplied, only the listed <code>(pu, action)</code> pairs receive explicit values;
-unmatched feasible pairs are set to zero if <code>na_to_zero = TRUE</code>.</p>
+unmatched feasible pairs are interpreted as zero-profit pairs.</p>
+<p><strong>Storage behaviour</strong></p>
+<p>This function stores only rows with non-zero profit values. Feasible pairs
+whose final profit is zero are omitted from <code>x$data$dist_profit</code>.
+Missing values produced during matching or joins are treated as zero before
+this filtering step.</p>
 <p><strong>Data-only behaviour</strong></p>
 <p>This function is purely data-oriented. It does not build or modify the
 optimization model, and it does not change feasibility. It simply assigns
@@ -195,7 +188,7 @@ $$</p>
 <span class="r-in"><span>  amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="inputData.html">inputData</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="input_data.html">input_data</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
 <span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
 <span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>
@@ -216,7 +209,7 @@ $$</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># 2) Profit per action using a named vector</span></span></span>
 <span class="r-in"><span><span class="va">pr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>harvest <span class="op">=</span> <span class="fl">50</span>, restoration <span class="op">=</span> <span class="op">-</span><span class="fl">5</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">add_profit</span><span class="op">(</span><span class="va">p</span>, profit <span class="op">=</span> <span class="va">pr</span>, keep_zero <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">add_profit</span><span class="op">(</span><span class="va">p</span>, profit <span class="op">=</span> <span class="va">pr</span><span class="op">)</span></span></span>
 <span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p' not found</span>
 <span class="r-in"><span><span class="va">p2</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_profit</span></span></span>
 <span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p2' not found</span>
@@ -237,7 +230,7 @@ $$</p>
 <span class="r-in"><span>  action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"harvest"</span>, <span class="st">"harvest"</span>, <span class="st">"restoration"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  profit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">80</span>, <span class="fl">30</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">p4</span> <span class="op">&lt;-</span> <span class="fu">add_profit</span><span class="op">(</span><span class="va">p</span>, profit <span class="op">=</span> <span class="va">pr_pair</span>, keep_zero <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">p4</span> <span class="op">&lt;-</span> <span class="fu">add_profit</span><span class="op">(</span><span class="va">p</span>, profit <span class="op">=</span> <span class="va">pr_pair</span><span class="op">)</span></span></span>
 <span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p' not found</span>
 <span class="r-in"><span><span class="va">p4</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_profit</span></span></span>
 <span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'p4' not found</span>

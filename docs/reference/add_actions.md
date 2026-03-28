@@ -1,7 +1,7 @@
 # Add management actions to a planning problem
 
 Define the action catalogue, the set of feasible planning unit–action
-pairs, and the corresponding implementation costs.
+pairs, and their implementation costs.
 
 This function adds two core components to a `Problem` object. First, it
 stores the action catalogue in `x$data$actions`. Second, it creates the
@@ -21,11 +21,9 @@ with a non-negative cost function \\c : \mathcal{F} \to \mathbb{R}\_{\ge
 add_actions(
   x,
   actions,
-  include = NULL,
-  exclude = NULL,
-  cost = NULL,
-  feasible_default = TRUE,
-  na_is_infeasible = TRUE
+  include_pairs = NULL,
+  exclude_pairs = NULL,
+  cost = NULL
 )
 ```
 
@@ -34,7 +32,7 @@ add_actions(
 - x:
 
   A `Problem` object created with
-  [`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md).
+  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
 
 - actions:
 
@@ -42,40 +40,24 @@ add_actions(
   `id` column. A column named `action` is also accepted and
   automatically renamed to `id`.
 
-- include:
+- include_pairs:
 
-  Optional feasibility specification defining which `(pu, action)` pairs
-  are allowed. It can be `NULL`, a `data.frame` with columns `pu` and
-  `action` (optionally also `feasible`), or a named list whose names are
-  action ids and whose elements are vectors of planning unit ids or `sf`
-  objects.
+  Optional specification of feasible `(pu, action)` pairs. It can be
+  `NULL`, a `data.frame` with columns `pu` and `action` (optionally also
+  `feasible`), or a named list whose names are action ids and whose
+  elements are vectors of planning unit ids or `sf` objects.
 
-- exclude:
+- exclude_pairs:
 
-  Optional infeasibility specification. It uses the same formats as
-  `include` and removes matching `(pu, action)` pairs from the feasible
-  set.
+  Optional specification of infeasible `(pu, action)` pairs. It uses the
+  same formats as `include_pairs` and removes matching pairs from the
+  feasible set.
 
 - cost:
 
   Optional cost specification for feasible pairs. It may be `NULL`, a
   scalar numeric value, a named numeric vector indexed by action id, or
   a `data.frame` with columns `action, cost` or `pu, action, cost`.
-
-- feasible_default:
-
-  Logical. If `TRUE` and `include` is `NULL`, all possible
-  `(pu, action)` pairs are considered feasible.
-
-- na_is_infeasible:
-
-  Logical. Relevant only when `include` or `exclude` is provided as a
-  `data.frame` with a `feasible` column. If `TRUE`, missing values in
-  `feasible` are treated as `FALSE`.
-
-- sort_actions:
-
-  Logical. If `TRUE`, sort actions by `id` before storing them.
 
 ## Value
 
@@ -111,22 +93,25 @@ no `name` column is provided, action labels are taken from `id`. If an
 `action_set` column is present, it is also preserved and can later be
 used to refer to groups of actions.
 
-**Feasibility.**
+Actions are stored sorted by `id` to ensure reproducible internal
+indexing.
 
-Feasibility is controlled through `include` and `exclude`.
+**Feasible planning unit–action pairs.**
 
-If `include = NULL` and `feasible_default = TRUE`, all possible
-`(pu, action)` pairs are initially considered feasible, that is: \$\$
-\mathcal{F} = \mathcal{P} \times \mathcal{A}. \$\$
+Feasibility is controlled through `include_pairs` and `exclude_pairs`.
 
-If `include` is supplied, only those pairs are retained in the feasible
-set. If `exclude` is also supplied, matching pairs are removed after
-applying `include`. Thus, in general: \$\$ \mathcal{F} =
-\left(\mathcal{F}\_{\mathrm{include}} \text{ or }
+If `include_pairs = NULL`, all possible `(pu, action)` pairs are
+initially considered feasible: \$\$ \mathcal{F} = \mathcal{P} \times
+\mathcal{A}. \$\$
+
+If `include_pairs` is supplied, only those pairs are retained in the
+feasible set. If `exclude_pairs` is also supplied, matching pairs are
+removed after applying `include_pairs`. Thus, in general: \$\$
+\mathcal{F} = \left(\mathcal{F}\_{\mathrm{include}} \text{ or }
 \mathcal{P}\times\mathcal{A}\right) \setminus
 \mathcal{F}\_{\mathrm{exclude}}. \$\$
 
-Both `include` and `exclude` can be specified as:
+Both `include_pairs` and `exclude_pairs` can be specified as:
 
 - `NULL`,
 
@@ -136,9 +121,8 @@ Both `include` and `exclude` can be specified as:
 
 When supplied as a `data.frame`, the object must contain columns `pu`
 and `action`. An optional logical-like column `feasible` may also be
-provided; rows with `feasible = FALSE` are ignored. If
-`na_is_infeasible = TRUE`, missing values in `feasible` are treated as
-`FALSE`.
+provided; only rows with `feasible = TRUE` are retained. Missing values
+in `feasible` are treated as `FALSE`.
 
 When supplied as a named list, names must match action ids. Each element
 may contain either:
@@ -193,7 +177,7 @@ feasible action table stored in the problem object.
 
 ## See also
 
-[`inputData`](https://josesalgr.github.io/mosap/reference/inputData.md),
+[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md),
 [`add_locked_actions`](https://josesalgr.github.io/mosap/reference/add_locked_actions.md)
 
 ## Examples
@@ -218,7 +202,7 @@ dist_features <- data.frame(
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
@@ -274,7 +258,6 @@ head(p1$data$dist_actions)
 #> 3  3 conservation    5      0           3               1
 #> 7  3  restoration   12      0           3               2
 
-
 # Example 2: specify feasible pairs explicitly
 include_df <- data.frame(
   pu = c(1, 2, 3, 4),
@@ -284,7 +267,7 @@ include_df <- data.frame(
 p2 <- add_actions(
   x = p,
   actions = actions,
-  include = include_df,
+  include_pairs = include_df,
   cost = 10
 )
 
@@ -304,7 +287,7 @@ exclude_df <- data.frame(
 p3 <- add_actions(
   x = p,
   actions = actions,
-  exclude = exclude_df,
+  exclude_pairs = exclude_df,
   cost = c(conservation = 3, restoration = 8)
 )
 

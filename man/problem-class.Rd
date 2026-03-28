@@ -20,7 +20,7 @@ model or model snapshot.
 In other words, \code{Problem} is the persistent object that connects the full
 \code{mosap} workflow:
 \preformatted{
-inputData()
+input_data()
 -> add_*() / set_*()
 -> solve()
 }
@@ -66,7 +66,7 @@ spatial relations, and optimization settings to this baseline representation.
 
 \strong{How objects are created}
 
-\code{Problem} objects are usually created by \code{\link{inputData}}.
+\code{Problem} objects are usually created by \code{\link{input_data}}.
 
 After creation, downstream functions such as \code{\link{add_actions}},
 \code{\link{add_effects}}, \code{\link{add_profit}},
@@ -181,7 +181,7 @@ a built optimization model.
 }
 
 \seealso{
-\code{\link{inputData}},
+\code{\link{input_data}},
 \code{\link{add_actions}},
 \code{\link{add_effects}},
 \code{\link{add_targets_absolute}},

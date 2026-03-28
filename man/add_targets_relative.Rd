@@ -4,33 +4,27 @@
 \alias{add_targets_relative}
 \title{Add relative targets}
 \usage{
-add_targets_relative(
-  x,
-  targets,
-  subset = NULL,
-  overwrite = FALSE,
-  label = NULL
-)
+add_targets_relative(x, targets, features = NULL, actions = NULL, label = NULL)
 }
 \arguments{
 \item{x}{A \code{Problem} object.}
 
-\item{targets}{Target specification as proportions in \eqn{[0,1]}. See
-Details.}
+\item{targets}{Target specification as proportions in \eqn{[0,1]}. It may be
+a scalar, vector, named vector, or \code{data.frame}. See Details.}
 
-\item{subset}{Optional character vector indicating which actions count toward
+\item{features}{Optional feature specification indicating which features the
+supplied target values refer to when \code{targets} does not identify
+features explicitly. If \code{NULL}, all features are targeted.}
+
+\item{actions}{Optional character vector indicating which actions count toward
 target achievement. Entries may match action ids, \code{action_set} labels,
 or both. If \code{NULL}, all actions count.}
-
-\item{overwrite}{Logical. If \code{TRUE}, replace existing stored targets for
-the same feature and subset combination. If \code{FALSE}, new rows are
-appended and overlap handling is delegated to \code{.pa_store_targets()}.}
 
 \item{label}{Optional character string stored with the targets for reporting
 and bookkeeping.}
 }
 \value{
-An updated \code{Problem} object with relative targets stored in
+An updated \code{Problem} object with relative targets appended to
 \code{x$data$targets}.
 }
 \description{
@@ -42,9 +36,13 @@ linear constraints when the optimization model is built.
 Relative targets are supplied as proportions in \eqn{[0,1]} and are converted
 internally into absolute thresholds using the current total amount of each
 feature in the landscape.
+
+Each call appends one or more target definitions to the problem. This makes
+it possible to combine multiple target rules, including targets associated
+with different action subsets.
 }
 \details{
-Let \eqn{\mathcal{F}} denote the set of features. For each feature
+Let \eqn{\mathcal{F}} denote the set of features. For each targeted feature
 \eqn{f \in \mathcal{F}}, let \eqn{B_f} denote the current baseline total
 amount of that feature in the landscape, as computed by
 \code{.pa_feature_totals()}.
@@ -76,7 +74,7 @@ unit \eqn{i},
 to count toward achievement of the target.
 }
 
-The \code{subset} argument restricts which actions may contribute toward
+The \code{actions} argument restricts which actions may contribute toward
 target achievement, but it does not affect the baseline amount \eqn{B_f} used
 to compute the threshold. In other words, relative targets are always scaled
 against the current full landscape baseline computed by
@@ -85,10 +83,17 @@ against the current full landscape baseline computed by
 The \code{targets} argument is parsed by \code{.pa_parse_targets()} and may be
 supplied in several equivalent forms, including:
 \itemize{
-\item a single numeric value recycled to all features,
-\item a numeric vector aligned to feature order,
+\item a single numeric value recycled to all selected features,
+\item a numeric vector aligned to \code{features},
 \item a named numeric vector where names identify features,
 \item a \code{data.frame} with \code{feature} and \code{target} columns.
+}
+
+If \code{targets} does not explicitly identify features:
+\itemize{
+\item if \code{features = NULL}, the target is applied to all features,
+\item if \code{features} is supplied, the target values are interpreted with
+respect to that feature set.
 }
 
 Relative targets must lie in \eqn{[0,1]}.
@@ -108,19 +113,24 @@ Internally, targets added by this function are stored with:
 # Require 30\% of the current baseline total for all features
 p <- add_targets_relative(p, 0.3)
 
+# Require 20\% of baseline totals for selected features only
+p <- add_targets_relative(
+  p,
+  0.2,
+  features = c("sp1", "sp2")
+)
+
 # Require 20\% of baseline totals, counting only recovery actions
 p <- add_targets_relative(
   p,
   0.2,
-  subset = "recovery"
+  actions = "recovery"
 )
 
-# Require 50\% of baseline totals, counting a mix of groups and actions
-p <- add_targets_relative(
-  p,
-  0.5,
-  subset = c("recovery", "conservation_action")
-)
+# Combine multiple target rules
+p <- p |>
+  add_targets_relative(0.1, actions = "conservation") |>
+  add_targets_absolute(100, actions = "restoration")
 }
 
 }

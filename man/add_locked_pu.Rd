@@ -4,17 +4,10 @@
 \alias{add_locked_pu}
 \title{Add locked planning units to a problem}
 \usage{
-add_locked_pu(
-  x,
-  locked_in = NULL,
-  locked_out = NULL,
-  pu_status = NULL,
-  overwrite = TRUE,
-  status_overrides = FALSE
-)
+add_locked_pu(x, locked_in = NULL, locked_out = NULL)
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}}.}
+\item{x}{A \code{Problem} object created with \code{\link{input_data}}.}
 
 \item{locked_in}{Optional locked-in specification. It may be \code{NULL}, a
 column name in \code{x$data$pu_data_raw}, a logical vector, or a vector of
@@ -23,20 +16,6 @@ planning-unit ids.}
 \item{locked_out}{Optional locked-out specification. It may be \code{NULL}, a
 column name in \code{x$data$pu_data_raw}, a logical vector, or a vector of
 planning-unit ids.}
-
-\item{pu_status}{Optional Marxan-style status specification. It may be
-\code{NULL}, a column name in \code{x$data$pu_data_raw}, or a vector of
-length \code{nrow(x$data$pu)}. Values \code{2} indicate locked-in planning
-units and values \code{3} indicate locked-out planning units.}
-
-\item{overwrite}{Logical. If \code{TRUE}, replace any existing
-\code{locked_in} and \code{locked_out} columns in \code{x$data$pu}. If
-\code{FALSE}, merge new values with existing ones using logical OR.}
-
-\item{status_overrides}{Logical. If \code{TRUE}, \code{pu_status} overrides
-explicit or existing \code{locked_in} and \code{locked_out} assignments. If
-\code{FALSE}, explicit \code{locked_in} and \code{locked_out} inputs take
-precedence over \code{pu_status}.}
 }
 \value{
 An updated \code{Problem} object in which \code{x$data$pu} contains
@@ -51,12 +30,9 @@ creating or replacing the logical columns \code{locked_in} and
 \code{locked_out}. These columns are later used by the model builder when
 translating the \code{Problem} object into optimization constraints.
 
-Lock information may be supplied directly as logical vectors, as vectors of
-planning-unit ids, or by referencing columns in the raw planning-unit data
-originally passed to \code{\link{inputData}}.
-In addition, a Marxan-style \code{pu_status} specification can be provided,
-where status code \code{2} denotes locked-in planning units and status code
-\code{3} denotes locked-out planning units.
+Lock information may be supplied either directly as logical vectors, as
+vectors of planning-unit ids, or by referencing columns in the raw
+planning-unit data originally passed to \code{\link{input_data}}.
 }
 \details{
 Let \eqn{\mathcal{P}} denote the set of planning units and let
@@ -83,58 +59,34 @@ enforced later when building the optimization model.
 
 \strong{Philosophy}
 
-The role of \code{\link{inputData}} is to construct and normalize the basic
+The role of \code{\link{input_data}} is to construct and normalize the basic
 inputs of the planning problem. Locking planning units is treated as a
 separate modelling step so that users can define or revise selection
 restrictions after the \code{Problem} object has already been created.
 
 \strong{Supported input formats}
 
-For \code{locked_in} and \code{locked_out}, the function accepts:
+For both \code{locked_in} and \code{locked_out}, the function accepts:
 \itemize{
-\item \code{NULL}, meaning that no explicit update is supplied for that
-side,
+\item \code{NULL}, meaning that no planning units are locked on that side,
 \item a single character string, interpreted as a column name in
 \code{x$data$pu_data_raw},
 \item a logical vector of length \code{nrow(x$data$pu)},
 \item a vector of planning-unit ids.
 }
 
-For \code{pu_status}, the function accepts:
-\itemize{
-\item \code{NULL},
-\item a single character string, interpreted as a column name in
-\code{x$data$pu_data_raw},
-\item a vector of length \code{nrow(x$data$pu)} containing status codes.
-}
+When a column name is supplied, the referenced column is coerced to logical.
+Numeric values are interpreted as non-zero = \code{TRUE}; character and
+factor values are interpreted using common logical strings such as
+\code{"true"}, \code{"t"}, \code{"1"}, \code{"yes"}, and \code{"y"}.
+Missing values are treated as \code{FALSE}.
 
-When \code{pu_status} is used, values are interpreted as follows:
-\itemize{
-\item \code{2}: locked in,
-\item \code{3}: locked out,
-\item all other values: treated as free.
-}
+\strong{Replacement behaviour}
 
-\strong{Priority rules}
-
-By default, explicit \code{locked_in} and \code{locked_out} inputs take
-precedence over \code{pu_status}. This means that \code{pu_status} is first
-translated into candidate locked-in and locked-out sets, and then explicit
-\code{locked_in} and \code{locked_out} assignments are applied on top of
-those values.
-
-If \code{status_overrides = TRUE}, then \code{pu_status} overrides any
-existing or explicitly supplied \code{locked_in} and \code{locked_out}
-assignments.
-
-\strong{Overwrite behaviour}
-
-If \code{overwrite = TRUE}, the function replaces any existing
-\code{locked_in} and \code{locked_out} columns in \code{x$data$pu}.
-
-If \code{overwrite = FALSE}, new locked values are merged with any existing
-values using logical OR. This means that already locked planning units remain
-locked unless the object is rebuilt or overwritten explicitly.
+Each call to \code{add_locked_pu()} replaces any existing
+\code{locked_in} and \code{locked_out} columns in \code{x$data$pu}. In other
+words, the function defines the complete current set of locked planning
+units; it does not merge new values with previous ones.
 
 \strong{Consistency checks}
 
@@ -147,7 +99,7 @@ pu <- data.frame(
   id = 1:5,
   cost = c(2, 3, 1, 4, 2),
   lock_col = c(TRUE, FALSE, FALSE, TRUE, FALSE),
-  status_col = c(0, 2, 0, 3, 0)
+  out_col = c(FALSE, FALSE, FALSE, FALSE, TRUE)
 )
 
 features <- data.frame(
@@ -160,7 +112,7 @@ dist_features <- data.frame(
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
@@ -179,33 +131,23 @@ p1$data$pu[, c("id", "locked_in", "locked_out")]
 p2 <- add_locked_pu(
   x = p,
   locked_in = "lock_col",
-  overwrite = TRUE
+  locked_out = "out_col"
 )
 
 p2$data$pu[, c("id", "locked_in", "locked_out")]
 
-# 3) Use Marxan-style status codes
+# 3) Use logical vectors
 p3 <- add_locked_pu(
   x = p,
-  pu_status = "status_col",
-  overwrite = TRUE
+  locked_in = c(TRUE, FALSE, TRUE, FALSE, FALSE),
+  locked_out = c(FALSE, FALSE, FALSE, TRUE, FALSE)
 )
 
 p3$data$pu[, c("id", "locked_in", "locked_out")]
 
-# 4) Use logical vectors
-p4 <- add_locked_pu(
-  x = p,
-  locked_in = c(TRUE, FALSE, TRUE, FALSE, FALSE),
-  locked_out = c(FALSE, FALSE, FALSE, TRUE, FALSE),
-  overwrite = TRUE
-)
-
-p4$data$pu[, c("id", "locked_in", "locked_out")]
-
 }
 \seealso{
-\code{\link{inputData}},
+\code{\link{input_data}},
 \code{\link{add_actions}},
 \code{\link{add_locked_actions}}
 }

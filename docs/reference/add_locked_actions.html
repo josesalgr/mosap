@@ -75,12 +75,7 @@ create new feasible action pairs and therefore must be used only after
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_locked_actions</span><span class="op">(</span></span>
-<span>  <span class="va">x</span>,</span>
-<span>  locked_in <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  locked_out <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  na_is_infeasible <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_locked_actions</span><span class="op">(</span><span class="va">x</span>, locked_in <span class="op">=</span> <span class="cn">NULL</span>, locked_out <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -102,13 +97,6 @@ named list.</p></dd>
 <dd><p>Optional specification of feasible <code>(pu, action)</code>
 pairs that must not be selected. It may be <code>NULL</code>, a
 <code>data.frame</code>, or a named list.</p></dd>
-
-
-<dt id="arg-na-is-infeasible">na_is_infeasible<a class="anchor" aria-label="anchor" href="#arg-na-is-infeasible"></a></dt>
-<dd><p>Logical. Only relevant when <code>locked_in</code> or
-<code>locked_out</code> is supplied as a <code>data.frame</code> with a
-<code>feasible</code> column. If <code>TRUE</code>, missing values in
-<code>feasible</code> are treated as <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -142,7 +130,10 @@ model is built.</p>
 optionally including a <code>feasible</code> column used as a filter,</p></li>
 <li><p>a named list whose names are action ids and whose elements are either
 vectors of planning unit ids or <code>sf</code> objects.</p></li>
-</ul><p>If an <code>sf</code> specification is supplied, the problem object must contain
+</ul><p>If a <code>feasible</code> column is supplied in a <code>data.frame</code>, only rows
+with <code>feasible = TRUE</code> are used. Missing values in <code>feasible</code> are
+treated as <code>FALSE</code>.</p>
+<p>If an <code>sf</code> specification is supplied, the problem object must contain
 <code>x$data$pu_sf</code>, and planning units are matched spatially using
 <code><a href="https://r-spatial.github.io/sf/reference/geos_binary_pred.html" class="external-link">sf::st_intersects()</a></code>.</p>
 <p><strong>Conflict checking</strong></p>
@@ -181,7 +172,7 @@ action-level status and ensuring consistency with planning-unit exclusions.</p>
 <span class="r-in"><span>  amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="inputData.html">inputData</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="input_data.html">input_data</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
 <span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
 <span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>

@@ -9,8 +9,7 @@ add_area_max_constraint(
   area_max,
   area_col = NULL,
   area_unit = c("m2", "ha", "km2"),
-  name = "area_max",
-  overwrite = FALSE
+  name = "area_max"
 )
 }
 \arguments{
@@ -26,10 +25,8 @@ the model builder.}
 \item{area_unit}{Character string indicating the unit of \code{area_max}.
 Must be one of \code{"m2"}, \code{"ha"}, or \code{"km2"}.}
 
-\item{name}{Character string used as a label for the stored constraint.}
-
-\item{overwrite}{Logical. If \code{TRUE}, replace an existing stored maximum
-area constraint.}
+\item{name}{Character string used as the label of the stored linear
+constraint when it is later added to the optimization model.}
 }
 \value{
 An updated \code{Problem} object with a stored maximum-area
@@ -66,8 +63,8 @@ This function only stores the constraint specification in
 \code{x$data$constraints$area_max}; it does not validate the feasibility of
 the threshold against the available planning units at this stage.
 
-If a maximum-area constraint has already been stored, it is replaced only when
-\code{overwrite = TRUE}.
+At most one maximum-area constraint can be stored in a \code{Problem} object.
+If one already exists, this function raises an error.
 }
 \examples{
 pu <- data.frame(
@@ -77,16 +74,17 @@ pu <- data.frame(
 )
 
 features <- data.frame(
-  id = c("sp1", "sp2")
+  id = 1:2,
+  name = c("sp1", "sp2")
 )
 
 dist_features <- data.frame(
   pu = c(1, 1, 2, 3, 4, 4),
-  feature = c("sp1", "sp2", "sp1", "sp2", "sp1", "sp2"),
+  feature = c(1, 2, 1, 2, 1, 2),
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
@@ -104,5 +102,5 @@ p$data$constraints$area_max
 }
 \seealso{
 \code{\link{add_area_min_constraint}},
-\code{\link{inputData}},
+\code{\link{input_data}}
 }

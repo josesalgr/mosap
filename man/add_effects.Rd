@@ -9,17 +9,13 @@ add_effects(
   effects = NULL,
   effect_type = c("delta", "after"),
   effect_aggregation = c("sum", "mean"),
-  align_rasters = TRUE,
-  keep_zero = FALSE,
-  drop_locked_out = TRUE,
-  na_to_zero = TRUE,
-  filter = c("any", "benefit", "loss")
+  component = c("any", "benefit", "loss")
 )
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}} or
-\code{\link{inputDataSpatial}}. It must already contain
-\code{x$data$dist_actions}; run \code{\link{add_actions}} first.}
+\item{x}{A \code{Problem} object created with \code{\link{input_data}}. It
+must already contain \code{x$data$dist_actions}; run
+\code{\link{add_actions}} first.}
 
 \item{effects}{Effect specification. One of:
 \itemize{
@@ -41,22 +37,8 @@ converted to net changes relative to baseline feature amounts.
 converting raster values to planning-unit level. Must be one of
 \code{"sum"} or \code{"mean"}.}
 
-\item{align_rasters}{Logical. If \code{TRUE}, effect rasters are aligned to
-the planning-unit raster grid before raster extraction or zonal
-aggregation.}
-
-\item{keep_zero}{Logical. If \code{TRUE}, keep rows for which both
-\code{benefit == 0} and \code{loss == 0}. Default is \code{FALSE}.}
-
-\item{drop_locked_out}{Logical. If \code{TRUE}, rows associated with
-\code{(pu, action)} pairs marked as locked out (\code{status == 3}) in
-\code{x$data$dist_actions} are removed before storing effects.}
-
-\item{na_to_zero}{Logical. If \code{TRUE}, missing values are interpreted as
-zero when constructing or validating effects.}
-
-\item{filter}{Character string controlling which rows are retained after
-canonicalization. Must be one of:
+\item{component}{Character string controlling which component of the
+canonical effects table is retained. Must be one of:
 \itemize{
 \item \code{"any"}: keep all non-zero rows,
 \item \code{"benefit"}: keep only rows with \code{benefit > 0},
@@ -185,8 +167,7 @@ Missing baseline values are treated as zero.
 
 Effects are only retained for feasible \code{(pu, action)} pairs listed in
 \code{x$data$dist_actions}. Thus, \code{add_actions()} must be called first.
-If \code{drop_locked_out = TRUE} and \code{x$data$dist_actions$status}
-exists, rows associated with \code{status == 3} are removed before storing
+Pairs marked as locked out (\code{status == 3}) are removed before storing
 the final effects table.
 
 \strong{Duplicate rows and semantic validation}
@@ -197,11 +178,22 @@ separately. The resulting triple must still respect the package semantics,
 namely that both components cannot be strictly positive simultaneously.
 Inputs violating this rule are rejected.
 
-\strong{Filtering}
+\strong{Component selection}
 
-After canonicalization and validation, rows can be filtered using
-\code{filter = "any"}, \code{"benefit"}, or \code{"loss"}. By default,
-zero-effect rows are removed unless \code{keep_zero = TRUE}.
+After canonicalization and validation, rows can be restricted to:
+\itemize{
+\item \code{component = "any"}: keep all non-zero effects,
+\item \code{component = "benefit"}: keep only rows with \code{benefit > 0},
+\item \code{component = "loss"}: keep only rows with \code{loss > 0}.
+}
+
+Rows with \code{benefit = 0} and \code{loss = 0} are always removed.
+
+\strong{Raster handling}
+
+When effects are supplied as rasters, they are automatically aligned to the
+planning-unit raster or geometry when needed before extraction or zonal
+aggregation.
 
 \strong{Stored output}
 
@@ -230,7 +222,7 @@ dist_features <- data.frame(
   amount = c(10, 5, 8, 4)
 )
 
-p <- inputData(
+p <- input_data(
   pu = pu,
   features = features,
   dist_features = dist_features
@@ -316,7 +308,7 @@ p3$data$dist_effects
 p4 <- add_effects(
   x = p,
   effects = eff_delta,
-  filter = "benefit"
+  component = "benefit"
 )
 
 p4$data$dist_effects

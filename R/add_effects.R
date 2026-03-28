@@ -113,8 +113,7 @@
 #'
 #' Effects are only retained for feasible \code{(pu, action)} pairs listed in
 #' \code{x$data$dist_actions}. Thus, \code{add_actions()} must be called first.
-#' If \code{drop_locked_out = TRUE} and \code{x$data$dist_actions$status}
-#' exists, rows associated with \code{status == 3} are removed before storing
+#' Pairs marked as locked out (\code{status == 3}) are removed before storing
 #' the final effects table.
 #'
 #' \strong{Duplicate rows and semantic validation}
@@ -125,11 +124,22 @@
 #' namely that both components cannot be strictly positive simultaneously.
 #' Inputs violating this rule are rejected.
 #'
-#' \strong{Filtering}
+#' \strong{Component selection}
 #'
-#' After canonicalization and validation, rows can be filtered using
-#' \code{filter = "any"}, \code{"benefit"}, or \code{"loss"}. By default,
-#' zero-effect rows are removed unless \code{keep_zero = TRUE}.
+#' After canonicalization and validation, rows can be restricted to:
+#' \itemize{
+#'   \item \code{component = "any"}: keep all non-zero effects,
+#'   \item \code{component = "benefit"}: keep only rows with \code{benefit > 0},
+#'   \item \code{component = "loss"}: keep only rows with \code{loss > 0}.
+#' }
+#'
+#' Rows with \code{benefit = 0} and \code{loss = 0} are always removed.
+#'
+#' \strong{Raster handling}
+#'
+#' When effects are supplied as rasters, they are automatically aligned to the
+#' planning-unit raster or geometry when needed before extraction or zonal
+#' aggregation.
 #'
 #' \strong{Stored output}
 #'
@@ -138,9 +148,9 @@
 #' describing the stored representation and input interpretation are written to
 #' \code{x$data$effects_meta}.
 #'
-#' @param x A \code{Problem} object created with \code{\link{inputData}} or
-#'   \code{\link{inputDataSpatial}}. It must already contain
-#'   \code{x$data$dist_actions}; run \code{\link{add_actions}} first.
+#' @param x A \code{Problem} object created with \code{\link{input_data}}. It
+#'   must already contain \code{x$data$dist_actions}; run
+#'   \code{\link{add_actions}} first.
 #'
 #' @param effects Effect specification. One of:
 #' \itemize{
@@ -162,22 +172,8 @@
 #'   converting raster values to planning-unit level. Must be one of
 #'   \code{"sum"} or \code{"mean"}.
 #'
-#' @param align_rasters Logical. If \code{TRUE}, effect rasters are aligned to
-#'   the planning-unit raster grid before raster extraction or zonal
-#'   aggregation.
-#'
-#' @param keep_zero Logical. If \code{TRUE}, keep rows for which both
-#'   \code{benefit == 0} and \code{loss == 0}. Default is \code{FALSE}.
-#'
-#' @param drop_locked_out Logical. If \code{TRUE}, rows associated with
-#'   \code{(pu, action)} pairs marked as locked out (\code{status == 3}) in
-#'   \code{x$data$dist_actions} are removed before storing effects.
-#'
-#' @param na_to_zero Logical. If \code{TRUE}, missing values are interpreted as
-#'   zero when constructing or validating effects.
-#'
-#' @param filter Character string controlling which rows are retained after
-#'   canonicalization. Must be one of:
+#' @param component Character string controlling which component of the
+#'   canonical effects table is retained. Must be one of:
 #'   \itemize{
 #'     \item \code{"any"}: keep all non-zero rows,
 #'     \item \code{"benefit"}: keep only rows with \code{benefit > 0},
@@ -214,7 +210,7 @@
 #'   amount = c(10, 5, 8, 4)
 #' )
 #'
-#' p <- inputData(
+#' p <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -300,7 +296,7 @@
 #' p4 <- add_effects(
 #'   x = p,
 #'   effects = eff_delta,
-#'   filter = "benefit"
+#'   component = "benefit"
 #' )
 #'
 #' p4$data$dist_effects
@@ -316,23 +312,22 @@ add_effects <- function(
     effects = NULL,
     effect_type = c("delta", "after"),
     effect_aggregation = c("sum", "mean"),
-    align_rasters = TRUE,
-    keep_zero = FALSE,
-    drop_locked_out = TRUE,
-    na_to_zero = TRUE,
-    filter = c("any", "benefit", "loss")
+    component = c("any", "benefit", "loss")
 ) {
 
   effect_type <- match.arg(effect_type)
   effect_aggregation <- match.arg(effect_aggregation)
-  filter <- match.arg(filter)
+  component <- match.arg(component)
+
+  align_rasters <- TRUE
+  na_to_zero <- TRUE
 
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
   assertthat::assert_that(!is.null(x$data), msg = "x does not look like a mosap Problem object")
   assertthat::assert_that(
     !is.null(x$data$pu), !is.null(x$data$features), !is.null(x$data$dist_features),
-    msg = "x must be created with inputData()/inputDataSpatial()"
+    msg = "x must be created with input_data()"
   )
   assertthat::assert_that(!is.null(x$data$dist_actions), msg = "No actions found. Run add_actions() first.")
 
@@ -428,7 +423,7 @@ add_effects <- function(
   # ---- helper: split signed delta into benefit/loss (both >=0)
   .split_delta <- function(delta) {
     delta <- as.numeric(delta)
-    if (na_to_zero) delta[is.na(delta)] <- 0
+    delta[is.na(delta)] <- 0
     benefit <- pmax(delta, 0)
     loss    <- pmax(-delta, 0)
     list(benefit = benefit, loss = loss)
@@ -443,10 +438,8 @@ add_effects <- function(
     tbl$benefit <- as.numeric(tbl$benefit)
     tbl$loss    <- as.numeric(tbl$loss)
 
-    if (na_to_zero) {
-      tbl$benefit[is.na(tbl$benefit)] <- 0
-      tbl$loss[is.na(tbl$loss)] <- 0
-    }
+    tbl$benefit[is.na(tbl$benefit)] <- 0
+    tbl$loss[is.na(tbl$loss)] <- 0
 
     if (any(tbl$benefit < 0, na.rm = TRUE) || any(tbl$loss < 0, na.rm = TRUE)) {
       stop(
@@ -479,15 +472,14 @@ add_effects <- function(
     tbl
   }
 
-  # drop locked out actions if requested
-  if (drop_locked_out && "status" %in% names(da)) {
+  # always drop locked out actions
+  if ("status" %in% names(da)) {
     da <- da[da$status != 3L, , drop = FALSE]
     if (nrow(da) == 0) stop("All (pu, action) pairs are locked_out (status=3).", call. = FALSE)
   }
 
   # helper: align raster to a template
   .align_to <- function(r, template) {
-    if (!isTRUE(align_rasters)) return(r)
     if (!is.na(terra::crs(r)) && !is.na(terra::crs(template)) && terra::crs(r) != terra::crs(template)) {
       r <- terra::project(r, template)
     }
@@ -579,7 +571,7 @@ add_effects <- function(
 
       # flatten signed delta
       delta_vec <- as.vector(t(mat))
-      if (na_to_zero) delta_vec[is.na(delta_vec)] <- 0
+      delta_vec[is.na(delta_vec)] <- 0
 
       sp <- .split_delta(delta_vec)
 
@@ -642,11 +634,11 @@ add_effects <- function(
       assertthat::assert_that(all(b$feature %in% feat_ids), msg = "Unknown feature id(s) in effects.")
 
       df2 <- df[, c("pu", "feature", "amount"), drop = FALSE]
-      tmp <- dplyr::inner_join(da[, c("pu","action"), drop = FALSE], df2, by = "pu")
+      tmp <- dplyr::inner_join(da[, c("pu","action"), drop = FALSE], df2, by = "pu", relationship = "many-to-many")
       if (nrow(tmp) == 0) stop("No (pu, action, feature) triples were created. Check dist_actions/dist_features.", call. = FALSE)
 
       tmp <- dplyr::left_join(tmp, b, by = c("action","feature"))
-      if (na_to_zero) tmp$multiplier[is.na(tmp$multiplier)] <- 0
+      tmp$multiplier[is.na(tmp$multiplier)] <- 0
 
       delta <- as.numeric(tmp$amount) * as.numeric(tmp$multiplier)
       sp <- .split_delta(delta)
@@ -679,7 +671,6 @@ add_effects <- function(
       # 1) already split benefit/loss (non-negative)
       # 2) signed delta (delta/effect/legacy benefit)
       has_any_split <- any(c("benefit","loss") %in% names(tmp))
-      has_delta_like <- any(c("delta","effect","after") %in% names(tmp)) || ("benefit" %in% names(tmp) && !has_any_split)
 
       if (has_any_split && !("delta" %in% names(tmp)) && !("after" %in% names(tmp)) && !("effect" %in% names(tmp))) {
         # split-only path
@@ -703,7 +694,7 @@ add_effects <- function(
         }
 
         tmp$delta <- as.numeric(tmp$delta)
-        if (na_to_zero) tmp$delta[is.na(tmp$delta)] <- 0
+        tmp$delta[is.na(tmp$delta)] <- 0
 
         if (identical(effect_type, "after")) {
           base_amount <- .baseline_amount(tmp$pu, tmp$feature)
@@ -736,17 +727,16 @@ add_effects <- function(
   base$benefit <- as.numeric(base$benefit)
   base$loss    <- as.numeric(base$loss)
 
-  if (na_to_zero) {
-    base$benefit[is.na(base$benefit)] <- 0
-    base$loss[is.na(base$loss)] <- 0
-  }
+  base$benefit[is.na(base$benefit)] <- 0
+  base$loss[is.na(base$loss)] <- 0
 
   base <- .validate_split_effects(base, context = "Validated effects")
 
-  if (identical(filter, "benefit")) base <- base[base$benefit > 0, , drop = FALSE]
-  if (identical(filter, "loss"))    base <- base[base$loss > 0, , drop = FALSE]
+  if (identical(component, "benefit")) base <- base[base$benefit > 0, , drop = FALSE]
+  if (identical(component, "loss"))    base <- base[base$loss > 0, , drop = FALSE]
 
-  if (!keep_zero) base <- base[!(base$benefit == 0 & base$loss == 0), , drop = FALSE]
+  # always drop zero rows
+  base <- base[!(base$benefit == 0 & base$loss == 0), , drop = FALSE]
   if (nrow(base) == 0) warning("All effect values are zero after filtering.", call. = FALSE, immediate. = TRUE)
 
   # ---- add internal ids
@@ -782,7 +772,7 @@ add_effects <- function(
   x$data$effects_meta <- list(
     stored_as = "benefit_loss",
     input_interpretation = effect_type,
-    filter = filter
+    component = component
   )
 
   x
@@ -796,8 +786,8 @@ add_effects <- function(
 #'
 #' This function is useful when the user wants to work only with beneficial
 #' consequences of actions. Internally, it calls \code{add_effects()} with
-#' \code{filter = "benefit"} and stores the resulting canonical effects table in
-#' \code{x$data$dist_effects}.
+#' \code{component = "benefit"} and stores the resulting canonical effects table
+#' in \code{x$data$dist_effects}.
 #'
 #' For backwards compatibility, a mirror table containing only the benefit
 #' component is also written to \code{x$data$dist_benefit}.
@@ -818,7 +808,7 @@ add_effects <- function(
 #' features <- data.frame(id = 1, name = "sp1")
 #' dist_features <- data.frame(pu = 1:2, feature = 1, amount = c(5, 10))
 #'
-#' p <- inputData(pu = pu, features = features, dist_features = dist_features)
+#' p <- input_data(pu = pu, features = features, dist_features = dist_features)
 #' p <- add_actions(p, data.frame(id = "restoration"))
 #'
 #' eff <- data.frame(
@@ -839,13 +829,8 @@ add_effects <- function(
 add_benefits <- function(
     x,
     benefits = NULL,
-    ...,
     effect_type = c("delta", "after"),
-    effect_aggregation = c("sum", "mean"),
-    align_rasters = TRUE,
-    keep_zero = FALSE,
-    drop_locked_out = TRUE,
-    na_to_zero = TRUE
+    effect_aggregation = c("sum", "mean")
 ) {
   effects <- benefits
 
@@ -854,12 +839,7 @@ add_benefits <- function(
     effects = effects,
     effect_type = effect_type,
     effect_aggregation = effect_aggregation,
-    align_rasters = align_rasters,
-    keep_zero = keep_zero,
-    drop_locked_out = drop_locked_out,
-    na_to_zero = na_to_zero,
-    filter = "benefit",
-    ...
+    component = "benefit"
   )
 
   # backward-compatible mirror: dist_benefit (ONLY benefit rows/col)
@@ -882,7 +862,7 @@ add_benefits <- function(
 #'
 #' This function is useful when the user wants to work only with the damaging
 #' consequences of actions. Internally, it calls \code{add_effects()} with
-#' \code{filter = "loss"} and stores the resulting canonical effects table in
+#' \code{component = "loss"} and stores the resulting canonical effects table in
 #' \code{x$data$dist_effects}.
 #'
 #' In addition, a mirror table containing only the loss component is stored in
@@ -906,7 +886,7 @@ add_benefits <- function(
 #' features <- data.frame(id = 1, name = "sp1")
 #' dist_features <- data.frame(pu = 1:2, feature = 1, amount = c(5, 10))
 #'
-#' p <- inputData(pu = pu, features = features, dist_features = dist_features)
+#' p <- input_data(pu = pu, features = features, dist_features = dist_features)
 #' p <- add_actions(p, data.frame(id = "harvest"))
 #'
 #' eff <- data.frame(
@@ -927,13 +907,8 @@ add_benefits <- function(
 add_losses <- function(
     x,
     losses = NULL,
-    ...,
     effect_type = c("delta", "after"),
-    effect_aggregation = c("sum", "mean"),
-    align_rasters = TRUE,
-    keep_zero = FALSE,
-    drop_locked_out = TRUE,
-    na_to_zero = TRUE
+    effect_aggregation = c("sum", "mean")
 ) {
   effects <- losses
 
@@ -942,12 +917,7 @@ add_losses <- function(
     effects = effects,
     effect_type = effect_type,
     effect_aggregation = effect_aggregation,
-    align_rasters = align_rasters,
-    keep_zero = keep_zero,
-    drop_locked_out = drop_locked_out,
-    na_to_zero = na_to_zero,
-    filter = "loss",
-    ...
+    component = "loss"
   )
 
   if (!is.null(x$data$dist_effects) && inherits(x$data$dist_effects, "data.frame")) {

@@ -8,13 +8,13 @@ add_spatial_knn(
   x,
   coords = NULL,
   k = 8,
-  name = "default",
-  weight_fn = c("constant", "inverse", "inverse_sq"),
-  eps = 1e-09
+  name = "knn",
+  weight_mode = c("constant", "inverse", "inverse_sq"),
+  distance_eps = 1e-09
 )
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}}.}
+\item{x}{A \code{Problem} object created with \code{\link{input_data}}.}
 
 \item{coords}{Optional coordinates specification. This may be:
 \itemize{
@@ -31,12 +31,12 @@ at least 1 and strictly less than the number of planning units.}
 \item{name}{Character string giving the key under which the relation is
 stored.}
 
-\item{weight_fn}{Character string indicating how distance is converted to
+\item{weight_mode}{Character string indicating how distance is converted to
 weight. Must be one of \code{"constant"}, \code{"inverse"}, or
 \code{"inverse_sq"}.}
 
-\item{eps}{Small positive numeric constant used to avoid division by zero in
-inverse-distance weighting.}
+\item{distance_eps}{Small positive numeric constant used to avoid division by
+zero in inverse-distance weighting.}
 }
 \value{
 An updated \code{Problem} object.
@@ -57,7 +57,7 @@ If \eqn{d_{ij}} denotes the Euclidean distance between units \eqn{i} and
 \eqn{j}, then the k-nearest-neighbours relation is constructed by adding an
 edge from \eqn{i} to each of its \code{k} nearest neighbours.
 
-Edge weights are then assigned according to \code{weight_fn}:
+Edge weights are then assigned according to \code{weight_mode}:
 \itemize{
 \item \code{"constant"}:
 \deqn{\omega_{ij} = 1,}
@@ -66,8 +66,8 @@ Edge weights are then assigned according to \code{weight_fn}:
 \item \code{"inverse_sq"}:
 \deqn{\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},}
 }
-where \eqn{\varepsilon = \code{eps}} is a small constant to avoid division
-by zero.
+where \eqn{\varepsilon = \code{distance_eps}} is a small constant to avoid
+division by zero.
 
 The raw k-nearest-neighbours structure is directional by construction, but
 the stored relation is registered as undirected by default through
@@ -83,7 +83,7 @@ p <- add_spatial_knn(
   x = p,
   k = 8,
   name = "knn8",
-  weight_fn = "inverse"
+  weight_mode = "inverse"
 )
 }
 

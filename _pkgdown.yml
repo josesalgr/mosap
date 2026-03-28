@@ -32,7 +32,7 @@ reference:
   - title: Build and solve problems
     desc: Core workflow to create a planning problem, configure it, and solve it.
     contents:
-      - inputData
+      - input_data
       - solve
 
   - title: Actions, effects, profits and locks
@@ -95,6 +95,7 @@ reference:
   - title: Results and extraction
     desc: Extract user-facing summaries and raw solution vectors.
     contents:
+      - compile_model
       - get_pu
       - get_actions
       - get_features
@@ -105,6 +106,9 @@ reference:
     desc: Visualize spatial outputs and multi-objective trade-offs.
     contents:
       - plot_spatial
+      - plot_spatial_pu
+      - plot_spatial_actions
+      - plot_spatial_features
       - plot_tradeoff
 
   - title: Classes

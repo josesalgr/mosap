@@ -7,19 +7,14 @@
 add_losses(
   x,
   losses = NULL,
-  ...,
   effect_type = c("delta", "after"),
-  effect_aggregation = c("sum", "mean"),
-  align_rasters = TRUE,
-  keep_zero = FALSE,
-  drop_locked_out = TRUE,
-  na_to_zero = TRUE
+  effect_aggregation = c("sum", "mean")
 )
 }
 \arguments{
-\item{x}{A \code{Problem} object created with \code{\link{inputData}} or
-\code{\link{inputDataSpatial}}. It must already contain
-\code{x$data$dist_actions}; run \code{\link{add_actions}} first.}
+\item{x}{A \code{Problem} object created with \code{\link{input_data}}. It
+must already contain \code{x$data$dist_actions}; run
+\code{\link{add_actions}} first.}
 
 \item{losses}{Alias of \code{effects}, used for symmetry with
 \code{add_benefits()}.}
@@ -35,20 +30,6 @@ converted to net changes relative to baseline feature amounts.
 \item{effect_aggregation}{Character string giving the aggregation used when
 converting raster values to planning-unit level. Must be one of
 \code{"sum"} or \code{"mean"}.}
-
-\item{align_rasters}{Logical. If \code{TRUE}, effect rasters are aligned to
-the planning-unit raster grid before raster extraction or zonal
-aggregation.}
-
-\item{keep_zero}{Logical. If \code{TRUE}, keep rows for which both
-\code{benefit == 0} and \code{loss == 0}. Default is \code{FALSE}.}
-
-\item{drop_locked_out}{Logical. If \code{TRUE}, rows associated with
-\code{(pu, action)} pairs marked as locked out (\code{status == 3}) in
-\code{x$data$dist_actions} are removed before storing effects.}
-
-\item{na_to_zero}{Logical. If \code{TRUE}, missing values are interpreted as
-zero when constructing or validating effects.}
 }
 \value{
 An updated \code{Problem} object with:
@@ -66,7 +47,7 @@ effects, represented by rows with \code{loss > 0}.
 
 This function is useful when the user wants to work only with the damaging
 consequences of actions. Internally, it calls \code{add_effects()} with
-\code{filter = "loss"} and stores the resulting canonical effects table in
+\code{component = "loss"} and stores the resulting canonical effects table in
 \code{x$data$dist_effects}.
 
 In addition, a mirror table containing only the loss component is stored in
@@ -77,7 +58,7 @@ pu <- data.frame(id = 1:2, cost = c(1, 2))
 features <- data.frame(id = 1, name = "sp1")
 dist_features <- data.frame(pu = 1:2, feature = 1, amount = c(5, 10))
 
-p <- inputData(pu = pu, features = features, dist_features = dist_features)
+p <- input_data(pu = pu, features = features, dist_features = dist_features)
 p <- add_actions(p, data.frame(id = "harvest"))
 
 eff <- data.frame(

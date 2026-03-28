@@ -6,7 +6,7 @@
     }
   };
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Add management actions to a planning problem — add_actions"><meta name="description" content="Define the action catalogue, the set of feasible planning unit–action pairs,
-and the corresponding implementation costs.
+and their implementation costs.
 This function adds two core components to a Problem object. First, it
 stores the action catalogue in x$data$actions. Second, it creates the
 feasible planning unit–action table in x$data$dist_actions, including
@@ -16,7 +16,7 @@ Conceptually, if \(\mathcal{P}\) is the set of planning units and
 \(\mathcal{A}\) is the set of actions, this function defines a feasible set
 \(\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\) together with a
 non-negative cost function \(c : \mathcal{F} \to \mathbb{R}_{\ge 0}\)."><meta property="og:description" content="Define the action catalogue, the set of feasible planning unit–action pairs,
-and the corresponding implementation costs.
+and their implementation costs.
 This function adds two core components to a Problem object. First, it
 stores the action catalogue in x$data$actions. Second, it creates the
 feasible planning unit–action table in x$data$dist_actions, including
@@ -64,7 +64,7 @@ non-negative cost function \(c : \mathcal{F} \to \mathbb{R}_{\ge 0}\)."><meta pr
 
     <div class="ref-description section level2">
     <p>Define the action catalogue, the set of feasible planning unit–action pairs,
-and the corresponding implementation costs.</p>
+and their implementation costs.</p>
 <p>This function adds two core components to a <code>Problem</code> object. First, it
 stores the action catalogue in <code>x$data$actions</code>. Second, it creates the
 feasible planning unit–action table in <code>x$data$dist_actions</code>, including
@@ -81,11 +81,9 @@ non-negative cost function \(c : \mathcal{F} \to \mathbb{R}_{\ge 0}\).</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_actions</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
 <span>  <span class="va">actions</span>,</span>
-<span>  include <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  exclude <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  cost <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  feasible_default <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  na_is_infeasible <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  include_pairs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  exclude_pairs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cost <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -94,7 +92,7 @@ non-negative cost function \(c : \mathcal{F} \to \mathbb{R}_{\ge 0}\).</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>A <code>Problem</code> object created with <code><a href="inputData.html">inputData</a></code>.</p></dd>
+<dd><p>A <code>Problem</code> object created with <code><a href="input_data.html">input_data</a></code>.</p></dd>
 
 
 <dt id="arg-actions">actions<a class="anchor" aria-label="anchor" href="#arg-actions"></a></dt>
@@ -103,18 +101,18 @@ contain a unique <code>id</code> column. A column named <code>action</code> is a
 accepted and automatically renamed to <code>id</code>.</p></dd>
 
 
-<dt id="arg-include">include<a class="anchor" aria-label="anchor" href="#arg-include"></a></dt>
-<dd><p>Optional feasibility specification defining which
-<code>(pu, action)</code> pairs are allowed. It can be <code>NULL</code>, a
-<code>data.frame</code> with columns <code>pu</code> and <code>action</code> (optionally also
-<code>feasible</code>), or a named list whose names are action ids and whose
-elements are vectors of planning unit ids or <code>sf</code> objects.</p></dd>
+<dt id="arg-include-pairs">include_pairs<a class="anchor" aria-label="anchor" href="#arg-include-pairs"></a></dt>
+<dd><p>Optional specification of feasible <code>(pu, action)</code>
+pairs. It can be <code>NULL</code>, a <code>data.frame</code> with columns
+<code>pu</code> and <code>action</code> (optionally also <code>feasible</code>), or a named
+list whose names are action ids and whose elements are vectors of planning
+unit ids or <code>sf</code> objects.</p></dd>
 
 
-<dt id="arg-exclude">exclude<a class="anchor" aria-label="anchor" href="#arg-exclude"></a></dt>
-<dd><p>Optional infeasibility specification. It uses the same formats
-as <code>include</code> and removes matching <code>(pu, action)</code> pairs from the
-feasible set.</p></dd>
+<dt id="arg-exclude-pairs">exclude_pairs<a class="anchor" aria-label="anchor" href="#arg-exclude-pairs"></a></dt>
+<dd><p>Optional specification of infeasible <code>(pu, action)</code>
+pairs. It uses the same formats as <code>include_pairs</code> and removes
+matching pairs from the feasible set.</p></dd>
 
 
 <dt id="arg-cost">cost<a class="anchor" aria-label="anchor" href="#arg-cost"></a></dt>
@@ -122,24 +120,6 @@ feasible set.</p></dd>
 <code>NULL</code>, a scalar numeric value, a named numeric vector indexed by
 action id, or a <code>data.frame</code> with columns <code>action, cost</code> or
 <code>pu, action, cost</code>.</p></dd>
-
-
-<dt id="arg-feasible-default">feasible_default<a class="anchor" aria-label="anchor" href="#arg-feasible-default"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> and <code>include</code> is
-<code>NULL</code>, all possible <code>(pu, action)</code> pairs are considered
-feasible.</p></dd>
-
-
-<dt id="arg-na-is-infeasible">na_is_infeasible<a class="anchor" aria-label="anchor" href="#arg-na-is-infeasible"></a></dt>
-<dd><p>Logical. Relevant only when <code>include</code> or
-<code>exclude</code> is provided as a <code>data.frame</code> with a <code>feasible</code>
-column. If <code>TRUE</code>, missing values in <code>feasible</code> are treated as
-<code>FALSE</code>.</p></dd>
-
-
-<dt id="arg-sort-actions">sort_actions<a class="anchor" aria-label="anchor" href="#arg-sort-actions"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, sort actions by <code>id</code> before
-storing them.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -172,30 +152,33 @@ supplied instead, it is renamed internally to <code>id</code>. Additional column
 are preserved. If no <code>name</code> column is provided, action labels are taken
 from <code>id</code>. If an <code>action_set</code> column is present, it is also
 preserved and can later be used to refer to groups of actions.</p>
-<p><strong>Feasibility.</strong></p>
-<p>Feasibility is controlled through <code>include</code> and <code>exclude</code>.</p>
-<p>If <code>include = NULL</code> and <code>feasible_default = TRUE</code>, all possible
-<code>(pu, action)</code> pairs are initially considered feasible, that is:
+<p>Actions are stored sorted by <code>id</code> to ensure reproducible internal
+indexing.</p>
+<p><strong>Feasible planning unit–action pairs.</strong></p>
+<p>Feasibility is controlled through <code>include_pairs</code> and
+<code>exclude_pairs</code>.</p>
+<p>If <code>include_pairs = NULL</code>, all possible <code>(pu, action)</code> pairs are
+initially considered feasible:
 $$
 \mathcal{F} = \mathcal{P} \times \mathcal{A}.
 $$</p>
-<p>If <code>include</code> is supplied, only those pairs are retained in the feasible
-set. If <code>exclude</code> is also supplied, matching pairs are removed after
-applying <code>include</code>. Thus, in general:
+<p>If <code>include_pairs</code> is supplied, only those pairs are retained in the
+feasible set. If <code>exclude_pairs</code> is also supplied, matching pairs are
+removed after applying <code>include_pairs</code>. Thus, in general:
 $$
 \mathcal{F} =
 \left(\mathcal{F}_{\mathrm{include}} \text{ or } \mathcal{P}\times\mathcal{A}\right)
 \setminus
 \mathcal{F}_{\mathrm{exclude}}.
 $$</p>
-<p>Both <code>include</code> and <code>exclude</code> can be specified as:</p><ul><li><p><code>NULL</code>,</p></li>
+<p>Both <code>include_pairs</code> and <code>exclude_pairs</code> can be specified as:</p><ul><li><p><code>NULL</code>,</p></li>
 <li><p>a <code>data.frame</code> with columns <code>pu</code> and <code>action</code>,</p></li>
 <li><p>or a named list whose names are action ids.</p></li>
 </ul><p>When supplied as a <code>data.frame</code>, the object must contain columns
 <code>pu</code> and <code>action</code>. An optional logical-like column
-<code>feasible</code> may also be provided; rows with <code>feasible = FALSE</code> are
-ignored. If <code>na_is_infeasible = TRUE</code>, missing values in
-<code>feasible</code> are treated as <code>FALSE</code>.</p>
+<code>feasible</code> may also be provided; only rows with <code>feasible = TRUE</code>
+are retained. Missing values in <code>feasible</code> are treated as
+<code>FALSE</code>.</p>
 <p>When supplied as a named list, names must match action ids. Each element may
 contain either:</p><ul><li><p>a vector of planning-unit ids, or</p></li>
 <li><p>an <code>sf</code> object defining the spatial zone where the action is
@@ -231,7 +214,7 @@ feasible action table stored in the problem object.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="inputData.html">inputData</a></code>,
+    <div class="dont-index"><p><code><a href="input_data.html">input_data</a></code>,
 <code><a href="add_locked_actions.html">add_locked_actions</a></code></p></div>
     </div>
 
@@ -256,7 +239,7 @@ feasible action table stored in the problem object.</p>
 <span class="r-in"><span>  amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="inputData.html">inputData</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="input_data.html">input_data</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
 <span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
 <span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>
@@ -312,7 +295,6 @@ feasible action table stored in the problem object.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3  3 conservation    5      0           3               1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 7  3  restoration   12      0           3               2</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Example 2: specify feasible pairs explicitly</span></span></span>
 <span class="r-in"><span><span class="va">include_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span>,</span></span>
@@ -322,7 +304,7 @@ feasible action table stored in the problem object.</p>
 <span class="r-in"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">add_actions</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
 <span class="r-in"><span>  actions <span class="op">=</span> <span class="va">actions</span>,</span></span>
-<span class="r-in"><span>  include <span class="op">=</span> <span class="va">include_df</span>,</span></span>
+<span class="r-in"><span>  include_pairs <span class="op">=</span> <span class="va">include_df</span>,</span></span>
 <span class="r-in"><span>  cost <span class="op">=</span> <span class="fl">10</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
@@ -342,7 +324,7 @@ feasible action table stored in the problem object.</p>
 <span class="r-in"><span><span class="va">p3</span> <span class="op">&lt;-</span> <span class="fu">add_actions</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  x <span class="op">=</span> <span class="va">p</span>,</span></span>
 <span class="r-in"><span>  actions <span class="op">=</span> <span class="va">actions</span>,</span></span>
-<span class="r-in"><span>  exclude <span class="op">=</span> <span class="va">exclude_df</span>,</span></span>
+<span class="r-in"><span>  exclude_pairs <span class="op">=</span> <span class="va">exclude_df</span>,</span></span>
 <span class="r-in"><span>  cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>conservation <span class="op">=</span> <span class="fl">3</span>, restoration <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>

@@ -5,27 +5,27 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Plot spatial outputs from a solution or solution set — plot_spatial"><meta name="description" content='Plot spatial outputs derived from a Solution or SolutionSet
-object.
-This function provides three main spatial views:
-"pu": selected planning units,
-"actions": selected actions in space,
-"features": spatial feature values based on baseline or
-action-induced changes.
+</script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Plot spatial outputs from a solution or solution set — plot_spatial"><meta name="description" content="Convenience wrapper to plot spatial outputs from a Solution or
+SolutionSet.
+Depending on what, this function dispatches to one of:
+plot_spatial_pu,
+plot_spatial_actions,
+plot_spatial_features.
 
 
-The function requires planning-unit geometry to be available in
-x$problem$data$pu_sf.'><meta property="og:description" content='Plot spatial outputs derived from a Solution or SolutionSet
-object.
-This function provides three main spatial views:
-"pu": selected planning units,
-"actions": selected actions in space,
-"features": spatial feature values based on baseline or
-action-induced changes.
+This wrapper is useful as a compact entry point, while the specialised
+plotting functions provide a cleaner and more explicit user interface for
+each spatial output type."><meta property="og:description" content="Convenience wrapper to plot spatial outputs from a Solution or
+SolutionSet.
+Depending on what, this function dispatches to one of:
+plot_spatial_pu,
+plot_spatial_actions,
+plot_spatial_features.
 
 
-The function requires planning-unit geometry to be available in
-x$problem$data$pu_sf.'><meta property="og:image" content="https://josesalgr.github.io/mosap/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
+This wrapper is useful as a compact entry point, while the specialised
+plotting functions provide a cleaner and more explicit user interface for
+each spatial output type."><meta property="og:image" content="https://josesalgr.github.io/mosap/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
@@ -63,14 +63,14 @@ x$problem$data$pu_sf.'><meta property="og:image" content="https://josesalgr.gith
     </div>
 
     <div class="ref-description section level2">
-    <p>Plot spatial outputs derived from a <code>Solution</code> or <code>SolutionSet</code>
-object.</p>
-<p>This function provides three main spatial views:</p><ul><li><p><code>"pu"</code>: selected planning units,</p></li>
-<li><p><code>"actions"</code>: selected actions in space,</p></li>
-<li><p><code>"features"</code>: spatial feature values based on baseline or
-action-induced changes.</p></li>
-</ul><p>The function requires planning-unit geometry to be available in
-<code>x$problem$data$pu_sf</code>.</p>
+    <p>Convenience wrapper to plot spatial outputs from a <code>Solution</code> or
+<code>SolutionSet</code>.</p>
+<p>Depending on <code>what</code>, this function dispatches to one of:</p><ul><li><p><code><a href="plot_spatial_pu.html">plot_spatial_pu</a></code>,</p></li>
+<li><p><code><a href="plot_spatial_actions.html">plot_spatial_actions</a></code>,</p></li>
+<li><p><code><a href="plot_spatial_features.html">plot_spatial_features</a></code>.</p></li>
+</ul><p>This wrapper is useful as a compact entry point, while the specialised
+plotting functions provide a cleaner and more explicit user interface for
+each spatial output type.</p>
     </div>
 
     <div class="section level2">
@@ -79,11 +79,11 @@ action-induced changes.</p></li>
 <span>  <span class="va">x</span>,</span>
 <span>  what <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pu"</span>, <span class="st">"actions"</span>, <span class="st">"features"</span><span class="op">)</span>,</span>
 <span>  runs <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  subset <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  actions <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  features <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  value <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"final"</span>, <span class="st">"baseline"</span>, <span class="st">"benefit"</span><span class="op">)</span>,</span>
 <span>  layout <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  max_facets <span class="op">=</span> <span class="fl">4L</span>,</span>
-<span>  only_selected <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  base_alpha <span class="op">=</span> <span class="fl">0.1</span>,</span>
 <span>  selected_alpha <span class="op">=</span> <span class="fl">0.9</span>,</span>
@@ -117,9 +117,12 @@ action-induced changes.</p></li>
 first run.</p></dd>
 
 
-<dt id="arg-subset">subset<a class="anchor" aria-label="anchor" href="#arg-subset"></a></dt>
-<dd><p>Optional character vector used to restrict actions or features,
-depending on <code>what</code>.</p></dd>
+<dt id="arg-actions">actions<a class="anchor" aria-label="anchor" href="#arg-actions"></a></dt>
+<dd><p>Optional action subset used when <code>what = "actions"</code>.</p></dd>
+
+
+<dt id="arg-features">features<a class="anchor" aria-label="anchor" href="#arg-features"></a></dt>
+<dd><p>Optional feature subset used when <code>what = "features"</code>.</p></dd>
 
 
 <dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
@@ -130,22 +133,17 @@ Must be one of <code>"final"</code>, <code>"baseline"</code>, or <code>"benefit"
 <dt id="arg-layout">layout<a class="anchor" aria-label="anchor" href="#arg-layout"></a></dt>
 <dd><p>Character string controlling the layout. Must be one of
 <code>"single"</code> or <code>"facet"</code>. If <code>NULL</code>, the default is
-<code>"single"</code> for <code>"pu"</code> and <code>"actions"</code>, and <code>"facet"</code>
-for <code>"features"</code>.</p></dd>
+<code>"single"</code> for planning units and actions, and <code>"facet"</code> for
+features.</p></dd>
 
 
 <dt id="arg-max-facets">max_facets<a class="anchor" aria-label="anchor" href="#arg-max-facets"></a></dt>
-<dd><p>Maximum number of facets shown when <code>subset = NULL</code>
-and faceting would otherwise create many panels.</p></dd>
-
-
-<dt id="arg-only-selected">only_selected<a class="anchor" aria-label="anchor" href="#arg-only-selected"></a></dt>
-<dd><p>Logical. Used only when <code>what = "pu"</code>. If
-<code>TRUE</code>, highlight only selected planning units.</p></dd>
+<dd><p>Maximum number of facets shown when faceting without an
+explicit action or feature subset.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Reserved for future extensions.</p></dd>
+<dd><p>Additional arguments passed to the specialised plotting function.</p></dd>
 
 
 <dt id="arg-base-alpha">base_alpha<a class="anchor" aria-label="anchor" href="#arg-base-alpha"></a></dt>
@@ -197,98 +195,10 @@ available, use viridis scales.</p></dd>
     <p>Invisibly returns a <code>ggplot</code> object.</p>
     </div>
     <div class="section level2">
-    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p><strong>General behaviour</strong></p>
-<p>This function is a plotting helper built on top of the stored solution
-summaries and the geometry preserved in the associated <code>Problem</code>
-object. It does not rebuild a spatial problem from scratch. Instead, it
-combines:</p><ul><li><p>geometry from <code>x$problem$data$pu_sf</code>,</p></li>
-<li><p>solution summaries extracted with <code><a href="get_pu.html">get_pu</a></code>,
-<code><a href="get_actions.html">get_actions</a></code>, and related internal data,</p></li>
-<li><p>baseline feature distributions from
-<code>x$problem$data$dist_features</code>,</p></li>
-<li><p>and, when needed, effect information from
-<code>x$problem$data$dist_effects</code> or
-<code>x$problem$data$dist_effects_model</code>.</p></li>
-</ul><p>The returned object is a <code>ggplot</code> object, which is also printed.</p>
-<p><strong>Run handling</strong></p>
-<p>If <code>x</code> is a <code>Solution</code>, then <code>runs</code> must be <code>NULL</code> or
-<code>1</code>.</p>
-<p>If <code>x</code> is a <code>SolutionSet</code>, the <code>runs</code> argument selects which
-runs to plot. If <code>runs = NULL</code>, the first run is used by default.</p>
-<p>Some plotting modes impose additional restrictions when several runs are
-displayed simultaneously:</p><ul><li><p>for <code>what = "actions"</code>, <code>layout = "facet"</code> is not allowed
-when plotting multiple runs,</p></li>
-<li><p>for <code>what = "features"</code>, plotting multiple runs requires that
-<code>subset</code> specify exactly one feature.</p></li>
-</ul><p><strong>View: <code>what = "pu"</code></strong></p>
-<p>This view plots planning units and highlights those with
-<code>selected == 1</code> in the stored planning-unit summary.</p>
-<p>Let \(w_i \in \{0,1\}\) denote the planning-unit selection variable for
-planning unit \(i\). This view is the spatial representation of the
-user-facing <code>selected</code> version of \(w_i\).</p>
-<p>If <code>only_selected = TRUE</code>, only selected planning units are shown as
-highlighted output. If several runs are plotted, the panels are faceted by
-run.</p>
-<p><strong>View: <code>what = "actions"</code></strong></p>
-<p>This view plots selected planning unit–action decisions. It is based on the
-action summary returned by <code><a href="get_actions.html">get_actions</a>(only_selected = TRUE)</code>.</p>
-<p>Let \(x_{ia} \in \{0,1\}\) denote whether action \(a\) is selected in
-planning unit \(i\). This view maps the selected <code>(pu, action)</code> pairs
-onto planning-unit geometry.</p>
-<p>If more than one action is selected in the same planning unit and
-<code>layout = "single"</code>, action labels are collapsed using <code>"+"</code> and a
-warning is emitted.</p>
-<p>If <code>layout = "facet"</code> and only one run is plotted, one panel is drawn
-per action. If <code>layout = "single"</code>, all selected actions are drawn in a
-single map using discrete fill values.</p>
-<p>The <code>subset</code> argument can be used to restrict the displayed actions.</p>
-<p><strong>View: <code>what = "features"</code></strong></p>
-<p>This view plots feature values at the planning-unit level. It combines the
-baseline feature distribution stored in <code>dist_features</code> with positive
-action-induced effects from the selected solution.</p>
-<p>For each planning unit \(i\) and feature \(f\), the plotted quantities
-are:
-$$
-\mathrm{baseline}_{if},
-$$
-$$
-\mathrm{benefit}_{if},
-$$
-$$
-\mathrm{final}_{if} = \mathrm{baseline}_{if} + \mathrm{benefit}_{if}.
-$$</p>
-<p>In the current implementation, the <code>"features"</code> view uses:</p><ul><li><p><code>baseline</code>: the summed baseline amount from
-<code>x$problem$data$dist_features</code>,</p></li>
-<li><p><code>benefit</code>: the summed positive effect from selected actions only,</p></li>
-<li><p><code>final</code>: <code>baseline + benefit</code>.</p></li>
-</ul><p>Negative effects are not subtracted in this plotting method. Therefore, the
-<code>"final"</code> map should be interpreted as <code>baseline + selected
-benefit</code> under the currently stored plotting logic, not necessarily as a full
-net-effect reconstruction.</p>
-<p>The <code>subset</code> argument can be used to restrict which features are shown.
-Feature matching is attempted against both feature ids and feature names.</p>
-<p>If <code>layout = "facet"</code> and only one run is plotted, one panel is drawn
-per feature. If multiple runs are plotted, faceting is done by run instead.</p>
-<p><strong>Base layer and drawing options</strong></p>
-<p>If <code>show_base = TRUE</code>, the planning-unit geometry is first drawn as a
-low-alpha background layer using <code>base_fill</code> and <code>base_color</code>. The
-highlighted output is then drawn on top.</p>
-<p>If <code>draw_borders = FALSE</code>, border colors are disabled to improve speed,
-which is especially useful for large spatial datasets.</p>
-<p><strong>Colour scales</strong></p>
-<p>For discrete maps such as <code>"actions"</code>, colours may be supplied through
-<code>fill_values</code>. Otherwise, discrete viridis colours are used when
-available and <code>use_viridis = TRUE</code>.</p>
-<p>For continuous maps such as <code>"features"</code>, a continuous viridis colour
-scale is used when available and <code>use_viridis = TRUE</code>.</p>
-    </div>
-    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="get_pu.html">get_pu</a></code>,
-<code><a href="get_actions.html">get_actions</a></code>,
-<code><a href="get_features.html">get_features</a></code>,
-<code><a href="solve.html">solve</a></code></p></div>
+    <div class="dont-index"><p><code><a href="plot_spatial_pu.html">plot_spatial_pu</a></code>,
+<code><a href="plot_spatial_actions.html">plot_spatial_actions</a></code>,
+<code><a href="plot_spatial_features.html">plot_spatial_features</a></code></p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

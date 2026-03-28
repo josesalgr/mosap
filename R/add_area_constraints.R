@@ -33,8 +33,8 @@
 #' \code{x$data$constraints$area_min}; it does not validate the feasibility of
 #' the threshold against the available planning units at this stage.
 #'
-#' If a minimum-area constraint has already been stored, it is replaced only when
-#' \code{overwrite = TRUE}.
+#' At most one minimum-area constraint can be stored in a \code{Problem} object.
+#' If one already exists, this function raises an error.
 #'
 #' @param x A \code{Problem} object.
 #'
@@ -48,18 +48,15 @@
 #' @param area_unit Character string indicating the unit of \code{area_min}.
 #'   Must be one of \code{"m2"}, \code{"ha"}, or \code{"km2"}.
 #'
-#' @param name Character string used as a label for the stored constraint.
-#'
-#' @param overwrite Logical. If \code{TRUE}, replace an existing stored minimum
-#'   area constraint.
+#' @param name Character string used as the label of the stored linear
+#'   constraint when it is later added to the optimization model.
 #'
 #' @return An updated \code{Problem} object with a stored minimum-area
 #'   constraint in \code{x$data$constraints$area_min}.
 #'
 #' @seealso
 #' \code{\link{add_area_max_constraint}},
-#' \code{\link{inputData}},
-
+#' \code{\link{input_data}}
 #'
 #' @examples
 #' pu <- data.frame(
@@ -69,16 +66,17 @@
 #' )
 #'
 #' features <- data.frame(
-#'   id = c("sp1", "sp2")
+#'   id = 1:2,
+#'   name = c("sp1", "sp2")
 #' )
 #'
 #' dist_features <- data.frame(
 #'   pu = c(1, 1, 2, 3, 4, 4),
-#'   feature = c("sp1", "sp2", "sp1", "sp2", "sp1", "sp2"),
+#'   feature = c(1, 2, 1, 2, 1, 2),
 #'   amount = c(1, 2, 1, 3, 2, 1)
 #' )
 #'
-#' p <- inputData(
+#' p <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -98,8 +96,7 @@ add_area_min_constraint <- function(x,
                                     area_min,
                                     area_col = NULL,
                                     area_unit = c("m2", "ha", "km2"),
-                                    name = "area_min",
-                                    overwrite = FALSE) {
+                                    name = "area_min") {
 
   stopifnot(inherits(x, "Problem"))
   area_unit <- match.arg(area_unit)
@@ -116,9 +113,9 @@ add_area_min_constraint <- function(x,
     x$data$constraints <- list()
   }
 
-  if (!isTRUE(overwrite) && !is.null(x$data$constraints$area_min)) {
+  if (!is.null(x$data$constraints$area_min)) {
     stop(
-      "An area_min constraint already exists. Use overwrite=TRUE to replace it.",
+      "An area_min constraint already exists. Remove or replace it explicitly before adding a new one.",
       call. = FALSE
     )
   }
@@ -172,8 +169,8 @@ add_area_min_constraint <- function(x,
 #' \code{x$data$constraints$area_max}; it does not validate the feasibility of
 #' the threshold against the available planning units at this stage.
 #'
-#' If a maximum-area constraint has already been stored, it is replaced only when
-#' \code{overwrite = TRUE}.
+#' At most one maximum-area constraint can be stored in a \code{Problem} object.
+#' If one already exists, this function raises an error.
 #'
 #' @param x A \code{Problem} object.
 #'
@@ -187,17 +184,15 @@ add_area_min_constraint <- function(x,
 #' @param area_unit Character string indicating the unit of \code{area_max}.
 #'   Must be one of \code{"m2"}, \code{"ha"}, or \code{"km2"}.
 #'
-#' @param name Character string used as a label for the stored constraint.
-#'
-#' @param overwrite Logical. If \code{TRUE}, replace an existing stored maximum
-#'   area constraint.
+#' @param name Character string used as the label of the stored linear
+#'   constraint when it is later added to the optimization model.
 #'
 #' @return An updated \code{Problem} object with a stored maximum-area
 #'   constraint in \code{x$data$constraints$area_max}.
 #'
 #' @seealso
 #' \code{\link{add_area_min_constraint}},
-#' \code{\link{inputData}},
+#' \code{\link{input_data}}
 #'
 #' @examples
 #' pu <- data.frame(
@@ -207,16 +202,17 @@ add_area_min_constraint <- function(x,
 #' )
 #'
 #' features <- data.frame(
-#'   id = c("sp1", "sp2")
+#'   id = 1:2,
+#'   name = c("sp1", "sp2")
 #' )
 #'
 #' dist_features <- data.frame(
 #'   pu = c(1, 1, 2, 3, 4, 4),
-#'   feature = c("sp1", "sp2", "sp1", "sp2", "sp1", "sp2"),
+#'   feature = c(1, 2, 1, 2, 1, 2),
 #'   amount = c(1, 2, 1, 3, 2, 1)
 #' )
 #'
-#' p <- inputData(
+#' p <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -236,8 +232,7 @@ add_area_max_constraint <- function(x,
                                     area_max,
                                     area_col = NULL,
                                     area_unit = c("m2", "ha", "km2"),
-                                    name = "area_max",
-                                    overwrite = FALSE) {
+                                    name = "area_max") {
 
   stopifnot(inherits(x, "Problem"))
   area_unit <- match.arg(area_unit)
@@ -254,9 +249,9 @@ add_area_max_constraint <- function(x,
     x$data$constraints <- list()
   }
 
-  if (!isTRUE(overwrite) && !is.null(x$data$constraints$area_max)) {
+  if (!is.null(x$data$constraints$area_max)) {
     stop(
-      "An area_max constraint already exists. Use overwrite=TRUE to replace it.",
+      "An area_max constraint already exists. Remove or replace it explicitly before adding a new one.",
       call. = FALSE
     )
   }

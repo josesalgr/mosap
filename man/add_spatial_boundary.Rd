@@ -7,11 +7,10 @@
 add_spatial_boundary(
   x,
   boundary = NULL,
-  pu_sf = NULL,
+  geometry = NULL,
   name = "boundary",
   weight_col = NULL,
   weight_multiplier = 1,
-  progress = FALSE,
   include_self = TRUE,
   edge_factor = 1
 )
@@ -26,7 +25,7 @@ Accepted formats are:
 \item \code{(pu1, pu2, weight)}.
 }}
 
-\item{pu_sf}{Optional \code{sf} object with planning-unit polygons and an
+\item{geometry}{Optional \code{sf} object with planning-unit polygons and an
 \code{id} column. If \code{NULL}, \code{x$data$pu_sf} is used.}
 
 \item{name}{Character string giving the key under which the relation is
@@ -38,9 +37,6 @@ from \code{"boundary"} or \code{"weight"}.}
 
 \item{weight_multiplier}{Positive numeric scalar applied to all boundary
 weights.}
-
-\item{progress}{Logical. If \code{TRUE}, print simple progress messages in
-geometry mode.}
 
 \item{include_self}{Logical. If \code{TRUE}, include diagonal entries
 representing exposed boundary.}
@@ -67,7 +63,7 @@ interpreted as a boundary table, for example a Marxan-style
 \code{bound.dat}.
 
 \item \strong{Geometry mode.} If \code{boundary = NULL}, boundary lengths
-are derived from polygon geometry using \code{pu_sf} or
+are derived from polygon geometry using \code{geometry} or
 \code{x$data$pu_sf}.
 }
 
@@ -136,7 +132,7 @@ p <- add_spatial_boundary(
 # From sf polygons
 p <- add_spatial_boundary(
   x = p,
-  pu_sf = pu_sf,
+  geometry = pu_sf,
   include_self = TRUE,
   edge_factor = 1
 )

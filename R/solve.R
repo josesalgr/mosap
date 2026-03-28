@@ -17,7 +17,7 @@
 #'
 #' The typical \pkg{mosap} workflow is:
 #' \preformatted{
-#' x <- inputData(...)
+#' x <- input_data(...)
 #' x <- add_...(x, ...)
 #' x <- set_...(x, ...)
 #' res <- solve(x)
@@ -115,7 +115,7 @@
 #' \code{solve.Problem()}, which operates on \code{Problem} objects. solve() is
 #' the only function that should normally materialize the optimization model.
 #'
-#' @param x A \code{Problem} object created with \code{\link{inputData}} and
+#' @param x A \code{Problem} object created with \code{\link{input_data}} and
 #'   optionally enriched with actions, effects, targets, constraints,
 #'   objectives, spatial relations, method settings, and solver settings.
 #' @param ... Additional arguments reserved for internal or legacy solver
@@ -135,7 +135,7 @@
 #' # ------------------------------------------------------------
 #' # Single-objective solve
 #' # ------------------------------------------------------------
-#' x <- inputData(
+#' x <- input_data(
 #'   pu = pu,
 #'   features = features,
 #'   dist_features = dist_features
@@ -182,11 +182,9 @@ solve.Problem <- function(x, ...) {
 
   assertthat::assert_that(inherits(x, "Problem"))
 
-  # registro de objetivos
   objs <- x$data$objectives %||% list()
   n_obj <- if (is.list(objs)) length(objs) else 0L
 
-  # método MO configurado
   method <- x$data$method %||% NULL
   has_method <- is.list(method) && length(method) > 0L
 
@@ -198,6 +196,7 @@ solve.Problem <- function(x, ...) {
     }
 
     .pamo_validate_objectives(x)
+    #x <- compile_model(x)
 
     res <- switch(
       method_name,
@@ -218,7 +217,6 @@ solve.Problem <- function(x, ...) {
     return(res)
   }
 
-  # si no hay método pero hay múltiples objetivos, error
   if (n_obj > 1L) {
     stop(
       "Multiple objectives are registered but no multi-objective method was selected.\n",
@@ -227,7 +225,7 @@ solve.Problem <- function(x, ...) {
     )
   }
 
-  # caso normal single-objective
+  x <- compile_model(x)
   res <- .pa_solve_single_problem(x, ...)
 
   if (!inherits(res, "Solution")) {
@@ -240,4 +238,3 @@ solve.Problem <- function(x, ...) {
 
   res
 }
-

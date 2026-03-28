@@ -92,7 +92,7 @@ If you believe you’ve found a bug in mosap, please file an issue
 
 Core workflow to create a planning problem, configure it, and solve it.
 
-- [`inputData()`](https://josesalgr.github.io/mosap/reference/inputData.md)
+- [`input_data()`](https://josesalgr.github.io/mosap/reference/input_data.md)
   : Create a planning problem input object
 - [`solve()`](https://josesalgr.github.io/mosap/reference/solve.md) :
   Solve a planning problem
@@ -200,6 +200,8 @@ Store solver and runtime options before calling solve().
 
 Extract user-facing summaries and raw solution vectors.
 
+- [`compile_model()`](https://josesalgr.github.io/mosap/reference/compile_model.md)
+  : Compile the optimization model stored in a Problem
 - [`get_pu()`](https://josesalgr.github.io/mosap/reference/get_pu.md) :
   Get planning-unit results from a solution
 - [`get_actions()`](https://josesalgr.github.io/mosap/reference/get_actions.md)
@@ -217,6 +219,12 @@ Visualize spatial outputs and multi-objective trade-offs.
 
 - [`plot_spatial()`](https://josesalgr.github.io/mosap/reference/plot_spatial.md)
   : Plot spatial outputs from a solution or solution set
+- [`plot_spatial_pu()`](https://josesalgr.github.io/mosap/reference/plot_spatial_pu.md)
+  : Plot selected planning units in space
+- [`plot_spatial_actions()`](https://josesalgr.github.io/mosap/reference/plot_spatial_actions.md)
+  : Plot selected actions in space
+- [`plot_spatial_features()`](https://josesalgr.github.io/mosap/reference/plot_spatial_features.md)
+  : Plot spatial feature values from a solution
 - [`plot_tradeoff()`](https://josesalgr.github.io/mosap/reference/plot_tradeoff.md)
   : Plot trade-offs from a multi-objective solution set
 
