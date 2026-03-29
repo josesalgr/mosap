@@ -163,13 +163,14 @@ pu <- data.frame(
 )
 
 features <- data.frame(
-  id = c("sp1", "sp2")
+  id = 1:2,
+  name = c("sp1", "sp2")
 )
 
 dist_features <- data.frame(
-  pu = c(1, 1, 2, 3),
-  feature = c("sp1", "sp2", "sp1", "sp2"),
-  amount = c(1, 2, 1, 3)
+  pu = c(1, 1, 2, 3, 4, 4),
+  feature = c(1, 2, 1, 2, 1, 2),
+  amount = c(1, 2, 1, 3, 2, 1)
 )
 
 p <- input_data(
@@ -177,7 +178,7 @@ p <- input_data(
   features = features,
   dist_features = dist_features
 )
-#> Error: features$id must be numeric/integer ids (got non-numeric strings).
+#> Error: dist_features contains unknown PU ids: 4
 
 p <- add_actions(
   x = p,

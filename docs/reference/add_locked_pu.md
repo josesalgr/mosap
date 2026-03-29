@@ -125,12 +125,13 @@ pu <- data.frame(
 )
 
 features <- data.frame(
-  id = c("sp1", "sp2")
+  id = 1:2,
+  name = c("sp1", "sp2")
 )
 
 dist_features <- data.frame(
-  pu = c(1, 1, 2, 3, 4, 5),
-  feature = c("sp1", "sp2", "sp1", "sp2", "sp1", "sp2"),
+  pu = c(1, 1, 2, 3, 4, 4),
+  feature = c(1, 2, 1, 2, 1, 2),
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
@@ -139,7 +140,7 @@ p <- input_data(
   features = features,
   dist_features = dist_features
 )
-#> Error: features$id must be numeric/integer ids (got non-numeric strings).
+#> Warning: The following pu's do not contain features: 5
 
 # 1) Lock by planning-unit ids
 p1 <- add_locked_pu(
@@ -147,10 +148,14 @@ p1 <- add_locked_pu(
   locked_in = c(1, 3),
   locked_out = c(5)
 )
-#> Error: object 'p' not found
 
 p1$data$pu[, c("id", "locked_in", "locked_out")]
-#> Error: object 'p1' not found
+#>   id locked_in locked_out
+#> 1  1      TRUE      FALSE
+#> 2  2     FALSE      FALSE
+#> 3  3      TRUE      FALSE
+#> 4  4     FALSE      FALSE
+#> 5  5     FALSE       TRUE
 
 # 2) Read lock information from raw PU data columns
 p2 <- add_locked_pu(
@@ -158,10 +163,14 @@ p2 <- add_locked_pu(
   locked_in = "lock_col",
   locked_out = "out_col"
 )
-#> Error: object 'p' not found
 
 p2$data$pu[, c("id", "locked_in", "locked_out")]
-#> Error: object 'p2' not found
+#>   id locked_in locked_out
+#> 1  1      TRUE      FALSE
+#> 2  2     FALSE      FALSE
+#> 3  3     FALSE      FALSE
+#> 4  4      TRUE      FALSE
+#> 5  5     FALSE       TRUE
 
 # 3) Use logical vectors
 p3 <- add_locked_pu(
@@ -169,8 +178,12 @@ p3 <- add_locked_pu(
   locked_in = c(TRUE, FALSE, TRUE, FALSE, FALSE),
   locked_out = c(FALSE, FALSE, FALSE, TRUE, FALSE)
 )
-#> Error: object 'p' not found
 
 p3$data$pu[, c("id", "locked_in", "locked_out")]
-#> Error: object 'p3' not found
+#>   id locked_in locked_out
+#> 1  1      TRUE      FALSE
+#> 2  2     FALSE      FALSE
+#> 3  3      TRUE      FALSE
+#> 4  4     FALSE       TRUE
+#> 5  5     FALSE      FALSE
 ```

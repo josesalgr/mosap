@@ -127,12 +127,13 @@ pu <- data.frame(
 )
 
 features <- data.frame(
-  id = c("sp1", "sp2")
+  id = 1:2,
+  name = c("sp1", "sp2")
 )
 
 dist_features <- data.frame(
   pu = c(1, 1, 2, 3, 4, 4),
-  feature = c("sp1", "sp2", "sp1", "sp2", "sp1", "sp2"),
+  feature = c(1, 2, 1, 2, 1, 2),
   amount = c(1, 2, 1, 3, 2, 1)
 )
 
@@ -141,14 +142,12 @@ p <- input_data(
   features = features,
   dist_features = dist_features
 )
-#> Error: features$id must be numeric/integer ids (got non-numeric strings).
 
 p <- add_actions(
   x = p,
   actions = data.frame(id = c("conservation", "restoration")),
   cost = c(conservation = 3, restoration = 8)
 )
-#> Error: object 'p' not found
 
 # Lock a few feasible decisions
 p <- add_locked_actions(
@@ -162,10 +161,17 @@ p <- add_locked_actions(
     action = c("conservation")
   )
 )
-#> Error: object 'p' not found
 
 p$data$dist_actions
-#> Error: object 'p' not found
+#>   pu       action cost status internal_pu internal_action
+#> 1  1 conservation    3      2           1               1
+#> 5  1  restoration    8      0           1               2
+#> 2  2 conservation    3      0           2               1
+#> 6  2  restoration    8      2           2               2
+#> 3  3 conservation    3      0           3               1
+#> 7  3  restoration    8      0           3               2
+#> 4  4 conservation    3      3           4               1
+#> 8  4  restoration    8      0           4               2
 
 # Named-list interface
 p2 <- add_locked_actions(
@@ -177,8 +183,15 @@ p2 <- add_locked_actions(
     restoration = c(2)
   )
 )
-#> Error: object 'p' not found
 
 p2$data$dist_actions
-#> Error: object 'p2' not found
+#>   pu       action cost status internal_pu internal_action
+#> 1  1 conservation    3      2           1               1
+#> 5  1  restoration    8      0           1               2
+#> 2  2 conservation    3      0           2               1
+#> 6  2  restoration    8      3           2               2
+#> 3  3 conservation    3      2           3               1
+#> 7  3  restoration    8      0           3               2
+#> 4  4 conservation    3      3           4               1
+#> 8  4  restoration    8      0           4               2
 ```

@@ -1,8 +1,8 @@
-pandoc: '3.2'
+pandoc: 3.6.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles: {}
-last_built: 2026-03-28T20:52Z
+last_built: 2026-03-29T18:25Z
 urls:
   reference: https://josesalgr.github.io/mosap/reference
   article: https://josesalgr.github.io/mosap/articles
