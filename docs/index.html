@@ -436,20 +436,13 @@ The tables <code>sim_features</code> and <code>sim_dist_features</code> define t
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">solution_actions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/get_actions.html">get_actions</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">solution_actions</span><span class="op">)</span></span>
-<span><span class="co">#&gt;       pu       action cost status internal_pu internal_action internal_row</span></span>
-<span><span class="co">#&gt; 1      1 conservation    2      0           1               1            1</span></span>
-<span><span class="co">#&gt; 11110  1  restoration    6      0           1               2            2</span></span>
-<span><span class="co">#&gt; 2      2 conservation    2      0           2               1            3</span></span>
-<span><span class="co">#&gt; 11111  2  restoration    6      0           2               2            4</span></span>
-<span><span class="co">#&gt; 3      3 conservation    2      0           3               1            5</span></span>
-<span><span class="co">#&gt; 11112  3  restoration    6      0           3               2            6</span></span>
-<span><span class="co">#&gt;       selected run_id</span></span>
-<span><span class="co">#&gt; 1            1      1</span></span>
-<span><span class="co">#&gt; 11110        0      1</span></span>
-<span><span class="co">#&gt; 2            1      1</span></span>
-<span><span class="co">#&gt; 11111        1      1</span></span>
-<span><span class="co">#&gt; 3            1      1</span></span>
-<span><span class="co">#&gt; 11112        1      1</span></span></code></pre></div>
+<span><span class="co">#&gt;       pu       action cost status selected run_id</span></span>
+<span><span class="co">#&gt; 1      1 conservation    2      0        1      1</span></span>
+<span><span class="co">#&gt; 11110  1  restoration    6      0        0      1</span></span>
+<span><span class="co">#&gt; 2      2 conservation    2      0        1      1</span></span>
+<span><span class="co">#&gt; 11111  2  restoration    6      0        1      1</span></span>
+<span><span class="co">#&gt; 3      3 conservation    2      0        1      1</span></span>
+<span><span class="co">#&gt; 11112  3  restoration    6      0        1      1</span></span></code></pre></div>
 <p>When the result is a multi-objective solution set, you can also inspect trade-offs across runs:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/plot_tradeoff.html">plot_tradeoff</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></code></pre></div>

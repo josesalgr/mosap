@@ -410,20 +410,13 @@ user-facing summaries:
 ``` r
 solution_actions <- get_actions(res)
 head(solution_actions)
-#>       pu       action cost status internal_pu internal_action internal_row
-#> 1      1 conservation    2      0           1               1            1
-#> 11110  1  restoration    6      0           1               2            2
-#> 2      2 conservation    2      0           2               1            3
-#> 11111  2  restoration    6      0           2               2            4
-#> 3      3 conservation    2      0           3               1            5
-#> 11112  3  restoration    6      0           3               2            6
-#>       selected run_id
-#> 1            1      1
-#> 11110        0      1
-#> 2            1      1
-#> 11111        1      1
-#> 3            1      1
-#> 11112        1      1
+#>       pu       action cost status selected run_id
+#> 1      1 conservation    2      0        1      1
+#> 11110  1  restoration    6      0        0      1
+#> 2      2 conservation    2      0        1      1
+#> 11111  2  restoration    6      0        1      1
+#> 3      3 conservation    2      0        1      1
+#> 11112  3  restoration    6      0        1      1
 ```
 
 When the result is a multi-objective solution set, you can also inspect

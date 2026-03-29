@@ -176,6 +176,8 @@ get_actions <- function(x, only_selected = FALSE, run = NULL) {
     a <- a[a$selected == 1L, , drop = FALSE]
   }
 
+  a <- a |> dplyr::select(-internal_pu, -internal_action, -internal_row)
+
   a
 }
 
