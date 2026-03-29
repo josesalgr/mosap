@@ -42,7 +42,7 @@ An updated `Problem` object.
 
 ## Details
 
-In `mosap`, an *atomic objective* is a fully specified objective
+In `paretoscape`, an *atomic objective* is a fully specified objective
 definition that can later be reused by a multi-objective method such as
 a weighted-sum formulation, an \\\epsilon\\-constraint method, AUGMECON,
 or other objective-orchestration procedures.

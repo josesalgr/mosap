@@ -2,13 +2,13 @@
 
 Solve a planning problem stored in a `Problem` object.
 
-This is the main execution step of the mosap workflow. It reads the
-problem specification stored in `x$data`, builds the corresponding
+This is the main execution step of the paretoscape workflow. It reads
+the problem specification stored in `x$data`, builds the corresponding
 optimization model when needed, applies the configured solver settings,
 and returns either a
-[`solution-class`](https://josesalgr.github.io/mosap/reference/solution-class.md)
+[`solution-class`](https://josesalgr.github.io/paretoscape/reference/solution-class.md)
 or a
-[`solutionset-class`](https://josesalgr.github.io/mosap/reference/solutionset-class.md)
+[`solutionset-class`](https://josesalgr.github.io/paretoscape/reference/solutionset-class.md)
 depending on whether the workflow is single-objective or
 multi-objective.
 
@@ -26,7 +26,7 @@ solve(x, ...)
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md)
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md)
   and optionally enriched with actions, effects, targets, constraints,
   objectives, spatial relations, method settings, and solver settings.
 
@@ -40,18 +40,18 @@ solve(x, ...)
 Either:
 
 - a
-  [`solution-class`](https://josesalgr.github.io/mosap/reference/solution-class.md)
+  [`solution-class`](https://josesalgr.github.io/paretoscape/reference/solution-class.md)
   object when solving a single-objective problem, or
 
 - a
-  [`solutionset-class`](https://josesalgr.github.io/mosap/reference/solutionset-class.md)
+  [`solutionset-class`](https://josesalgr.github.io/paretoscape/reference/solutionset-class.md)
   object when solving a configured multi-objective problem.
 
 ## Details
 
 **Role of `solve()`**
 
-The typical mosap workflow is:
+The typical paretoscape workflow is:
 
     x <- input_data(...)
     x <- add_...(x, ...)
@@ -90,7 +90,7 @@ The behaviour of `solve()` depends on the problem configuration.
 
 If exactly one objective is registered and no multi-objective method is
 configured, `solve()` runs a single optimization problem and returns a
-[`solution-class`](https://josesalgr.github.io/mosap/reference/solution-class.md)
+[`solution-class`](https://josesalgr.github.io/paretoscape/reference/solution-class.md)
 object.
 
 **Multi-objective case**
@@ -108,7 +108,7 @@ Currently supported method names are:
 
 In these cases, `solve()` runs the corresponding multi-objective solving
 workflow and returns a
-[`solutionset-class`](https://josesalgr.github.io/mosap/reference/solutionset-class.md)
+[`solutionset-class`](https://josesalgr.github.io/paretoscape/reference/solutionset-class.md)
 object.
 
 **Consistency check**
@@ -127,9 +127,9 @@ been selected, `solve()` stops with an error. In other words:
 
 Solver configuration is read from `x$data$solve_args`, typically created
 with
-[`set_solver`](https://josesalgr.github.io/mosap/reference/set_solver.md)
+[`set_solver`](https://josesalgr.github.io/paretoscape/reference/set_solver.md)
 or one of its convenience wrappers such as
-[`set_solver_gurobi`](https://josesalgr.github.io/mosap/reference/set_solver_gurobi.md).
+[`set_solver_gurobi`](https://josesalgr.github.io/paretoscape/reference/set_solver_gurobi.md).
 
 These settings may include:
 
@@ -165,13 +165,13 @@ only function that should normally materialize the optimization model.
 
 ## See also
 
-[`problem-class`](https://josesalgr.github.io/mosap/reference/problem-class.md),
-[`solution-class`](https://josesalgr.github.io/mosap/reference/solution-class.md),
-[`solutionset-class`](https://josesalgr.github.io/mosap/reference/solutionset-class.md),
-[`set_solver`](https://josesalgr.github.io/mosap/reference/set_solver.md),
-[`set_method_weighted`](https://josesalgr.github.io/mosap/reference/set_method_weighted.md),
-[`set_method_epsilon_constraint`](https://josesalgr.github.io/mosap/reference/set_method_epsilon_constraint.md),
-[`set_method_augmecon`](https://josesalgr.github.io/mosap/reference/set_method_augmecon.md)
+[`problem-class`](https://josesalgr.github.io/paretoscape/reference/problem-class.md),
+[`solution-class`](https://josesalgr.github.io/paretoscape/reference/solution-class.md),
+[`solutionset-class`](https://josesalgr.github.io/paretoscape/reference/solutionset-class.md),
+[`set_solver`](https://josesalgr.github.io/paretoscape/reference/set_solver.md),
+[`set_method_weighted`](https://josesalgr.github.io/paretoscape/reference/set_method_weighted.md),
+[`set_method_epsilon_constraint`](https://josesalgr.github.io/paretoscape/reference/set_method_epsilon_constraint.md),
+[`set_method_augmecon`](https://josesalgr.github.io/paretoscape/reference/set_method_augmecon.md)
 
 ## Examples
 

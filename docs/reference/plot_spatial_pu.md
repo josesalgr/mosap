@@ -4,8 +4,9 @@ Plot the spatial distribution of selected planning units from a
 `Solution` or `SolutionSet`.
 
 This function maps the planning-unit selection summary returned by
-[`get_pu`](https://josesalgr.github.io/mosap/reference/get_pu.md) onto
-the planning-unit geometry stored in the associated `Problem` object.
+[`get_pu`](https://josesalgr.github.io/paretoscape/reference/get_pu.md)
+onto the planning-unit geometry stored in the associated `Problem`
+object.
 
 ## Usage
 
@@ -86,7 +87,7 @@ Planning-unit geometry must be available in `x$problem$data$pu_sf`.
 
 ## See also
 
-[`get_pu`](https://josesalgr.github.io/mosap/reference/get_pu.md),
-[`plot_spatial`](https://josesalgr.github.io/mosap/reference/plot_spatial.md),
-[`plot_spatial_actions`](https://josesalgr.github.io/mosap/reference/plot_spatial_actions.md),
-[`plot_spatial_features`](https://josesalgr.github.io/mosap/reference/plot_spatial_features.md)
+[`get_pu`](https://josesalgr.github.io/paretoscape/reference/get_pu.md),
+[`plot_spatial`](https://josesalgr.github.io/paretoscape/reference/plot_spatial.md),
+[`plot_spatial_actions`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_actions.md),
+[`plot_spatial_features`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_features.md)

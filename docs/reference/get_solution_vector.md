@@ -14,7 +14,7 @@ get_solution_vector(x, run = 1L)
 - x:
 
   A `Solution` or `SolutionSet` object returned by
-  [`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+  [`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 - run:
 
@@ -51,8 +51,9 @@ user-facing allocation table.
 
 To inspect selected planning units or selected actions in a more
 interpretable form, use
-[`get_pu`](https://josesalgr.github.io/mosap/reference/get_pu.md) or
-[`get_actions`](https://josesalgr.github.io/mosap/reference/get_actions.md)
+[`get_pu`](https://josesalgr.github.io/paretoscape/reference/get_pu.md)
+or
+[`get_actions`](https://josesalgr.github.io/paretoscape/reference/get_actions.md)
 instead.
 
 For a single solution, the returned vector corresponds to that solution.
@@ -60,10 +61,10 @@ For a `SolutionSet`, the `run` argument selects which run to extract.
 
 ## See also
 
-[`get_pu`](https://josesalgr.github.io/mosap/reference/get_pu.md),
-[`get_actions`](https://josesalgr.github.io/mosap/reference/get_actions.md),
-[`get_features`](https://josesalgr.github.io/mosap/reference/get_features.md),
-[`get_targets`](https://josesalgr.github.io/mosap/reference/get_targets.md)
+[`get_pu`](https://josesalgr.github.io/paretoscape/reference/get_pu.md),
+[`get_actions`](https://josesalgr.github.io/paretoscape/reference/get_actions.md),
+[`get_features`](https://josesalgr.github.io/paretoscape/reference/get_features.md),
+[`get_targets`](https://josesalgr.github.io/paretoscape/reference/get_targets.md)
 
 ## Examples
 

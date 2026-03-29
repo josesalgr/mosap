@@ -1,7 +1,8 @@
 # Problem class
 
-The `Problem` class is the central container used by mosap to represent
-a planning problem before, during, and after model construction.
+The `Problem` class is the central container used by paretoscape to
+represent a planning problem before, during, and after model
+construction.
 
 A `Problem` object stores the full problem specification in a modular
 way. This includes the baseline planning data, optional spatial
@@ -10,7 +11,7 @@ objective registrations, solver settings, and, when available, a built
 optimization model or model snapshot.
 
 In other words, `Problem` is the persistent object that connects the
-full `mosap` workflow:
+full `paretoscape` workflow:
 
     input_data()
     -> add_*() / set_*()
@@ -33,10 +34,11 @@ Thus, a `Problem` object should be understood as a structured container
 for the mathematical planning problem, not necessarily as a built
 optimization model.
 
-Before [`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
-is called, the object may contain only input data and user
-specifications. During or after solving, it may additionally contain a
-built model pointer, model metadata, and solver-related information.
+Before
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md) is
+called, the object may contain only input data and user specifications.
+During or after solving, it may additionally contain a built model
+pointer, model metadata, and solver-related information.
 
 **Core mathematical interpretation**
 
@@ -65,14 +67,14 @@ representation.
 **How objects are created**
 
 `Problem` objects are usually created by
-[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+[`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
 
 After creation, downstream functions such as
-[`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
-[`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md),
-[`add_profit`](https://josesalgr.github.io/mosap/reference/add_profit.md),
-[`add_targets_absolute`](https://josesalgr.github.io/mosap/reference/add_targets_absolute.md),
-[`add_targets_relative`](https://josesalgr.github.io/mosap/reference/add_targets_relative.md),
+[`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md),
+[`add_effects`](https://josesalgr.github.io/paretoscape/reference/add_effects.md),
+[`add_profit`](https://josesalgr.github.io/paretoscape/reference/add_profit.md),
+[`add_targets_absolute`](https://josesalgr.github.io/paretoscape/reference/add_targets_absolute.md),
+[`add_targets_relative`](https://josesalgr.github.io/paretoscape/reference/add_targets_relative.md),
 spatial relation constructors, objective setters, and solver setters
 extend the internal `data` list.
 
@@ -188,7 +190,7 @@ problem definition from which a solution can be obtained.
 
 ## Methods
 
-- [`print()`](https://josesalgr.github.io/mosap/reference/print.md):
+- [`print()`](https://josesalgr.github.io/paretoscape/reference/print.md):
 
   Print a structured summary of the stored problem specification,
   including data, actions and effects, spatial inputs, targets and
@@ -196,10 +198,10 @@ problem definition from which a solution can be obtained.
   additional dimensions and auxiliary-variable information are
   displayed.
 
-- [`show()`](https://josesalgr.github.io/mosap/reference/show.md):
+- [`show()`](https://josesalgr.github.io/paretoscape/reference/show.md):
 
   Alias of
-  [`print()`](https://josesalgr.github.io/mosap/reference/print.md).
+  [`print()`](https://josesalgr.github.io/paretoscape/reference/print.md).
 
 - `repr()`:
 
@@ -238,7 +240,8 @@ problem definition from which a solution can be obtained.
 
 ## Printing and diagnostics
 
-The [`print()`](https://josesalgr.github.io/mosap/reference/print.md)
+The
+[`print()`](https://josesalgr.github.io/paretoscape/reference/print.md)
 method is intended as a quick diagnostic summary. It helps users
 understand:
 
@@ -259,8 +262,8 @@ already materialized as a built optimization model.
 
 ## See also
 
-[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md),
-[`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
-[`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md),
-[`add_targets_absolute`](https://josesalgr.github.io/mosap/reference/add_targets_absolute.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md),
+[`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md),
+[`add_effects`](https://josesalgr.github.io/paretoscape/reference/add_effects.md),
+[`add_targets_absolute`](https://josesalgr.github.io/paretoscape/reference/add_targets_absolute.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)

@@ -25,7 +25,7 @@ add_spatial_knn(
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
 
 - coords:
 
@@ -87,7 +87,7 @@ division by zero.
 
 The raw k-nearest-neighbours structure is directional by construction,
 but the stored relation is registered as undirected by default through
-[`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md),
+[`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md),
 which collapses duplicate unordered pairs.
 
 If the RANN package is available, it is used for efficient nearest
@@ -95,8 +95,8 @@ neighbour search. Otherwise, a full distance matrix is computed.
 
 ## See also
 
-[`add_spatial_distance`](https://josesalgr.github.io/mosap/reference/add_spatial_distance.md),
-[`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md)
+[`add_spatial_distance`](https://josesalgr.github.io/paretoscape/reference/add_spatial_distance.md),
+[`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md)
 
 ## Examples
 

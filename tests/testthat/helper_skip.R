@@ -22,7 +22,7 @@ skip_if_no_commercial_solvers_installed <- function(packages = c("gurobi", "Rcpl
 
 skip_if_no_cbc <- function() {
   testthat::skip_if_not(
-    mosap:::available_to_solve("cbc"),
+    paretoscape:::available_to_solve("cbc"),
     message = "CBC solver is not available."
   )
 }

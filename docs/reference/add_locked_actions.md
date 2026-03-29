@@ -5,7 +5,7 @@ Fix feasible planning unit–action decisions to be selected or excluded.
 This function modifies the status of existing feasible `(pu, action)`
 pairs stored in `x$data$dist_actions`. It does not create new feasible
 action pairs and therefore must be used only after
-[`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md)
+[`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md)
 has been called.
 
 Locked decisions are represented through status codes:
@@ -27,7 +27,7 @@ add_locked_actions(x, locked_in = NULL, locked_out = NULL)
 - x:
 
   A `Problem` object with action feasibility already defined via
-  [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md).
+  [`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md).
 
 - locked_in:
 
@@ -115,8 +115,8 @@ exclusions.
 
 ## See also
 
-[`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
-[`add_locked_pu`](https://josesalgr.github.io/mosap/reference/add_locked_pu.md)
+[`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md),
+[`add_locked_pu`](https://josesalgr.github.io/paretoscape/reference/add_locked_pu.md)
 
 ## Examples
 

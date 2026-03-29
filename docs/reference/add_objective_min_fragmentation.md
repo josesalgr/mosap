@@ -89,7 +89,7 @@ units.
 
 In the common case where `relation_name = "boundary"` and the relation
 was built with
-[`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md),
+[`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md),
 the objective corresponds to a boundary-length-style fragmentation
 penalty. In that setting:
 
@@ -110,11 +110,11 @@ relation from the objective after scaling.
 
 This objective does not distinguish between different actions within the
 same planning unit. If action-specific spatial cohesion is required, use
-[`add_objective_min_action_fragmentation`](https://josesalgr.github.io/mosap/reference/add_objective_min_action_fragmentation.md)
+[`add_objective_min_action_fragmentation`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_action_fragmentation.md)
 instead.
 
 ## See also
 
-[`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md),
-[`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md),
-[`add_objective_min_action_fragmentation`](https://josesalgr.github.io/mosap/reference/add_objective_min_action_fragmentation.md)
+[`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md),
+[`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md),
+[`add_objective_min_action_fragmentation`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_action_fragmentation.md)

@@ -90,5 +90,5 @@ after accounting for selected cost components.
 
 ## See also
 
-[`add_objective_max_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_profit.md),
-[`add_objective_min_cost`](https://josesalgr.github.io/mosap/reference/add_objective_min_cost.md)
+[`add_objective_max_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_profit.md),
+[`add_objective_min_cost`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_cost.md)

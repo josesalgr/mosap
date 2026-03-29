@@ -129,5 +129,5 @@ ggrepel package is available, repelled labels are used.
 
 ## See also
 
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md),
-[`get_solution_vector`](https://josesalgr.github.io/mosap/reference/get_solution_vector.md)
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md),
+[`get_solution_vector`](https://josesalgr.github.io/paretoscape/reference/get_solution_vector.md)

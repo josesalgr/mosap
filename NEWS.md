@@ -1,6 +1,6 @@
-# mosap 1.0.4
+# paretoscape 1.0.4
 
-- First CRAN release of `mosap`.
+- First CRAN release of `paretoscape`.
 - Provides a modular workflow for exact multi-objective spatial planning based on mixed-integer programming (MIP).
 - Introduces the core `Problem`, `Solution`, and `SolutionSet` classes.
 - Adds support for modular problem construction through `inputData()`, `add_*()`, `set_*()`, and `solve()`.

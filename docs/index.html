@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Multi-Objective Spatial Planning • mosap</title>
+<title>Multi-objective integrated spatial planning • paretoscape</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -22,10 +22,10 @@
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><link href="extra.css" rel="stylesheet">
-<meta property="og:title" content="Multi-Objective Spatial Planning">
+<meta property="og:title" content="Multi-objective integrated spatial planning">
 <meta name="description" content="Provides a modular framework for exact multi-objective spatial planning using mixed-integer programming (MIP). The package supports the definition of planning problems through planning units, features, management actions, action effects, spatial relations, targets, constraints, and objective functions. It enables the optimisation of spatial planning portfolios under considerations such as boundary structure, connectivity, and fragmentation. Supported multi-objective methods include weighted-sum aggregation, epsilon-constraint, and AUGMECON. Problems can be solved with commercial (e.g., Gurobi, CPLEX) and open-source (e.g., CBC, SYMPHONY) MIP solvers.">
 <meta property="og:description" content="Provides a modular framework for exact multi-objective spatial planning using mixed-integer programming (MIP). The package supports the definition of planning problems through planning units, features, management actions, action effects, spatial relations, targets, constraints, and objective functions. It enables the optimisation of spatial planning portfolios under considerations such as boundary structure, connectivity, and fragmentation. Supported multi-objective methods include weighted-sum aggregation, epsilon-constraint, and AUGMECON. Problems can be solved with commercial (e.g., Gurobi, CPLEX) and open-source (e.g., CBC, SYMPHONY) MIP solvers.">
-<meta property="og:image" content="https://josesalgr.github.io/mosap/logo.png">
+<meta property="og:image" content="https://josesalgr.github.io/paretoscape/logo.png">
 <!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -40,7 +40,7 @@
 
     <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
 
-    <a class="navbar-brand me-2" href="index.html">mosap</a>
+    <a class="navbar-brand me-2" href="index.html">paretoscape</a>
 
     <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.4</small>
 
@@ -55,7 +55,7 @@
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/josesalgr/mosap" aria-label="GitHub repository"><span class="fa fa-github"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/josesalgr/paretoscape" aria-label="GitHub repository"><span class="fa fa-github"></span></a></li>
       </ul>
 </div>
 
@@ -65,89 +65,437 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header">
-<img src="logo.png" class="logo" alt=""><h1 id="mosap-integrated-multi-objective-spatial-action-planning">mosap: Integrated Multi-Objective Spatial Action Planning<a class="anchor" aria-label="anchor" href="#mosap-integrated-multi-objective-spatial-action-planning"></a>
+<img src="logo.png" class="logo" alt=""><h1 id="paretoscape-multi-objective-spatial-planning-in-r">paretoscape: Multi-Objective Spatial Planning in R<a class="anchor" aria-label="anchor" href="#paretoscape-multi-objective-spatial-planning-in-r"></a>
 </h1>
 </div>
 <!-- badges: start -->
 
-<p><strong>⚠️ Experimental package: mosap is an experimental research package under active development. Breaking changes may occur at any time (API, internal tables, solver interfaces, outputs). Use it at your own risk and do not rely on it for production workflows yet.</strong></p>
+<p><code>paretoscape</code> provides an exact optimisation framework for <strong>multi-objective spatial planning</strong> in problems where decisions are expressed as <strong>management actions</strong> applied across planning units.</p>
+<p>The package allows users to:</p>
+<ul>
+<li>build planning problems from <strong>tabular</strong> or <strong>spatial</strong> inputs,</li>
+<li>define <strong>feasible management actions</strong> and their <strong>action-specific effects</strong> on features,</li>
+<li>add <strong>targets</strong>, <strong>constraints</strong>, and <strong>spatial relations</strong>,</li>
+<li>register <strong>atomic objectives</strong> such as cost, benefit, profit, and fragmentation,</li>
+<li>and explore trade-offs using exact <strong>multi-objective optimisation</strong> methods such as weighted-sum, epsilon-constraint, and AUGMECON.</li>
+</ul>
+<p><code>paretoscape</code> is designed for reproducible research workflows in conservation planning, restoration planning, and other spatial decision-support problems where actions, costs, ecological effects, and spatial structure interact.</p>
 <div class="section level2">
-<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+<h2 id="experimental-status">Experimental status<a class="anchor" aria-label="anchor" href="#experimental-status"></a>
 </h2>
-<p>The <code>mosap</code> is designed to support atomic objectives (e.g., minimize cost, minimize fragmentation, maximize benefits) and to combine them through multi-objective methods (e.g., weighted sum). The package supports both tabular and spatial inputs (vector- and raster-based workflows), and stores intermediate artifacts (tables, spatial relations, targets, solver configuration) to enable reproducible experimentation and reporting.</p>
+<p><code>paretoscape</code> is currently an experimental research package under active development.<br>
+The API may still evolve as the package moves toward a first stable CRAN release.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>The latest development version of <code>mosap</code> can be installed from GitHub:</p>
+<p>The current development version can be installed from GitHub:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://remotes.r-lib.org" class="external-link">remotes</a></span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"josesalgr/mosap"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"remotes"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"josesalgr/paretoscape"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
+<h2 id="core-workflow">Core workflow<a class="anchor" aria-label="anchor" href="#core-workflow"></a>
 </h2>
-<p>Below is a minimal end-to-end example showing the intended pipeline.</p>
+<p>A typical <code>paretoscape</code> workflow has five steps:</p>
+<ol style="list-style-type: decimal">
+<li>Build a <code>Problem</code> object from planning units, features, and baseline feature amounts.</li>
+<li>Add feasible actions and define how those actions affect features.</li>
+<li>Add targets, constraints, and spatial relations if needed.</li>
+<li>Register one or more atomic objectives.</li>
+<li>Solve the problem in single-objective or multi-objective mode.</li>
+</ol>
+<p>The example below illustrates this workflow using package data with polygon planning units stored as an <code>sf</code> object.</p>
+</div>
+<div class="section level2">
+<h2 id="worked-example-spatial-planning-with-actions-and-trade-offs">Worked example: spatial planning with actions and trade-offs<a class="anchor" aria-label="anchor" href="#worked-example-spatial-planning-with-actions-and-trade-offs"></a>
+</h2>
+<div class="section level3">
+<h3 id="load-the-package-and-example-data">Load the package and example data<a class="anchor" aria-label="anchor" href="#load-the-package-and-example-data"></a>
+</h3>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://josesalgr.github.io/mosap/">mosap</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://josesalgr.github.io/paretoscape/">paretoscape</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; S'està adjuntant el paquet: 'paretoscape'</span></span>
+<span><span class="co">#&gt; L'objecte següent està emmascarat per 'package:base':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     solve</span></span>
 <span></span>
-<span><span class="co"># --- Example inputs (replace with your own)</span></span>
-<span><span class="co"># pu_data            : data.frame(id, cost, locked_in?, locked_out?)</span></span>
-<span><span class="co"># features_data      : data.frame(id, name)</span></span>
-<span><span class="co"># dist_features_data : data.frame(pu, feature, amount)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"sim_pu_sf"</span>, package <span class="op">=</span> <span class="st">"paretoscape"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"sim_features"</span>, package <span class="op">=</span> <span class="st">"paretoscape"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"sim_dist_features"</span>, package <span class="op">=</span> <span class="st">"paretoscape"</span><span class="op">)</span></span></code></pre></div>
+<p>The dataset <code>sim_pu_sf</code> contains planning-unit polygons and a <code>cost</code> column.<br>
+The tables <code>sim_features</code> and <code>sim_dist_features</code> define the feature catalogue and the baseline distribution of feature amounts across planning units.</p>
+</div>
+<div class="section level3">
+<h3 id="build-the-planning-problem">Build the planning problem<a class="anchor" aria-label="anchor" href="#build-the-planning-problem"></a>
+</h3>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/input_data.html">input_data</a></span><span class="op">(</span></span>
+<span>  pu <span class="op">=</span> <span class="va">sim_pu_sf</span>,</span>
+<span>  features <span class="op">=</span> <span class="va">sim_features</span>,</span>
+<span>  dist_features <span class="op">=</span> <span class="va">sim_dist_features</span>,</span>
+<span>  cost <span class="op">=</span> <span class="st">"cost"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: The following pu's do not contain features: 8012 8033 8147 8263</span></span>
 <span></span>
-<span><span class="co"># 1) Build the Data object</span></span>
-<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu">inputData</span><span class="op">(</span></span>
-<span>  pu <span class="op">=</span> <span class="va">pu_data</span>,</span>
-<span>  features <span class="op">=</span> <span class="va">features_data</span>,</span>
-<span>  dist_features <span class="op">=</span> <span class="va">dist_features_data</span></span>
+<span><span class="fu"><a href="reference/print.html">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
+<span><span class="co">#&gt; A paretoscape object (&lt;Problem&gt;)</span></span>
+<span><span class="co">#&gt; ├─data</span></span>
+<span><span class="co">#&gt; │├─planning units: &lt;tbl_df&gt; (11109 total)</span></span>
+<span><span class="co">#&gt; │├─costs: min: 1, max: 1</span></span>
+<span><span class="co">#&gt; │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)</span></span>
+<span><span class="co">#&gt; └─actions and effects</span></span>
+<span><span class="co">#&gt; │├─actions: none specified</span></span>
+<span><span class="co">#&gt; │├─dist_actions: none</span></span>
+<span><span class="co">#&gt; │├─dist_effects: none specified</span></span>
+<span><span class="co">#&gt; │└─dist_profit: none specified</span></span>
+<span><span class="co">#&gt; └─spatial</span></span>
+<span><span class="co">#&gt; │├─geometry: sf (11109 rows)</span></span>
+<span><span class="co">#&gt; │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)</span></span>
+<span><span class="co">#&gt; │└─relations: none</span></span>
+<span><span class="co">#&gt; └─targets and constraints</span></span>
+<span><span class="co">#&gt; │├─targets: none</span></span>
+<span><span class="co">#&gt; │├─area constraints: none</span></span>
+<span><span class="co">#&gt; │├─pu_locks: none</span></span>
+<span><span class="co">#&gt; │└─action_locks: none</span></span>
+<span><span class="co">#&gt; └─model</span></span>
+<span><span class="co">#&gt; │├─status: not built yet (will build in solve())</span></span>
+<span><span class="co">#&gt; │├─objectives: none</span></span>
+<span><span class="co">#&gt; │├─method: single-objective</span></span>
+<span><span class="co">#&gt; │├─solver: not set (auto)</span></span>
+<span><span class="co">#&gt; │└─checks: incomplete (no objective registered)</span></span>
+<span><span class="co">#&gt; # ℹ Use `x$data` to inspect stored tables and model snapshots.</span></span></code></pre></div>
+<p>At this stage, the problem contains:</p>
+<ul>
+<li>planning units,</li>
+<li>features,</li>
+<li>baseline feature amounts,</li>
+<li>and spatial geometry that can later be used for plotting and spatial relations.</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="add-management-actions">Add management actions<a class="anchor" aria-label="anchor" href="#add-management-actions"></a>
+</h3>
+<p>We now define a simple action catalogue with two actions:</p>
+<ul>
+<li>
+<code>conservation</code>, representing low-cost maintenance actions,</li>
+<li>
+<code>restoration</code>, representing more intensive interventions.</li>
+</ul>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">actions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span><span class="op">)</span>,</span>
+<span>  name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Conservation"</span>, <span class="st">"Restoration"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 2) Add actions/effects/targets/spatial relations as needed</span></span>
-<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/add_actions.html">add_actions</a></span><span class="op">(</span><span class="va">actions_df</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/add_effects.html">add_effects</a></span><span class="op">(</span><span class="va">effects_df</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">add_conservation_targets_relative</span><span class="op">(</span><span class="fl">0.17</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/add_spatial_boundary.html">add_spatial_boundary</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/add_actions.html">add_actions</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">p</span>,</span>
+<span>  actions <span class="op">=</span> <span class="va">actions</span>,</span>
+<span>  cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>conservation <span class="op">=</span> <span class="fl">2</span>, restoration <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 3) Register atomic objectives (aliases are later used by MO methods)</span></span>
-<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">|&gt;</span></span>
+<span><span class="fu"><a href="reference/print.html">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
+<span><span class="co">#&gt; A paretoscape object (&lt;Problem&gt;)</span></span>
+<span><span class="co">#&gt; ├─data</span></span>
+<span><span class="co">#&gt; │├─planning units: &lt;tbl_df&gt; (11109 total)</span></span>
+<span><span class="co">#&gt; │├─costs: min: 1, max: 1</span></span>
+<span><span class="co">#&gt; │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)</span></span>
+<span><span class="co">#&gt; └─actions and effects</span></span>
+<span><span class="co">#&gt; │├─actions: 2 total ("Conservation", "Restoration")</span></span>
+<span><span class="co">#&gt; │├─dist_actions: 22218 feasible rows</span></span>
+<span><span class="co">#&gt; │├─action costs: min: 2, max: 6</span></span>
+<span><span class="co">#&gt; │├─dist_effects: none specified</span></span>
+<span><span class="co">#&gt; │└─dist_profit: none specified</span></span>
+<span><span class="co">#&gt; └─spatial</span></span>
+<span><span class="co">#&gt; │├─geometry: sf (11109 rows)</span></span>
+<span><span class="co">#&gt; │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)</span></span>
+<span><span class="co">#&gt; │└─relations: none</span></span>
+<span><span class="co">#&gt; └─targets and constraints</span></span>
+<span><span class="co">#&gt; │├─targets: none</span></span>
+<span><span class="co">#&gt; │├─area constraints: none</span></span>
+<span><span class="co">#&gt; │├─pu_locks: none</span></span>
+<span><span class="co">#&gt; │└─action_locks: none</span></span>
+<span><span class="co">#&gt; └─model</span></span>
+<span><span class="co">#&gt; │├─status: not built yet (will build in solve())</span></span>
+<span><span class="co">#&gt; │├─objectives: none</span></span>
+<span><span class="co">#&gt; │├─method: single-objective</span></span>
+<span><span class="co">#&gt; │├─solver: not set (auto)</span></span>
+<span><span class="co">#&gt; │└─checks: incomplete (no objective registered)</span></span>
+<span><span class="co">#&gt; # ℹ Use `x$data` to inspect stored tables and model snapshots.</span></span></code></pre></div>
+<p>This creates the action catalogue in <code>p$data$actions</code> and the feasible planning unit–action table in <code>p$data$dist_actions</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="add-action-effects">Add action effects<a class="anchor" aria-label="anchor" href="#add-action-effects"></a>
+</h3>
+<p>Next, we define how actions affect features. In this example, we use a simple multiplier specification:</p>
+<ul>
+<li>
+<code>conservation</code> provides a small positive effect on all features,</li>
+<li>
+<code>restoration</code> provides a larger positive effect.</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">effects_tbl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span></span>
+<span>  action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span><span class="op">)</span>,</span>
+<span>  feature <span class="op">=</span> <span class="va">sim_features</span><span class="op">$</span><span class="va">name</span>,</span>
+<span>  stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">effects_tbl</span><span class="op">$</span><span class="va">multiplier</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">sim_features</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">sim_features</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/add_effects.html">add_effects</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">p</span>,</span>
+<span>  effects <span class="op">=</span> <span class="va">effects_tbl</span>,</span>
+<span>  effect_type <span class="op">=</span> <span class="st">"delta"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Internally, effects are stored in canonical form with non-negative <code>benefit</code> and <code>loss</code> columns for each <code>(pu, action, feature)</code> triple.</p>
+</div>
+<div class="section level3">
+<h3 id="add-a-spatial-relation">Add a spatial relation<a class="anchor" aria-label="anchor" href="#add-a-spatial-relation"></a>
+</h3>
+<p>To represent spatial cohesion, we add a boundary-based spatial relation from the planning-unit polygons:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/add_spatial_distance.html">add_spatial_distance</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">p</span>,</span>
+<span>  name <span class="op">=</span> <span class="st">"boundary"</span>,</span>
+<span>  max_distance <span class="op">=</span> <span class="fl">1000</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/print.html">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
+<span><span class="co">#&gt; A paretoscape object (&lt;Problem&gt;)</span></span>
+<span><span class="co">#&gt; ├─data</span></span>
+<span><span class="co">#&gt; │├─planning units: &lt;tbl_df&gt; (11109 total)</span></span>
+<span><span class="co">#&gt; │├─costs: min: 1, max: 1</span></span>
+<span><span class="co">#&gt; │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)</span></span>
+<span><span class="co">#&gt; └─actions and effects</span></span>
+<span><span class="co">#&gt; │├─actions: 2 total ("Conservation", "Restoration")</span></span>
+<span><span class="co">#&gt; │├─dist_actions: 22218 feasible rows</span></span>
+<span><span class="co">#&gt; │├─action costs: min: 2, max: 6</span></span>
+<span><span class="co">#&gt; │├─dist_effects: 696042 rows</span></span>
+<span><span class="co">#&gt; │├─effect mode: benefit only</span></span>
+<span><span class="co">#&gt; │└─dist_profit: none specified</span></span>
+<span><span class="co">#&gt; └─spatial</span></span>
+<span><span class="co">#&gt; │├─geometry: sf (11109 rows)</span></span>
+<span><span class="co">#&gt; │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)</span></span>
+<span><span class="co">#&gt; │└─relations: boundary (21693 edges, w: 1..1)</span></span>
+<span><span class="co">#&gt; └─targets and constraints</span></span>
+<span><span class="co">#&gt; │├─targets: none</span></span>
+<span><span class="co">#&gt; │├─area constraints: none</span></span>
+<span><span class="co">#&gt; │├─pu_locks: none</span></span>
+<span><span class="co">#&gt; │└─action_locks: none</span></span>
+<span><span class="co">#&gt; └─model</span></span>
+<span><span class="co">#&gt; │├─status: not built yet (will build in solve())</span></span>
+<span><span class="co">#&gt; │├─objectives: none</span></span>
+<span><span class="co">#&gt; │├─method: single-objective</span></span>
+<span><span class="co">#&gt; │├─solver: not set (auto)</span></span>
+<span><span class="co">#&gt; │└─checks: incomplete (no objective registered)</span></span>
+<span><span class="co">#&gt; # ℹ Use `x$data` to inspect stored tables and model snapshots.</span></span></code></pre></div>
+<p>This stores a spatial relation that can later be used by fragmentation objectives.</p>
+</div>
+<div class="section level3">
+<h3 id="add-a-target">Add a target<a class="anchor" aria-label="anchor" href="#add-a-target"></a>
+</h3>
+<p>We now add a relative target requiring each feature to reach at least 20% of its baseline total contribution:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/add_targets_relative.html">add_targets_relative</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">p</span>,</span>
+<span>  targets <span class="op">=</span> <span class="fl">0.20</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/print.html">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
+<span><span class="co">#&gt; A paretoscape object (&lt;Problem&gt;)</span></span>
+<span><span class="co">#&gt; ├─data</span></span>
+<span><span class="co">#&gt; │├─planning units: &lt;tbl_df&gt; (11109 total)</span></span>
+<span><span class="co">#&gt; │├─costs: min: 1, max: 1</span></span>
+<span><span class="co">#&gt; │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)</span></span>
+<span><span class="co">#&gt; └─actions and effects</span></span>
+<span><span class="co">#&gt; │├─actions: 2 total ("Conservation", "Restoration")</span></span>
+<span><span class="co">#&gt; │├─dist_actions: 22218 feasible rows</span></span>
+<span><span class="co">#&gt; │├─action costs: min: 2, max: 6</span></span>
+<span><span class="co">#&gt; │├─dist_effects: 696042 rows</span></span>
+<span><span class="co">#&gt; │├─effect mode: benefit only</span></span>
+<span><span class="co">#&gt; │└─dist_profit: none specified</span></span>
+<span><span class="co">#&gt; └─spatial</span></span>
+<span><span class="co">#&gt; │├─geometry: sf (11109 rows)</span></span>
+<span><span class="co">#&gt; │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)</span></span>
+<span><span class="co">#&gt; │└─relations: boundary (21693 edges, w: 1..1)</span></span>
+<span><span class="co">#&gt; └─targets and constraints</span></span>
+<span><span class="co">#&gt; │├─targets: 155 rows</span></span>
+<span><span class="co">#&gt; │├─target preview: "ACCGENT" &gt;= 721.4, "ACCNISU" &gt;= 806.2, "ACRARUN" &gt;= 102.2</span></span>
+<span><span class="co">#&gt; │├─area constraints: none</span></span>
+<span><span class="co">#&gt; │├─pu_locks: none</span></span>
+<span><span class="co">#&gt; │└─action_locks: none</span></span>
+<span><span class="co">#&gt; └─model</span></span>
+<span><span class="co">#&gt; │├─status: not built yet (will build in solve())</span></span>
+<span><span class="co">#&gt; │├─objectives: none</span></span>
+<span><span class="co">#&gt; │├─method: single-objective</span></span>
+<span><span class="co">#&gt; │├─solver: not set (auto)</span></span>
+<span><span class="co">#&gt; │└─checks: incomplete (no objective registered)</span></span>
+<span><span class="co">#&gt; # ℹ Use `x$data` to inspect stored tables and model snapshots.</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="register-atomic-objectives">Register atomic objectives<a class="anchor" aria-label="anchor" href="#register-atomic-objectives"></a>
+</h3>
+<p>A key idea in <code>paretoscape</code> is that objectives are registered as <strong>atomic objectives</strong> under user-defined aliases. These aliases can later be combined in multi-objective methods.</p>
+<p>Here we register three objectives:</p>
+<ul>
+<li>minimise total cost,</li>
+<li>maximise ecological benefit,</li>
+<li>minimise fragmentation.</li>
+</ul>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/add_objective_min_cost.html">add_objective_min_cost</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"cost"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/add_objective_min_fragmentation.html">add_objective_min_fragmentation</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"frag"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="reference/add_objective_max_benefit.html">add_objective_max_benefit</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"benefit"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/add_objective_min_fragmentation.html">add_objective_min_fragmentation</a></span><span class="op">(</span></span>
+<span>    alias <span class="op">=</span> <span class="st">"frag"</span>,</span>
+<span>    relation_name <span class="op">=</span> <span class="st">"boundary"</span></span>
+<span>  <span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 4) Configure a multi-objective method (weighted sum)</span></span>
-<span><span class="va">mo</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/set_method_weighted.html">set_method_weighted</a></span><span class="op">(</span></span>
-<span>  <span class="va">x</span>,</span>
-<span>  aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cost"</span>, <span class="st">"frag"</span><span class="op">)</span>,</span>
-<span>  weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
-<span>  normalize <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 5) Configure solver (example; adapt to your solver and preferences)</span></span>
-<span><span class="va">mo</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/set_solver.html">set_solver</a></span><span class="op">(</span></span>
-<span>  <span class="va">mo</span>,</span>
-<span>  solver <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span><span class="fu"><a href="reference/print.html">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
+<span><span class="co">#&gt; A paretoscape object (&lt;Problem&gt;)</span></span>
+<span><span class="co">#&gt; ├─data</span></span>
+<span><span class="co">#&gt; │├─planning units: &lt;tbl_df&gt; (11109 total)</span></span>
+<span><span class="co">#&gt; │├─costs: min: 1, max: 1</span></span>
+<span><span class="co">#&gt; │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)</span></span>
+<span><span class="co">#&gt; └─actions and effects</span></span>
+<span><span class="co">#&gt; │├─actions: 2 total ("Conservation", "Restoration")</span></span>
+<span><span class="co">#&gt; │├─dist_actions: 22218 feasible rows</span></span>
+<span><span class="co">#&gt; │├─action costs: min: 2, max: 6</span></span>
+<span><span class="co">#&gt; │├─dist_effects: 696042 rows</span></span>
+<span><span class="co">#&gt; │├─effect mode: benefit only</span></span>
+<span><span class="co">#&gt; │└─dist_profit: none specified</span></span>
+<span><span class="co">#&gt; └─spatial</span></span>
+<span><span class="co">#&gt; │├─geometry: sf (11109 rows)</span></span>
+<span><span class="co">#&gt; │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)</span></span>
+<span><span class="co">#&gt; │└─relations: boundary (21693 edges, w: 1..1)</span></span>
+<span><span class="co">#&gt; └─targets and constraints</span></span>
+<span><span class="co">#&gt; │├─targets: 155 rows</span></span>
+<span><span class="co">#&gt; │├─target preview: "ACCGENT" &gt;= 721.4, "ACCNISU" &gt;= 806.2, "ACRARUN" &gt;= 102.2</span></span>
+<span><span class="co">#&gt; │├─area constraints: none</span></span>
+<span><span class="co">#&gt; │├─pu_locks: none</span></span>
+<span><span class="co">#&gt; │└─action_locks: none</span></span>
+<span><span class="co">#&gt; └─model</span></span>
+<span><span class="co">#&gt; │├─status: not built yet (will build in solve())</span></span>
+<span><span class="co">#&gt; │├─objectives: 3 registered (benefit, cost, frag)</span></span>
+<span><span class="co">#&gt; │├─method: not set</span></span>
+<span><span class="co">#&gt; │├─solver: not set (auto)</span></span>
+<span><span class="co">#&gt; │└─checks: incomplete (multiple objectives registered but no MO method</span></span>
+<span><span class="co">#&gt; selected)</span></span>
+<span><span class="co">#&gt; # ℹ Use `x$data` to inspect stored tables and model snapshots.</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="configure-a-multi-objective-method">Configure a multi-objective method<a class="anchor" aria-label="anchor" href="#configure-a-multi-objective-method"></a>
+</h3>
+<p>There are several ways to explore trade-offs in <code>paretoscape</code>. A simple option is to use a weighted-sum formulation.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p_mo</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/set_method_weighted.html">set_method_weighted</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">p</span>,</span>
+<span>  aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cost"</span>, <span class="st">"benefit"</span>, <span class="st">"frag"</span><span class="op">)</span>,</span>
+<span>  weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  normalize_weights <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This stores the multi-objective configuration in the problem object. It does not solve the problem yet.</p>
+</div>
+<div class="section level3">
+<h3 id="configure-the-solver">Configure the solver<a class="anchor" aria-label="anchor" href="#configure-the-solver"></a>
+</h3>
+<p>Before solving, we store solver settings in the problem object:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p_mo</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/set_solver_cbc.html">set_solver_cbc</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">p_mo</span>,</span>
 <span>  time_limit <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>  gap_limit <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 6) Solve</span></span>
-<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/solve.html">solve</a></span><span class="op">(</span><span class="va">mo</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 7) Inspect results (examples)</span></span>
-<span><span class="fu"><a href="reference/get_pu.html">get_pu</a></span><span class="op">(</span><span class="va">res</span>, only_selected <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/get_actions.html">get_actions</a></span><span class="op">(</span><span class="va">res</span>, only_selected <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/get_features.html">get_features</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/get_targets.html">get_targets</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></code></pre></div>
-<p>If you believe you’ve found a bug in mosap, please file an issue (ideally with a reproducible example) at: <a href="https://github.com/josesalgr/mosap/issues" class="external-link uri">https://github.com/josesalgr/mosap/issues</a>.</p>
+<span><span class="op">)</span></span></code></pre></div>
+<p>You can also use convenience wrappers such as <code><a href="reference/set_solver_gurobi.html">set_solver_gurobi()</a></code>, <code><a href="reference/set_solver_cplex.html">set_solver_cplex()</a></code>, <code><a href="reference/set_solver_cbc.html">set_solver_cbc()</a></code>, or <code><a href="reference/set_solver_symphony.html">set_solver_symphony()</a></code>.</p>
+</div>
+<div class="section level3">
+<h3 id="solve-the-problem">Solve the problem<a class="anchor" aria-label="anchor" href="#solve-the-problem"></a>
+</h3>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/solve.html">solve</a></span><span class="op">(</span><span class="va">p_mo</span><span class="op">)</span></span></code></pre></div>
+<p>Depending on the selected method, <code><a href="reference/solve.html">solve()</a></code> returns either:</p>
+<ul>
+<li>a <code>Solution</code> object for a single-objective solve, or</li>
+<li>a <code>SolutionSet</code> object for a multi-objective workflow.</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="inspect-results">Inspect results<a class="anchor" aria-label="anchor" href="#inspect-results"></a>
+</h3>
+<p>For solved problems, <code>paretoscape</code> provides helper functions to extract user-facing summaries:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">solution_actions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/get_actions.html">get_actions</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">solution_actions</span><span class="op">)</span></span>
+<span><span class="co">#&gt;       pu       action cost status internal_pu internal_action internal_row</span></span>
+<span><span class="co">#&gt; 1      1 conservation    2      0           1               1            1</span></span>
+<span><span class="co">#&gt; 11110  1  restoration    6      0           1               2            2</span></span>
+<span><span class="co">#&gt; 2      2 conservation    2      0           2               1            3</span></span>
+<span><span class="co">#&gt; 11111  2  restoration    6      0           2               2            4</span></span>
+<span><span class="co">#&gt; 3      3 conservation    2      0           3               1            5</span></span>
+<span><span class="co">#&gt; 11112  3  restoration    6      0           3               2            6</span></span>
+<span><span class="co">#&gt;       selected run_id</span></span>
+<span><span class="co">#&gt; 1            1      1</span></span>
+<span><span class="co">#&gt; 11110        0      1</span></span>
+<span><span class="co">#&gt; 2            1      1</span></span>
+<span><span class="co">#&gt; 11111        1      1</span></span>
+<span><span class="co">#&gt; 3            1      1</span></span>
+<span><span class="co">#&gt; 11112        1      1</span></span></code></pre></div>
+<p>When the result is a multi-objective solution set, you can also inspect trade-offs across runs:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/plot_tradeoff.html">plot_tradeoff</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></code></pre></div>
+<p><img src="reference/figures/README-unnamed-chunk-12-1.png" width="100%"></p>
+<p>and, when geometry is available, spatial outputs can be visualised directly:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/plot_spatial.html">plot_spatial</a></span><span class="op">(</span><span class="va">res</span>, what <span class="op">=</span> <span class="st">"actions"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="reference/figures/README-unnamed-chunk-13-1.png" width="100%"></p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="why-this-example-matters">Why this example matters<a class="anchor" aria-label="anchor" href="#why-this-example-matters"></a>
+</h2>
+<p>This example illustrates the main modelling logic of <code>paretoscape</code>.</p>
+<p>The problem is not only about selecting planning units. Instead, it is about deciding <strong>which action</strong> should be feasible and selected in each planning unit, while accounting for:</p>
+<ul>
+<li>implementation cost,</li>
+<li>action-specific ecological effects,</li>
+<li>target achievement,</li>
+<li>and spatial cohesion.</li>
+</ul>
+<p>This makes it possible to study realistic trade-offs such as:</p>
+<ul>
+<li>lower cost versus higher ecological benefit,</li>
+<li>greater benefit versus more compact spatial patterns,</li>
+<li>or more cohesive solutions versus more flexible action allocation.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="learn-more">Learn more<a class="anchor" aria-label="anchor" href="#learn-more"></a>
+</h2>
+<p>To explore the package further, see:</p>
+<ul>
+<li>the function reference at the package website,</li>
+<li>the documentation of <code><a href="reference/input_data.html">input_data()</a></code>, <code><a href="reference/add_actions.html">add_actions()</a></code>, <code><a href="reference/add_effects.html">add_effects()</a></code>, and <code><a href="reference/solve.html">solve()</a></code>,</li>
+<li>and the multi-objective methods <code><a href="reference/set_method_weighted.html">set_method_weighted()</a></code>, <code><a href="reference/set_method_epsilon_constraint.html">set_method_epsilon_constraint()</a></code>, and <code><a href="reference/set_method_augmecon.html">set_method_augmecon()</a></code>.</li>
+</ul>
+<p>If you find a bug or want to suggest an improvement, please open an issue at:</p>
+<p><a href="https://github.com/josesalgr/paretoscape/issues" class="external-link uri">https://github.com/josesalgr/paretoscape/issues</a></p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/josesalgr/mosap/" class="external-link">Browse source code</a></li>
-<li><a href="https://github.com/josesalgr/mosap/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://github.com/josesalgr/paretoscape/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/josesalgr/paretoscape/issues" class="external-link">Report a bug</a></li>
 </ul>
 </div>
 
@@ -168,7 +516,7 @@
 <div class="citation">
 <h2 data-toc-skip>Citation</h2>
 <ul class="list-unstyled">
-<li><a href="authors.html#citation">Citing mosap</a></li>
+<li><a href="authors.html#citation">Citing paretoscape</a></li>
 </ul>
 </div>
 
@@ -184,7 +532,7 @@
 <div class="dev-status">
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
-<li><a href="https://lifecycle.r-lib.org/articles/stages.html#stable" class="external-link"><img src="https://img.shields.io/badge/lifecycle-stable-brightgreen.svg" alt="Lifecycle: stable"></a></li>
+<li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
 </ul>
 </div>
 

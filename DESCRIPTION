@@ -1,7 +1,7 @@
-Package: mosap
+Package: paretoscape
 Type: Package
 Version: 1.0.4
-Title: Multi-Objective Spatial Planning
+Title: Multi-objective integrated spatial planning
 Description: Provides a modular framework for exact multi-objective spatial
     planning using mixed-integer programming (MIP). The package supports the
     definition of planning problems through planning units, features,
@@ -64,8 +64,8 @@ LazyData: true
 License: GPL (>= 2)
 Language: en-US
 RoxygenNote: 7.3.3
-URL: https://josesalgr.github.io/mosap/
-BugReports: https://github.com/josesalgr/mosap/issues
+URL: https://josesalgr.github.io/paretoscape/
+BugReports: https://github.com/josesalgr/paretoscape/issues
 VignetteBuilder: knitr
 Collate: 
     'RcppExports.R'

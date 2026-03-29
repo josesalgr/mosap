@@ -83,7 +83,7 @@ add_action_max_per_pu <- function(
 ) {
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
-  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a mosap Problem object")
+  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a paretoscape Problem object")
   assertthat::assert_that(!is.null(x$data$pu), msg = "x$data$pu is missing. Run input_data() first.")
   assertthat::assert_that(!is.null(x$data$dist_actions), msg = "No actions found. Run add_actions() first.")
   assertthat::assert_that(!is.null(x$data$actions), msg = "No action catalog found. Run add_actions() first.")

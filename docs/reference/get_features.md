@@ -2,7 +2,7 @@
 
 Extract the per-feature summary table from a `Solution` or `SolutionSet`
 object returned by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 The returned table summarizes, for each feature, the total amount
 available in the landscape together with the positive and negative
@@ -19,7 +19,7 @@ get_features(x, run = NULL)
 - x:
 
   A `Solution` or `SolutionSet` object returned by
-  [`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+  [`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 - run:
 
@@ -77,14 +77,14 @@ a single run is present and `run` was not requested explicitly, the
 
 This function summarizes feature outcomes in the solution. It is
 different from
-[`get_targets`](https://josesalgr.github.io/mosap/reference/get_targets.md),
+[`get_targets`](https://josesalgr.github.io/paretoscape/reference/get_targets.md),
 which focuses on target achievement rather than total feature balance.
 
 ## See also
 
-[`get_pu`](https://josesalgr.github.io/mosap/reference/get_pu.md),
-[`get_actions`](https://josesalgr.github.io/mosap/reference/get_actions.md),
-[`get_targets`](https://josesalgr.github.io/mosap/reference/get_targets.md)
+[`get_pu`](https://josesalgr.github.io/paretoscape/reference/get_pu.md),
+[`get_actions`](https://josesalgr.github.io/paretoscape/reference/get_actions.md),
+[`get_targets`](https://josesalgr.github.io/paretoscape/reference/get_targets.md)
 
 ## Examples
 

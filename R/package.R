@@ -1,4 +1,4 @@
 #' @importFrom Rcpp evalCpp
-#' @useDynLib mosap, .registration = TRUE
+#' @useDynLib paretoscape, .registration = TRUE
 NULL
 

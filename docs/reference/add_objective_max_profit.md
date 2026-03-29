@@ -61,9 +61,9 @@ whose action belongs to the selected subset, the objective becomes:
 
 This objective considers profit only. It does not subtract planning-unit
 costs or action costs. For a net-profit formulation, use
-[`add_objective_max_net_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_net_profit.md).
+[`add_objective_max_net_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_net_profit.md).
 
 ## See also
 
-[`add_objective_min_cost`](https://josesalgr.github.io/mosap/reference/add_objective_min_cost.md),
-[`add_objective_max_net_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_net_profit.md)
+[`add_objective_min_cost`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_cost.md),
+[`add_objective_max_net_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_net_profit.md)

@@ -8,7 +8,7 @@
 #' planning units and provide constructors for building such relations from
 #' common spatial inputs.
 #'
-#' Spatial relations in \code{mosap} are graph-like structures defined over the
+#' Spatial relations in \code{paretoscape} are graph-like structures defined over the
 #' set of planning units. They are used to represent adjacency, shared boundary
 #' length, proximity, neighbourhood graphs, or other pairwise spatial
 #' relationships that may later be used by objectives, constraints, or
@@ -100,7 +100,7 @@ NULL
 #'
 #' @description
 #' Register an externally computed spatial relation inside a \code{Problem}
-#' object using the unified internal representation adopted by \code{mosap}.
+#' object using the unified internal representation adopted by \code{paretoscape}.
 #'
 #' Most users will typically prefer one of the convenience constructors such as
 #' \code{\link{add_spatial_boundary}}, \code{\link{add_spatial_rook}},

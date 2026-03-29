@@ -10,7 +10,7 @@ NULL
 #'
 #' @description
 #' The \code{Solution} class stores the result of solving a single
-#' \code{\link{Problem}} object in \pkg{mosap}.
+#' \code{\link{Problem}} object in \pkg{paretoscape}.
 #'
 #' A \code{Solution} object contains the original problem definition, the core
 #' optimization output returned by the solver, user-facing summary tables,
@@ -276,7 +276,7 @@ Solution <- pproto(
     ch <- .pa_cli_box_chars()
     div_id <- cli::cli_div(theme = .pa_cli_theme())
 
-    cli::cli_text("A mosap solution ({.cls Solution})")
+    cli::cli_text("A paretoscape solution ({.cls Solution})")
 
     obj <- self$solution$objective %||% NA_real_
     gap <- self$diagnostics$gap %||% NA_real_

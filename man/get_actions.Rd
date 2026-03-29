@@ -36,7 +36,7 @@ does not reconstruct the table from the raw decision vector; it simply
 returns the stored summary after optional filtering.
 
 Let \eqn{x_{ia}} denote the decision variable associated with selecting
-action \eqn{a} in planning unit \eqn{i}. In standard \code{mosap} workflows,
+action \eqn{a} in planning unit \eqn{i}. In standard \code{paretoscape} workflows,
 the \code{selected} column is the user-facing representation of that
 decision, typically coded as \code{0} or \code{1}.
 

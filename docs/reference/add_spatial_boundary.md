@@ -126,14 +126,14 @@ touches are ignored.
 **Storage**
 
 The final relation is stored through
-[`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md),
+[`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md),
 typically as an undirected relation with optional diagonal entries.
 
 ## See also
 
-[`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md),
-[`add_objective_min_fragmentation`](https://josesalgr.github.io/mosap/reference/add_objective_min_fragmentation.md),
-[`add_objective_min_action_fragmentation`](https://josesalgr.github.io/mosap/reference/add_objective_min_action_fragmentation.md)
+[`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md),
+[`add_objective_min_fragmentation`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_fragmentation.md),
+[`add_objective_min_action_fragmentation`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_action_fragmentation.md)
 
 ## Examples
 

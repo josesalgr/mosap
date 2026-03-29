@@ -1,7 +1,7 @@
 # Configure Gurobi solver settings
 
 Convenience wrapper around
-[`set_solver`](https://josesalgr.github.io/mosap/reference/set_solver.md)
+[`set_solver`](https://josesalgr.github.io/paretoscape/reference/set_solver.md)
 that stores `solver = "gurobi"` in the problem object.
 
 This function does not solve the model. It only updates the stored
@@ -86,8 +86,8 @@ An updated `Problem` object with Gurobi solver settings stored in
 
 ## See also
 
-[`set_solver`](https://josesalgr.github.io/mosap/reference/set_solver.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`set_solver`](https://josesalgr.github.io/paretoscape/reference/set_solver.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
 
 ## Examples
 

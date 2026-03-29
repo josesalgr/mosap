@@ -1,16 +1,17 @@
 # Add spatial relations
 
 Register an externally computed spatial relation inside a `Problem`
-object using the unified internal representation adopted by `mosap`.
+object using the unified internal representation adopted by
+`paretoscape`.
 
 Most users will typically prefer one of the convenience constructors
 such as
-[`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md),
-[`add_spatial_rook`](https://josesalgr.github.io/mosap/reference/add_spatial_rook.md),
-[`add_spatial_queen`](https://josesalgr.github.io/mosap/reference/add_spatial_queen.md),
-[`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md),
+[`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md),
+[`add_spatial_rook`](https://josesalgr.github.io/paretoscape/reference/add_spatial_rook.md),
+[`add_spatial_queen`](https://josesalgr.github.io/paretoscape/reference/add_spatial_queen.md),
+[`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md),
 or
-[`add_spatial_distance`](https://josesalgr.github.io/mosap/reference/add_spatial_distance.md).
+[`add_spatial_distance`](https://josesalgr.github.io/paretoscape/reference/add_spatial_distance.md).
 This function is the advanced low-level entry point for adding an
 already computed relation.
 
@@ -25,7 +26,7 @@ add_spatial_relations(x, relations, name, directed = FALSE, allow_self = FALSE)
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
 
 - relations:
 
@@ -86,11 +87,11 @@ The final relation is stored in `x$data$spatial_relations[[name]]`.
 
 ## See also
 
-[`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md),
-[`add_spatial_rook`](https://josesalgr.github.io/mosap/reference/add_spatial_rook.md),
-[`add_spatial_queen`](https://josesalgr.github.io/mosap/reference/add_spatial_queen.md),
-[`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md),
-[`add_spatial_distance`](https://josesalgr.github.io/mosap/reference/add_spatial_distance.md)
+[`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md),
+[`add_spatial_rook`](https://josesalgr.github.io/paretoscape/reference/add_spatial_rook.md),
+[`add_spatial_queen`](https://josesalgr.github.io/paretoscape/reference/add_spatial_queen.md),
+[`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md),
+[`add_spatial_distance`](https://josesalgr.github.io/paretoscape/reference/add_spatial_distance.md)
 
 ## Examples
 

@@ -1,8 +1,8 @@
 # Solution class
 
 The `Solution` class stores the result of solving a single
-[`Problem`](https://josesalgr.github.io/mosap/reference/problem-class.md)
-object in mosap.
+[`Problem`](https://josesalgr.github.io/paretoscape/reference/problem-class.md)
+object in paretoscape.
 
 A `Solution` object contains the original problem definition, the core
 optimization output returned by the solver, user-facing summary tables,
@@ -10,7 +10,7 @@ diagnostics about the solve process, and metadata describing how the
 solution was obtained.
 
 Objects of this class are typically created by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 ## Value
 
@@ -131,11 +131,11 @@ rather than solver interaction. Typical entries include:
   problem.
 
 These tables are the main source used by user-facing accessors such as
-[`get_pu`](https://josesalgr.github.io/mosap/reference/get_pu.md),
-[`get_actions`](https://josesalgr.github.io/mosap/reference/get_actions.md),
-[`get_features`](https://josesalgr.github.io/mosap/reference/get_features.md),
+[`get_pu`](https://josesalgr.github.io/paretoscape/reference/get_pu.md),
+[`get_actions`](https://josesalgr.github.io/paretoscape/reference/get_actions.md),
+[`get_features`](https://josesalgr.github.io/paretoscape/reference/get_features.md),
 and
-[`get_targets`](https://josesalgr.github.io/mosap/reference/get_targets.md).
+[`get_targets`](https://josesalgr.github.io/paretoscape/reference/get_targets.md).
 
 **Diagnostics**
 
@@ -160,7 +160,8 @@ the solution itself.
 
 **Printing**
 
-The [`print()`](https://josesalgr.github.io/mosap/reference/print.md)
+The
+[`print()`](https://josesalgr.github.io/paretoscape/reference/print.md)
 method is intended as a concise diagnostic summary. It reports:
 
 - solver status,
@@ -215,15 +216,15 @@ directly, or the dedicated accessor functions.
 
 ## Methods
 
-- [`print()`](https://josesalgr.github.io/mosap/reference/print.md):
+- [`print()`](https://josesalgr.github.io/paretoscape/reference/print.md):
 
   Print a concise summary of the solution, including status, objective
   value, runtime, selection counts, and target fulfillment.
 
-- [`show()`](https://josesalgr.github.io/mosap/reference/show.md):
+- [`show()`](https://josesalgr.github.io/paretoscape/reference/show.md):
 
   Alias of
-  [`print()`](https://josesalgr.github.io/mosap/reference/print.md).
+  [`print()`](https://josesalgr.github.io/paretoscape/reference/print.md).
 
 - `repr()`:
 
@@ -231,9 +232,9 @@ directly, or the dedicated accessor functions.
 
 ## See also
 
-[`problem-class`](https://josesalgr.github.io/mosap/reference/problem-class.md),
-[`get_pu`](https://josesalgr.github.io/mosap/reference/get_pu.md),
-[`get_actions`](https://josesalgr.github.io/mosap/reference/get_actions.md),
-[`get_features`](https://josesalgr.github.io/mosap/reference/get_features.md),
-[`get_targets`](https://josesalgr.github.io/mosap/reference/get_targets.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`problem-class`](https://josesalgr.github.io/paretoscape/reference/problem-class.md),
+[`get_pu`](https://josesalgr.github.io/paretoscape/reference/get_pu.md),
+[`get_actions`](https://josesalgr.github.io/paretoscape/reference/get_actions.md),
+[`get_features`](https://josesalgr.github.io/paretoscape/reference/get_features.md),
+[`get_targets`](https://josesalgr.github.io/paretoscape/reference/get_targets.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)

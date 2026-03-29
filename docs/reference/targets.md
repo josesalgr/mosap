@@ -12,9 +12,9 @@ achievement. Optionally, the set of contributing actions can be
 restricted through the `actions` argument.
 
 A problem may contain multiple simultaneous targets. Each call to
-[`add_targets_absolute()`](https://josesalgr.github.io/mosap/reference/add_targets_absolute.md)
+[`add_targets_absolute()`](https://josesalgr.github.io/paretoscape/reference/add_targets_absolute.md)
 or
-[`add_targets_relative()`](https://josesalgr.github.io/mosap/reference/add_targets_relative.md)
+[`add_targets_relative()`](https://josesalgr.github.io/paretoscape/reference/add_targets_relative.md)
 appends one or more target definitions to `x$data$targets`. This makes
 it possible to combine, for example, relative targets counted only from
 conservation actions with absolute targets counted only from restoration

@@ -27,7 +27,7 @@
 
 
 # -------------------------------------------------------------------------
-# Atomic objective registry accessors (stored in mosap::Problem)
+# Atomic objective registry accessors (stored in paretoscape::Problem)
 # Registry: x$data$objectives[[alias]] = list(...)
 # -------------------------------------------------------------------------
 
@@ -646,7 +646,7 @@
 }
 
 # -------------------------------------------------------------------------
-# Activate an IR as a single-objective config in mosap::Problem
+# Activate an IR as a single-objective config in paretoscape::Problem
 # (Used by the "rebuild + pad" objective vector strategy)
 # -------------------------------------------------------------------------
 
@@ -1452,7 +1452,7 @@ add_objective <- function(x, objective) {
     stop("add_objective() expects an objective of class 'pa_objective'.", call. = FALSE)
   }
 
-  # store it as an atomic spec in the mosap registry
+  # store it as an atomic spec in the paretoscape registry
   if (is.null(x$data$objectives) || !is.list(x$data$objectives)) {
     x$data$objectives <- list()
   }
@@ -2006,13 +2006,13 @@ add_objective <- function(x, objective) {
   # 4) combinar pesos -> objetivo final
   obj_w <- Reduce(`+`, Map(`*`, objvecs, as.list(weights)))
 
-  # 5) IMPORTANTÍSIMO: inyectar runtime update para que mosap lo use en solve()
+  # 5) IMPORTANTÍSIMO: inyectar runtime update para que paretoscape lo use en solve()
   base2$data$runtime_updates <- list(
     obj = obj_w,
     modelsense = "min"
   )
 
-  # 6) asegurar que mosap NO reconstruya el modelo y no te borre runtime_updates
+  # 6) asegurar que paretoscape NO reconstruya el modelo y no te borre runtime_updates
   base2$data$meta$model_dirty <- FALSE
   base2$data$has_model <- TRUE
 
@@ -2030,7 +2030,7 @@ add_objective <- function(x, objective) {
 }
 
 # ---------------------------------------------------------
-# Internal: solve a single run using mosap as engine
+# Internal: solve a single run using paretoscape as engine
 # ---------------------------------------------------------
 .pamo_solve_one <- function(x, spec) {
 
@@ -2262,7 +2262,7 @@ add_objective <- function(x, objective) {
 }
 
 # ---------------------------------------------------------
-# Internal: extract (minimal) results from mosap Solution
+# Internal: extract (minimal) results from paretoscape Solution
 # ---------------------------------------------------------
 .pamo_extract_solution <- function(out) {
   objval <- tryCatch(out$solution$objective, error = function(e) NA_real_)
@@ -2336,7 +2336,7 @@ add_objective <- function(x, objective) {
 
 
 # -------------------------------------------------------------------------
-# Internal: extract raw decision vector from a mosap Solution
+# Internal: extract raw decision vector from a paretoscape Solution
 # -------------------------------------------------------------------------
 .pamo_get_solution_vector <- function(sol) {
 

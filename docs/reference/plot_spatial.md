@@ -5,11 +5,11 @@ Convenience wrapper to plot spatial outputs from a `Solution` or
 
 Depending on `what`, this function dispatches to one of:
 
-- [`plot_spatial_pu`](https://josesalgr.github.io/mosap/reference/plot_spatial_pu.md),
+- [`plot_spatial_pu`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_pu.md),
 
-- [`plot_spatial_actions`](https://josesalgr.github.io/mosap/reference/plot_spatial_actions.md),
+- [`plot_spatial_actions`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_actions.md),
 
-- [`plot_spatial_features`](https://josesalgr.github.io/mosap/reference/plot_spatial_features.md).
+- [`plot_spatial_features`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_features.md).
 
 This wrapper is useful as a compact entry point, while the specialised
 plotting functions provide a cleaner and more explicit user interface
@@ -135,6 +135,6 @@ Invisibly returns a `ggplot` object.
 
 ## See also
 
-[`plot_spatial_pu`](https://josesalgr.github.io/mosap/reference/plot_spatial_pu.md),
-[`plot_spatial_actions`](https://josesalgr.github.io/mosap/reference/plot_spatial_actions.md),
-[`plot_spatial_features`](https://josesalgr.github.io/mosap/reference/plot_spatial_features.md)
+[`plot_spatial_pu`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_pu.md),
+[`plot_spatial_actions`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_actions.md),
+[`plot_spatial_features`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_features.md)

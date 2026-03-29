@@ -16,7 +16,7 @@ reducing weakly efficient points.
 
 This function does not solve the problem directly. It stores the
 AUGMECON configuration in `x$data$method`, to be used later by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 ## Usage
 
@@ -178,10 +178,10 @@ per secondary objective. Each vector defines the exact
 \\\epsilon\\-levels to be explored for that objective.
 
 If `grid = NULL`, the grid is generated automatically later during
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md). In that
-case, the method first computes extreme points and payoff-table ranges
-for the secondary objectives, and then generates `n_points` levels for
-each one.
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
+In that case, the method first computes extreme points and payoff-table
+ranges for the secondary objectives, and then generates `n_points`
+levels for each one.
 
 If `include_extremes = TRUE`, the automatic grid includes the extreme
 values of each secondary objective.
@@ -231,7 +231,7 @@ This function stores the method definition in `x$data$method` with:
 
 The actual payoff table, grid construction, and subproblem solution loop
 are performed later by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 ## References
 
@@ -242,9 +242,9 @@ programming problems. *Applied Mathematics and Computation*, 213(2),
 
 ## See also
 
-[`set_method_epsilon_constraint`](https://josesalgr.github.io/mosap/reference/set_method_epsilon_constraint.md),
-[`set_method_weighted`](https://josesalgr.github.io/mosap/reference/set_method_weighted.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`set_method_epsilon_constraint`](https://josesalgr.github.io/paretoscape/reference/set_method_epsilon_constraint.md),
+[`set_method_weighted`](https://josesalgr.github.io/paretoscape/reference/set_method_weighted.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
 
 ## Examples
 

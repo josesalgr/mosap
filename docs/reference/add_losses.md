@@ -1,12 +1,12 @@
 # Add losses
 
 Convenience wrapper around
-[`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md)
+[`add_effects`](https://josesalgr.github.io/paretoscape/reference/add_effects.md)
 that keeps only negative effects, represented by rows with `loss > 0`.
 
 This function is useful when the user wants to work only with the
 damaging consequences of actions. Internally, it calls
-[`add_effects()`](https://josesalgr.github.io/mosap/reference/add_effects.md)
+[`add_effects()`](https://josesalgr.github.io/paretoscape/reference/add_effects.md)
 with `component = "loss"` and stores the resulting canonical effects
 table in `x$data$dist_effects`.
 
@@ -29,15 +29,15 @@ add_losses(
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
   It must already contain `x$data$dist_actions`; run
-  [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md)
+  [`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md)
   first.
 
 - losses:
 
   Alias of `effects`, used for symmetry with
-  [`add_benefits()`](https://josesalgr.github.io/mosap/reference/add_benefits.md).
+  [`add_benefits()`](https://josesalgr.github.io/paretoscape/reference/add_benefits.md).
 
 - effect_type:
 
@@ -73,8 +73,8 @@ An updated `Problem` object with:
 
 ## See also
 
-[`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md),
-[`add_benefits`](https://josesalgr.github.io/mosap/reference/add_benefits.md)
+[`add_effects`](https://josesalgr.github.io/paretoscape/reference/add_effects.md),
+[`add_benefits`](https://josesalgr.github.io/paretoscape/reference/add_benefits.md)
 
 ## Examples
 

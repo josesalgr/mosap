@@ -4,7 +4,7 @@ Define an objective that minimizes fragmentation at the action level
 over a stored spatial relation.
 
 Unlike
-[`add_objective_min_fragmentation`](https://josesalgr.github.io/mosap/reference/add_objective_min_fragmentation.md),
+[`add_objective_min_fragmentation`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_fragmentation.md),
 which acts on the selected planning-unit set through \\w_i\\, this
 objective acts on the spatial arrangement of individual action decisions
 through the action variables \\x\_{ia}\\.
@@ -125,7 +125,7 @@ allowing different actions to form different spatial patterns.
 
 This differs from planning-unit fragmentation:
 
-- [`add_objective_min_fragmentation()`](https://josesalgr.github.io/mosap/reference/add_objective_min_fragmentation.md)
+- [`add_objective_min_fragmentation()`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_fragmentation.md)
   encourages cohesion of the union of selected planning units,
 
 - `add_objective_min_action_fragmentation()` encourages cohesion of each
@@ -142,6 +142,6 @@ relation from the objective after scaling.
 
 ## See also
 
-[`add_objective_min_fragmentation`](https://josesalgr.github.io/mosap/reference/add_objective_min_fragmentation.md),
-[`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md),
-[`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md)
+[`add_objective_min_fragmentation`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_fragmentation.md),
+[`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md),
+[`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md)

@@ -2448,7 +2448,7 @@ available_to_solve <- function(package = ""){
   }
 
   # 3A) objetivo: override directo (vector obj completo)
-  # Esto es lo que necesita mosap (weighted, etc.)
+  # Esto es lo que necesita paretoscape (weighted, etc.)
   if (!is.null(upd$obj)) {
     obj_new <- as.numeric(upd$obj)
 

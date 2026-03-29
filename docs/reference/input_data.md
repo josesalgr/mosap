@@ -2,15 +2,16 @@
 
 Create a `Problem` object from tabular or spatial inputs.
 
-This is the main entry point to the `mosap` workflow. The function
+This is the main entry point to the `paretoscape` workflow. The function
 standardizes planning-unit data, feature definitions, and feature
 distributions into the internal structure required by downstream
 functions such as
-[`add_actions()`](https://josesalgr.github.io/mosap/reference/add_actions.md),
-[`add_effects()`](https://josesalgr.github.io/mosap/reference/add_effects.md),
-[`add_targets_absolute()`](https://josesalgr.github.io/mosap/reference/add_targets_absolute.md),
-[`set_solver()`](https://josesalgr.github.io/mosap/reference/set_solver.md),
-and [`solve()`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`add_actions()`](https://josesalgr.github.io/paretoscape/reference/add_actions.md),
+[`add_effects()`](https://josesalgr.github.io/paretoscape/reference/add_effects.md),
+[`add_targets_absolute()`](https://josesalgr.github.io/paretoscape/reference/add_targets_absolute.md),
+[`set_solver()`](https://josesalgr.github.io/paretoscape/reference/set_solver.md),
+and
+[`solve()`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 Depending on the input types, `input_data()` dispatches to one of
 several supported workflows. In all cases, the result is a `Problem`
@@ -146,7 +147,7 @@ input_data(
 
 ## Value
 
-A `Problem` object to be used in downstream `mosap` workflows. The
+A `Problem` object to be used in downstream `paretoscape` workflows. The
 object always contains a tabular internal planning core and may
 additionally contain spatial metadata depending on the input mode.
 
@@ -155,8 +156,8 @@ additionally contain spatial metadata depending on the input mode.
 **Overview**
 
 The role of `input_data()` is to construct the internal input data model
-used by `mosap`. Regardless of the input mode, the function aims to
-produce a consistent problem representation containing, at minimum:
+used by `paretoscape`. Regardless of the input mode, the function aims
+to produce a consistent problem representation containing, at minimum:
 
 - a planning-unit table `x$data$pu`,
 
@@ -299,23 +300,23 @@ This function does *not* create boundary, adjacency, distance, or other
 spatial relations automatically. Spatial relations must be added
 explicitly afterwards using functions such as:
 
-- [`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md),
+- [`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md),
 
-- [`add_spatial_rook`](https://josesalgr.github.io/mosap/reference/add_spatial_rook.md),
+- [`add_spatial_rook`](https://josesalgr.github.io/paretoscape/reference/add_spatial_rook.md),
 
-- [`add_spatial_queen`](https://josesalgr.github.io/mosap/reference/add_spatial_queen.md),
+- [`add_spatial_queen`](https://josesalgr.github.io/paretoscape/reference/add_spatial_queen.md),
 
-- [`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md),
+- [`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md),
 
-- [`add_spatial_distance`](https://josesalgr.github.io/mosap/reference/add_spatial_distance.md),
+- [`add_spatial_distance`](https://josesalgr.github.io/paretoscape/reference/add_spatial_distance.md),
 
-- [`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md).
+- [`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md).
 
 In raster-cell mode, spatial relations will typically be created from
 coordinates rather than polygons, for example using
-[`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md)
+[`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md)
 or
-[`add_spatial_distance`](https://josesalgr.github.io/mosap/reference/add_spatial_distance.md).
+[`add_spatial_distance`](https://josesalgr.github.io/paretoscape/reference/add_spatial_distance.md).
 
 **Locks are not interpreted automatically**
 
@@ -325,7 +326,7 @@ Marxan-style status codes. Such information may be preserved in
 `x$data$pu_data_raw`, but it is not activated automatically.
 
 Locked planning units should be defined later with
-[`add_locked_pu`](https://josesalgr.github.io/mosap/reference/add_locked_pu.md).
+[`add_locked_pu`](https://josesalgr.github.io/paretoscape/reference/add_locked_pu.md).
 
 **Feature identifiers**
 
@@ -385,11 +386,11 @@ planning units.
 
 ## See also
 
-[`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
-[`add_locked_pu`](https://josesalgr.github.io/mosap/reference/add_locked_pu.md),
-[`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md),
-[`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md),
+[`add_locked_pu`](https://josesalgr.github.io/paretoscape/reference/add_locked_pu.md),
+[`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md),
+[`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
 
 ## Examples
 
@@ -420,7 +421,7 @@ p1 <- input_data(
 )
 
 print(p1)
-#> A mosap object (<Problem>)
+#> A paretoscape object (<Problem>)
 #> ├─data
 #> │├─planning units: <data.frame> (4 total)
 #> │├─costs: min: 1, max: 4
@@ -460,7 +461,7 @@ p2 <- input_data(
 #> Warning: The following pu's do not contain features: 8012 8033 8147 8263
 
 print(p2)
-#> A mosap object (<Problem>)
+#> A paretoscape object (<Problem>)
 #> ├─data
 #> │├─planning units: <tbl_df> (11109 total)
 #> │├─costs: min: 1, max: 1

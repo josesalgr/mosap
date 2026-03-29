@@ -1,96 +1,479 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# mosap: Integrated Multi-Objective Spatial Action Planning
+# paretoscape: Multi-Objective Spatial Planning in R
 
 <!-- badges: start -->
 
 [![Lifecycle:
-stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-**⚠️ Experimental package: mosap is an experimental research package
-under active development. Breaking changes may occur at any time (API,
-internal tables, solver interfaces, outputs). Use it at your own risk
-and do not rely on it for production workflows yet.**
+`paretoscape` provides an exact optimisation framework for
+**multi-objective spatial planning** in problems where decisions are
+expressed as **management actions** applied across planning units.
 
-## Overview
+The package allows users to:
 
-The `mosap` is designed to support atomic objectives (e.g., minimize
-cost, minimize fragmentation, maximize benefits) and to combine them
-through multi-objective methods (e.g., weighted sum). The package
-supports both tabular and spatial inputs (vector- and raster-based
-workflows), and stores intermediate artifacts (tables, spatial
-relations, targets, solver configuration) to enable reproducible
-experimentation and reporting.
+- build planning problems from **tabular** or **spatial** inputs,
+- define **feasible management actions** and their **action-specific
+  effects** on features,
+- add **targets**, **constraints**, and **spatial relations**,
+- register **atomic objectives** such as cost, benefit, profit, and
+  fragmentation,
+- and explore trade-offs using exact **multi-objective optimisation**
+  methods such as weighted-sum, epsilon-constraint, and AUGMECON.
+
+`paretoscape` is designed for reproducible research workflows in
+conservation planning, restoration planning, and other spatial
+decision-support problems where actions, costs, ecological effects, and
+spatial structure interact.
+
+## Experimental status
+
+`paretoscape` is currently an experimental research package under active
+development.  
+The API may still evolve as the package moves toward a first stable CRAN
+release.
 
 ## Installation
 
-The latest development version of `mosap` can be installed from GitHub:
+The current development version can be installed from GitHub:
 
 ``` r
-if (!require(remotes)) install.packages("remotes")
-remotes::install_github("josesalgr/mosap")
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+
+remotes::install_github("josesalgr/paretoscape")
 ```
 
-## Usage
+## Core workflow
 
-Below is a minimal end-to-end example showing the intended pipeline.
+A typical `paretoscape` workflow has five steps:
+
+1.  Build a `Problem` object from planning units, features, and baseline
+    feature amounts.
+2.  Add feasible actions and define how those actions affect features.
+3.  Add targets, constraints, and spatial relations if needed.
+4.  Register one or more atomic objectives.
+5.  Solve the problem in single-objective or multi-objective mode.
+
+The example below illustrates this workflow using package data with
+polygon planning units stored as an `sf` object.
+
+## Worked example: spatial planning with actions and trade-offs
+
+### Load the package and example data
 
 ``` r
-library(mosap)
+library(paretoscape)
+#> 
+#> S'està adjuntant el paquet: 'paretoscape'
+#> L'objecte següent està emmascarat per 'package:base':
+#> 
+#>     solve
 
-# --- Example inputs (replace with your own)
-# pu_data            : data.frame(id, cost, locked_in?, locked_out?)
-# features_data      : data.frame(id, name)
-# dist_features_data : data.frame(pu, feature, amount)
+data("sim_pu_sf", package = "paretoscape")
+data("sim_features", package = "paretoscape")
+data("sim_dist_features", package = "paretoscape")
+```
 
-# 1) Build the Data object
-x <- inputData(
-  pu = pu_data,
-  features = features_data,
-  dist_features = dist_features_data
+The dataset `sim_pu_sf` contains planning-unit polygons and a `cost`
+column.  
+The tables `sim_features` and `sim_dist_features` define the feature
+catalogue and the baseline distribution of feature amounts across
+planning units.
+
+### Build the planning problem
+
+``` r
+p <- input_data(
+  pu = sim_pu_sf,
+  features = sim_features,
+  dist_features = sim_dist_features,
+  cost = "cost"
+)
+#> Warning: The following pu's do not contain features: 8012 8033 8147 8263
+
+print(p)
+#> A paretoscape object (<Problem>)
+#> ├─data
+#> │├─planning units: <tbl_df> (11109 total)
+#> │├─costs: min: 1, max: 1
+#> │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)
+#> └─actions and effects
+#> │├─actions: none specified
+#> │├─dist_actions: none
+#> │├─dist_effects: none specified
+#> │└─dist_profit: none specified
+#> └─spatial
+#> │├─geometry: sf (11109 rows)
+#> │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)
+#> │└─relations: none
+#> └─targets and constraints
+#> │├─targets: none
+#> │├─area constraints: none
+#> │├─pu_locks: none
+#> │└─action_locks: none
+#> └─model
+#> │├─status: not built yet (will build in solve())
+#> │├─objectives: none
+#> │├─method: single-objective
+#> │├─solver: not set (auto)
+#> │└─checks: incomplete (no objective registered)
+#> # ℹ Use `x$data` to inspect stored tables and model snapshots.
+```
+
+At this stage, the problem contains:
+
+- planning units,
+- features,
+- baseline feature amounts,
+- and spatial geometry that can later be used for plotting and spatial
+  relations.
+
+### Add management actions
+
+We now define a simple action catalogue with two actions:
+
+- `conservation`, representing low-cost maintenance actions,
+- `restoration`, representing more intensive interventions.
+
+``` r
+actions <- data.frame(
+  id = c("conservation", "restoration"),
+  name = c("Conservation", "Restoration")
 )
 
-# 2) Add actions/effects/targets/spatial relations as needed
-x <- x |>
-  add_actions(actions_df) |>
-  add_effects(effects_df) |>
-  add_conservation_targets_relative(0.17) |>
-  add_spatial_boundary()
+p <- add_actions(
+  x = p,
+  actions = actions,
+  cost = c(conservation = 2, restoration = 6)
+)
 
-# 3) Register atomic objectives (aliases are later used by MO methods)
-x <- x |>
+print(p)
+#> A paretoscape object (<Problem>)
+#> ├─data
+#> │├─planning units: <tbl_df> (11109 total)
+#> │├─costs: min: 1, max: 1
+#> │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)
+#> └─actions and effects
+#> │├─actions: 2 total ("Conservation", "Restoration")
+#> │├─dist_actions: 22218 feasible rows
+#> │├─action costs: min: 2, max: 6
+#> │├─dist_effects: none specified
+#> │└─dist_profit: none specified
+#> └─spatial
+#> │├─geometry: sf (11109 rows)
+#> │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)
+#> │└─relations: none
+#> └─targets and constraints
+#> │├─targets: none
+#> │├─area constraints: none
+#> │├─pu_locks: none
+#> │└─action_locks: none
+#> └─model
+#> │├─status: not built yet (will build in solve())
+#> │├─objectives: none
+#> │├─method: single-objective
+#> │├─solver: not set (auto)
+#> │└─checks: incomplete (no objective registered)
+#> # ℹ Use `x$data` to inspect stored tables and model snapshots.
+```
+
+This creates the action catalogue in `p$data$actions` and the feasible
+planning unit–action table in `p$data$dist_actions`.
+
+### Add action effects
+
+Next, we define how actions affect features. In this example, we use a
+simple multiplier specification:
+
+- `conservation` provides a small positive effect on all features,
+- `restoration` provides a larger positive effect.
+
+``` r
+effects_tbl <- expand.grid(
+  action = c("conservation", "restoration"),
+  feature = sim_features$name,
+  stringsAsFactors = FALSE
+)
+
+effects_tbl$multiplier <- c(
+  rep(0.05, nrow(sim_features)),
+  rep(0.20, nrow(sim_features))
+)
+
+p <- add_effects(
+  x = p,
+  effects = effects_tbl,
+  effect_type = "delta"
+)
+```
+
+Internally, effects are stored in canonical form with non-negative
+`benefit` and `loss` columns for each `(pu, action, feature)` triple.
+
+### Add a spatial relation
+
+To represent spatial cohesion, we add a boundary-based spatial relation
+from the planning-unit polygons:
+
+``` r
+p <- add_spatial_distance(
+  x = p,
+  name = "boundary",
+  max_distance = 1000
+)
+
+print(p)
+#> A paretoscape object (<Problem>)
+#> ├─data
+#> │├─planning units: <tbl_df> (11109 total)
+#> │├─costs: min: 1, max: 1
+#> │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)
+#> └─actions and effects
+#> │├─actions: 2 total ("Conservation", "Restoration")
+#> │├─dist_actions: 22218 feasible rows
+#> │├─action costs: min: 2, max: 6
+#> │├─dist_effects: 696042 rows
+#> │├─effect mode: benefit only
+#> │└─dist_profit: none specified
+#> └─spatial
+#> │├─geometry: sf (11109 rows)
+#> │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)
+#> │└─relations: boundary (21693 edges, w: 1..1)
+#> └─targets and constraints
+#> │├─targets: none
+#> │├─area constraints: none
+#> │├─pu_locks: none
+#> │└─action_locks: none
+#> └─model
+#> │├─status: not built yet (will build in solve())
+#> │├─objectives: none
+#> │├─method: single-objective
+#> │├─solver: not set (auto)
+#> │└─checks: incomplete (no objective registered)
+#> # ℹ Use `x$data` to inspect stored tables and model snapshots.
+```
+
+This stores a spatial relation that can later be used by fragmentation
+objectives.
+
+### Add a target
+
+We now add a relative target requiring each feature to reach at least
+20% of its baseline total contribution:
+
+``` r
+p <- add_targets_relative(
+  x = p,
+  targets = 0.20
+)
+
+print(p)
+#> A paretoscape object (<Problem>)
+#> ├─data
+#> │├─planning units: <tbl_df> (11109 total)
+#> │├─costs: min: 1, max: 1
+#> │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)
+#> └─actions and effects
+#> │├─actions: 2 total ("Conservation", "Restoration")
+#> │├─dist_actions: 22218 feasible rows
+#> │├─action costs: min: 2, max: 6
+#> │├─dist_effects: 696042 rows
+#> │├─effect mode: benefit only
+#> │└─dist_profit: none specified
+#> └─spatial
+#> │├─geometry: sf (11109 rows)
+#> │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)
+#> │└─relations: boundary (21693 edges, w: 1..1)
+#> └─targets and constraints
+#> │├─targets: 155 rows
+#> │├─target preview: "ACCGENT" >= 721.4, "ACCNISU" >= 806.2, "ACRARUN" >= 102.2
+#> │├─area constraints: none
+#> │├─pu_locks: none
+#> │└─action_locks: none
+#> └─model
+#> │├─status: not built yet (will build in solve())
+#> │├─objectives: none
+#> │├─method: single-objective
+#> │├─solver: not set (auto)
+#> │└─checks: incomplete (no objective registered)
+#> # ℹ Use `x$data` to inspect stored tables and model snapshots.
+```
+
+### Register atomic objectives
+
+A key idea in `paretoscape` is that objectives are registered as
+**atomic objectives** under user-defined aliases. These aliases can
+later be combined in multi-objective methods.
+
+Here we register three objectives:
+
+- minimise total cost,
+- maximise ecological benefit,
+- minimise fragmentation.
+
+``` r
+p <- p |>
   add_objective_min_cost(alias = "cost") |>
-  add_objective_min_fragmentation(alias = "frag")
+  add_objective_max_benefit(alias = "benefit") |>
+  add_objective_min_fragmentation(
+    alias = "frag",
+    relation_name = "boundary"
+  )
 
-# 4) Configure a multi-objective method (weighted sum)
-mo <- set_method_weighted(
-  x,
-  aliases = c("cost", "frag"),
-  weights = c(1, 1),
-  normalize = TRUE
+print(p)
+#> A paretoscape object (<Problem>)
+#> ├─data
+#> │├─planning units: <tbl_df> (11109 total)
+#> │├─costs: min: 1, max: 1
+#> │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)
+#> └─actions and effects
+#> │├─actions: 2 total ("Conservation", "Restoration")
+#> │├─dist_actions: 22218 feasible rows
+#> │├─action costs: min: 2, max: 6
+#> │├─dist_effects: 696042 rows
+#> │├─effect mode: benefit only
+#> │└─dist_profit: none specified
+#> └─spatial
+#> │├─geometry: sf (11109 rows)
+#> │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)
+#> │└─relations: boundary (21693 edges, w: 1..1)
+#> └─targets and constraints
+#> │├─targets: 155 rows
+#> │├─target preview: "ACCGENT" >= 721.4, "ACCNISU" >= 806.2, "ACRARUN" >= 102.2
+#> │├─area constraints: none
+#> │├─pu_locks: none
+#> │└─action_locks: none
+#> └─model
+#> │├─status: not built yet (will build in solve())
+#> │├─objectives: 3 registered (benefit, cost, frag)
+#> │├─method: not set
+#> │├─solver: not set (auto)
+#> │└─checks: incomplete (multiple objectives registered but no MO method
+#> selected)
+#> # ℹ Use `x$data` to inspect stored tables and model snapshots.
+```
+
+### Configure a multi-objective method
+
+There are several ways to explore trade-offs in `paretoscape`. A simple
+option is to use a weighted-sum formulation.
+
+``` r
+p_mo <- set_method_weighted(
+  x = p,
+  aliases = c("cost", "benefit", "frag"),
+  weights = c(1, 1, 1),
+  normalize_weights = TRUE
 )
+```
 
-# 5) Configure solver (example; adapt to your solver and preferences)
-mo <- set_solver(
-  mo,
-  solver = "auto",
+This stores the multi-objective configuration in the problem object. It
+does not solve the problem yet.
+
+### Configure the solver
+
+Before solving, we store solver settings in the problem object:
+
+``` r
+p_mo <- set_solver_cbc(
+  x = p_mo,
   time_limit = 60,
   gap_limit = 0.01,
   verbose = TRUE
 )
-
-# 6) Solve
-res <- solve(mo)
-
-# 7) Inspect results (examples)
-get_pu(res, only_selected = TRUE)
-get_actions(res, only_selected = TRUE)
-get_features(res)
-get_targets(res)
 ```
 
-If you believe you’ve found a bug in mosap, please file an issue
-(ideally with a reproducible example) at:
-<https://github.com/josesalgr/mosap/issues>.
+You can also use convenience wrappers such as `set_solver_gurobi()`,
+`set_solver_cplex()`, `set_solver_cbc()`, or `set_solver_symphony()`.
+
+### Solve the problem
+
+``` r
+res <- solve(p_mo)
+```
+
+Depending on the selected method, `solve()` returns either:
+
+- a `Solution` object for a single-objective solve, or
+- a `SolutionSet` object for a multi-objective workflow.
+
+### Inspect results
+
+For solved problems, `paretoscape` provides helper functions to extract
+user-facing summaries:
+
+``` r
+solution_actions <- get_actions(res)
+head(solution_actions)
+#>       pu       action cost status internal_pu internal_action internal_row
+#> 1      1 conservation    2      0           1               1            1
+#> 11110  1  restoration    6      0           1               2            2
+#> 2      2 conservation    2      0           2               1            3
+#> 11111  2  restoration    6      0           2               2            4
+#> 3      3 conservation    2      0           3               1            5
+#> 11112  3  restoration    6      0           3               2            6
+#>       selected run_id
+#> 1            1      1
+#> 11110        0      1
+#> 2            1      1
+#> 11111        1      1
+#> 3            1      1
+#> 11112        1      1
+```
+
+When the result is a multi-objective solution set, you can also inspect
+trade-offs across runs:
+
+``` r
+plot_tradeoff(res)
+```
+
+<img src="man/figures/README-unnamed-chunk-12-1.png" width="100%" />
+
+and, when geometry is available, spatial outputs can be visualised
+directly:
+
+``` r
+plot_spatial(res, what = "actions")
+```
+
+<img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
+
+## Why this example matters
+
+This example illustrates the main modelling logic of `paretoscape`.
+
+The problem is not only about selecting planning units. Instead, it is
+about deciding **which action** should be feasible and selected in each
+planning unit, while accounting for:
+
+- implementation cost,
+- action-specific ecological effects,
+- target achievement,
+- and spatial cohesion.
+
+This makes it possible to study realistic trade-offs such as:
+
+- lower cost versus higher ecological benefit,
+- greater benefit versus more compact spatial patterns,
+- or more cohesive solutions versus more flexible action allocation.
+
+## Learn more
+
+To explore the package further, see:
+
+- the function reference at the package website,
+- the documentation of `input_data()`, `add_actions()`, `add_effects()`,
+  and `solve()`,
+- and the multi-objective methods `set_method_weighted()`,
+  `set_method_epsilon_constraint()`, and `set_method_augmecon()`.
+
+If you find a bug or want to suggest an improvement, please open an
+issue at:
+
+<https://github.com/josesalgr/paretoscape/issues>

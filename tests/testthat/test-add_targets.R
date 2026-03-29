@@ -1,14 +1,14 @@
 test_that("add_targets_relative computes absolute targets from total amounts", {
   toy <- toy_equivalent_basic()
 
-  p <- mosap::input_data(
+  p <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
     cost = "cost"
   )
 
-  p <- mosap::add_targets_relative(p, 0.5)
+  p <- paretoscape::add_targets_relative(p, 0.5)
 
   expect_true(is.data.frame(p$data$targets))
   expect_true(all(c("feature", "target_value") %in% names(p$data$targets)))

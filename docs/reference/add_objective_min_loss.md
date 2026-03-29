@@ -68,8 +68,8 @@ additional objectives or constraints.
 
 ## See also
 
-[`add_objective_max_benefit`](https://josesalgr.github.io/mosap/reference/add_objective_max_benefit.md),
-[`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md)
+[`add_objective_max_benefit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_benefit.md),
+[`add_effects`](https://josesalgr.github.io/paretoscape/reference/add_effects.md)
 
 ## Examples
 

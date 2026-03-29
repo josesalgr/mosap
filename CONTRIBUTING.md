@@ -1,9 +1,9 @@
-Contributing to mosap
+Contributing to paretoscape
 ================
 
-`mosap` is being developed as a modular framework for spatial action
-planning and multi-objective optimization in R. Its development benefits
-from collaboration across programming, optimization, ecology,
+`paretoscape` is being developed as a modular framework for spatial
+action planning and multi-objective optimization in R. Its development
+benefits from collaboration across programming, optimization, ecology,
 conservation planning, and spatial analysis. Because robust
 decision-support tools require sustained development and
 interdisciplinary input, contributions from different backgrounds are
@@ -26,12 +26,13 @@ request. Documentation improvements may include:
 - improving vignettes or contribution guides.
 
 If you are not sure how to implement a documentation change yourself,
-feel free to open an [issue](https://github.com/josesalgr/mosap/issues).
+feel free to open an
+[issue](https://github.com/josesalgr/paretoscape/issues).
 
 ## Reporting bugs
 
 If you find a bug, please open an
-[issue](https://github.com/josesalgr/mosap/issues) in the GitHub
+[issue](https://github.com/josesalgr/paretoscape/issues) in the GitHub
 repository.
 
 A good bug report should include:
@@ -48,21 +49,21 @@ it much easier to diagnose and fix the problem.
 
 ## Asking questions
 
-If you are using `mosap` and get stuck, first check the function
+If you are using `paretoscape` and get stuck, first check the function
 documentation, examples, and available articles or package materials. If
 your question is still unresolved, you can open an
-[issue](https://github.com/josesalgr/mosap/issues) on GitHub. While user
-support cannot always be guaranteed, questions often help improve the
-documentation, reveal edge cases, or identify bugs.
+[issue](https://github.com/josesalgr/paretoscape/issues) on GitHub.
+While user support cannot always be guaranteed, questions often help
+improve the documentation, reveal edge cases, or identify bugs.
 
 ## Proposing ideas and enhancements
 
 If you have an idea for a new feature, method, or improvement in
-`mosap`, please first check whether it has already been discussed in the
-issue tracker.
+`paretoscape`, please first check whether it has already been discussed
+in the issue tracker.
 
 If not, feel free to open an
-[issue](https://github.com/josesalgr/mosap/issues) describing your
+[issue](https://github.com/josesalgr/paretoscape/issues) describing your
 proposal. It is especially helpful if you explain:
 
 - the motivation for the feature,
@@ -77,12 +78,12 @@ very broad ones.
 ## Contributing code
 
 Before making contributions to the package R or C++ code, make sure
-someone from the `mosap` team agrees that the change you suggest is
-needed.
+someone from the `paretoscape` team agrees that the change you suggest
+is needed.
 
 - Fork the package and clone onto your computer. If you haven’t done
   this before, we recommend using
-  `usethis::create_from_github("josesalgr/mosap", fork = TRUE)`.
+  `usethis::create_from_github("josesalgr/paretoscape", fork = TRUE)`.
 
 - Install all development dependences with
   `devtools::install_dev_deps()`, and then make sure the package passes
@@ -98,7 +99,7 @@ needed.
   PR should contain Fixes \#issue-number.
 
 - For user-facing changes, add a bullet to the top of
-  [NEWS.md](https://github.com/josesalgr/mosap/blob/main/NEWS.md)
+  [NEWS.md](https://github.com/josesalgr/paretoscape/blob/main/NEWS.md)
   (i.e. just below the first header). Follow the style described in
   <https://style.tidyverse.org/news.html>.
 
@@ -115,13 +116,13 @@ When opening a pull request, please make sure that:
 
 If the change affects package behaviour from a user perspective, please
 also add a short bullet point to
-[NEWS.md](https://github.com/josesalgr/mosap/blob/main/NEWS.md) under
-the most recent development section.
+[NEWS.md](https://github.com/josesalgr/paretoscape/blob/main/NEWS.md)
+under the most recent development section.
 
 ## Style and scope
 
 Please try to keep contributions consistent with the current design of
-`mosap`, especially its modular structure:
+`paretoscape`, especially its modular structure:
 
 - `inputData()` builds the problem object,
 - `add_*()` functions enrich the problem,

@@ -6,7 +6,7 @@ and store them in `x$data$dist_profit`.
 Profit is stored separately from ecological effects. In particular,
 `profit` is not the same as ecological `benefit` or `loss` as
 represented in
-[`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md).
+[`add_effects`](https://josesalgr.github.io/paretoscape/reference/add_effects.md).
 This separation allows the package to distinguish economic returns from
 ecological consequences when building objectives, constraints, and
 reporting summaries.
@@ -22,10 +22,10 @@ add_profit(x, profit = NULL)
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
   It must already contain `x$data$dist_actions` and `x$data$actions`;
   run
-  [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md)
+  [`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md)
   first.
 
 - profit:
@@ -130,15 +130,15 @@ In particular:
 
 Any such filtering is expected to occur later when model-ready tables
 are prepared, typically during the build stage invoked by
-[`solve()`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve()`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 **Use in optimization**
 
 Profit values stored by this function can later be used in objectives
 such as
-[`add_objective_max_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_profit.md)
+[`add_objective_max_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_profit.md)
 or
-[`add_objective_max_net_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_net_profit.md),
+[`add_objective_max_net_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_net_profit.md),
 in derived budget expressions, or in reporting and summary functions.
 
 For example, if \\x\_{ia} \in \\0,1\\\\ denotes whether action \\a\\ is
@@ -148,10 +148,10 @@ typically takes the form \$\$ \max \sum\_{(i,a) \in \mathcal{F}}
 
 ## See also
 
-[`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
-[`add_objective_max_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_profit.md),
-[`add_objective_max_net_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_net_profit.md),
-[`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md)
+[`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md),
+[`add_objective_max_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_profit.md),
+[`add_objective_max_net_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_net_profit.md),
+[`add_effects`](https://josesalgr.github.io/paretoscape/reference/add_effects.md)
 
 ## Examples
 

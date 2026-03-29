@@ -3,19 +3,19 @@ test_that("solve selects at most one action per planning unit", {
 
   toy <- toy_multiaction_semantics()
 
-  p <- mosap::input_data(
+  p <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
     cost = "cost"
   ) |>
-    mosap::add_actions(actions = toy$actions, cost = 0) |>
-    mosap::add_effects(effects = toy$effects, effect_type = "after") |>
-    mosap::add_targets_relative(0.2, features = 1) |>
-    mosap::add_objective_min_cost(alias = "cost") |>
-    mosap::set_solver_cbc(gap_limit = 0, verbose = FALSE)
+    paretoscape::add_actions(actions = toy$actions, cost = 0) |>
+    paretoscape::add_effects(effects = toy$effects, effect_type = "after") |>
+    paretoscape::add_targets_relative(0.2, features = 1) |>
+    paretoscape::add_objective_min_cost(alias = "cost") |>
+    paretoscape::set_solver_cbc(gap_limit = 0, verbose = FALSE)
 
-  s <- mosap::solve(p)
+  s <- paretoscape::solve(p)
 
   expect_s3_class(s, "Solution")
   expect_true(is.data.frame(s$summary$actions))

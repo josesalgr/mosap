@@ -4,11 +4,11 @@ Define a unified internal representation for spatial relations between
 planning units and provide constructors for building such relations from
 common spatial inputs.
 
-Spatial relations in `mosap` are graph-like structures defined over the
-set of planning units. They are used to represent adjacency, shared
-boundary length, proximity, neighbourhood graphs, or other pairwise
-spatial relationships that may later be used by objectives, constraints,
-or diagnostics.
+Spatial relations in `paretoscape` are graph-like structures defined
+over the set of planning units. They are used to represent adjacency,
+shared boundary length, proximity, neighbourhood graphs, or other
+pairwise spatial relationships that may later be used by objectives,
+constraints, or diagnostics.
 
 Relations are stored inside the problem object as
 `x$data$spatial_relations[[name]]`.
@@ -55,7 +55,7 @@ that case, each unordered pair is typically stored once, usually with
 **Boundary relations and diagonal terms**
 
 The function
-[`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md)
+[`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md)
 supports boundary-length relations derived either from a boundary table
 or from polygon geometry.
 
@@ -83,20 +83,20 @@ aligned to `x$data$pu$id` before spatial relations are computed.
 
 The following functions build and register spatial relations:
 
-- [`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md):
+- [`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md):
   register a precomputed relation,
 
-- [`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md):
+- [`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md):
   shared boundary length relation,
 
-- [`add_spatial_rook`](https://josesalgr.github.io/mosap/reference/add_spatial_rook.md):
+- [`add_spatial_rook`](https://josesalgr.github.io/paretoscape/reference/add_spatial_rook.md):
   rook adjacency from polygons,
 
-- [`add_spatial_queen`](https://josesalgr.github.io/mosap/reference/add_spatial_queen.md):
+- [`add_spatial_queen`](https://josesalgr.github.io/paretoscape/reference/add_spatial_queen.md):
   queen adjacency from polygons,
 
-- [`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md):
+- [`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md):
   k-nearest-neighbours graph from coordinates,
 
-- [`add_spatial_distance`](https://josesalgr.github.io/mosap/reference/add_spatial_distance.md):
+- [`add_spatial_distance`](https://josesalgr.github.io/paretoscape/reference/add_spatial_distance.md):
   distance-threshold graph from coordinates.

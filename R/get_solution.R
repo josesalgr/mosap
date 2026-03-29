@@ -16,7 +16,7 @@
 #' vector; it simply returns the stored summary after optional filtering.
 #'
 #' Let \eqn{w_i} denote the planning-unit selection variable for planning unit
-#' \eqn{i}. In standard \code{mosap} workflows, the \code{selected} column is the
+#' \eqn{i}. In standard \code{paretoscape} workflows, the \code{selected} column is the
 #' user-facing representation of that planning-unit decision, typically coded as
 #' \code{0} or \code{1}.
 #'
@@ -106,7 +106,7 @@ get_pu <- function(x, only_selected = FALSE, run = NULL) {
 #' returns the stored summary after optional filtering.
 #'
 #' Let \eqn{x_{ia}} denote the decision variable associated with selecting
-#' action \eqn{a} in planning unit \eqn{i}. In standard \code{mosap} workflows,
+#' action \eqn{a} in planning unit \eqn{i}. In standard \code{paretoscape} workflows,
 #' the \code{selected} column is the user-facing representation of that
 #' decision, typically coded as \code{0} or \code{1}.
 #'
@@ -351,7 +351,7 @@ get_features <- function(x, run = NULL) {
 #' and whether the target was met.
 #'
 #' @details
-#' Targets are optional in \code{mosap}. If the solution object does not contain
+#' Targets are optional in \code{paretoscape}. If the solution object does not contain
 #' a targets summary table at \code{x$summary$targets}, this function returns
 #' \code{NULL} without error.
 #'

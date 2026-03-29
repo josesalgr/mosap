@@ -11,7 +11,7 @@ These columns are later used by the model builder when translating the
 Lock information may be supplied either directly as logical vectors, as
 vectors of planning-unit ids, or by referencing columns in the raw
 planning-unit data originally passed to
-[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+[`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
 
 ## Usage
 
@@ -24,7 +24,7 @@ add_locked_pu(x, locked_in = NULL, locked_out = NULL)
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
 
 - locked_in:
 
@@ -70,7 +70,7 @@ enforced later when building the optimization model.
 **Philosophy**
 
 The role of
-[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md)
+[`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md)
 is to construct and normalize the basic inputs of the planning problem.
 Locking planning units is treated as a separate modelling step so that
 users can define or revise selection restrictions after the `Problem`
@@ -110,9 +110,9 @@ is raised.
 
 ## See also
 
-[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md),
-[`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
-[`add_locked_actions`](https://josesalgr.github.io/mosap/reference/add_locked_actions.md)
+[`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md),
+[`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md),
+[`add_locked_actions`](https://josesalgr.github.io/paretoscape/reference/add_locked_actions.md)
 
 ## Examples
 

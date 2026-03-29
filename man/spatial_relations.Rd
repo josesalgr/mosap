@@ -8,7 +8,7 @@ Define a unified internal representation for spatial relations between
 planning units and provide constructors for building such relations from
 common spatial inputs.
 
-Spatial relations in \code{mosap} are graph-like structures defined over the
+Spatial relations in \code{paretoscape} are graph-like structures defined over the
 set of planning units. They are used to represent adjacency, shared boundary
 length, proximity, neighbourhood graphs, or other pairwise spatial
 relationships that may later be used by objectives, constraints, or

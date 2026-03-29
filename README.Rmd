@@ -13,13 +13,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-# mosap: Multi-Objective Spatial Planning in R
+# paretoscape: Multi-Objective Spatial Planning in R
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-`mosap` provides an exact optimisation framework for **multi-objective spatial planning** in problems where decisions are expressed as **management actions** applied across planning units.
+`paretoscape` provides an exact optimisation framework for **multi-objective spatial planning** in problems where decisions are expressed as **management actions** applied across planning units.
 
 The package allows users to:
 
@@ -29,11 +29,11 @@ The package allows users to:
 - register **atomic objectives** such as cost, benefit, profit, and fragmentation,
 - and explore trade-offs using exact **multi-objective optimisation** methods such as weighted-sum, epsilon-constraint, and AUGMECON.
 
-`mosap` is designed for reproducible research workflows in conservation planning, restoration planning, and other spatial decision-support problems where actions, costs, ecological effects, and spatial structure interact.
+`paretoscape` is designed for reproducible research workflows in conservation planning, restoration planning, and other spatial decision-support problems where actions, costs, ecological effects, and spatial structure interact.
 
 ## Experimental status
 
-`mosap` is currently an experimental research package under active development.  
+`paretoscape` is currently an experimental research package under active development.  
 The API may still evolve as the package moves toward a first stable CRAN release.
 
 ## Installation
@@ -45,12 +45,12 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
 }
 
-remotes::install_github("josesalgr/mosap")
+remotes::install_github("josesalgr/paretoscape")
 ```
 
 ## Core workflow
 
-A typical `mosap` workflow has five steps:
+A typical `paretoscape` workflow has five steps:
 
 1. Build a `Problem` object from planning units, features, and baseline feature amounts.
 2. Add feasible actions and define how those actions affect features.
@@ -65,11 +65,11 @@ The example below illustrates this workflow using package data with polygon plan
 ### Load the package and example data
 
 ```{r}
-library(mosap)
+library(paretoscape)
 
-data("sim_pu_sf", package = "mosap")
-data("sim_features", package = "mosap")
-data("sim_dist_features", package = "mosap")
+data("sim_pu_sf", package = "paretoscape")
+data("sim_features", package = "paretoscape")
+data("sim_dist_features", package = "paretoscape")
 ```
 
 The dataset `sim_pu_sf` contains planning-unit polygons and a `cost` column.  
@@ -77,7 +77,7 @@ The tables `sim_features` and `sim_dist_features` define the feature catalogue a
 
 ### Build the planning problem
 ```{r}
-p <- inputData(
+p <- input_data(
   pu = sim_pu_sf,
   features = sim_features,
   dist_features = sim_dist_features,
@@ -85,11 +85,6 @@ p <- inputData(
 )
 
 print(p)
-```
-
-
-```{r}
-max(sim_dist_features$pu)
 ```
 
 At this stage, the problem contains:
@@ -160,7 +155,7 @@ To represent spatial cohesion, we add a boundary-based spatial relation from the
 p <- add_spatial_distance(
   x = p,
   name = "boundary",
-  dmax = 1000
+  max_distance = 1000
 )
 
 print(p)
@@ -183,7 +178,7 @@ print(p)
 
 ### Register atomic objectives
 
-A key idea in `mosap` is that objectives are registered as **atomic objectives** under user-defined aliases. These aliases can later be combined in multi-objective methods.
+A key idea in `paretoscape` is that objectives are registered as **atomic objectives** under user-defined aliases. These aliases can later be combined in multi-objective methods.
 
 Here we register three objectives:
 
@@ -205,7 +200,7 @@ print(p)
 
 ### Configure a multi-objective method
 
-There are several ways to explore trade-offs in `mosap`. A simple option is to use a weighted-sum formulation.
+There are several ways to explore trade-offs in `paretoscape`. A simple option is to use a weighted-sum formulation.
 
 ```{r}
 p_mo <- set_method_weighted(
@@ -246,21 +241,12 @@ Depending on the selected method, `solve()` returns either:
 
 ### Inspect results
 
-For solved problems, `mosap` provides helper functions to extract user-facing summaries:
+For solved problems, `paretoscape` provides helper functions to extract user-facing summaries:
 
 ```{r}
-get_pu(res, only_selected = TRUE)
-get_actions(res, only_selected = TRUE)
-get_features(res)
-get_targets(res)
+solution_actions <- get_actions(res)
+head(solution_actions)
 ```
-
-
-```{r}
-get_actions(res, only_selected = TRUE)
-```
-
-
 
 When the result is a multi-objective solution set, you can also inspect trade-offs across runs:
 
@@ -270,14 +256,13 @@ plot_tradeoff(res)
 
 and, when geometry is available, spatial outputs can be visualised directly:
 
-```{r}
-plot_spatial(res, what = "pu")
+```{r, warning=FALSE}
 plot_spatial(res, what = "actions")
 ```
 
 ## Why this example matters
 
-This example illustrates the main modelling logic of `mosap`.
+This example illustrates the main modelling logic of `paretoscape`.
 
 The problem is not only about selecting planning units. Instead, it is about deciding **which action** should be feasible and selected in each planning unit, while accounting for:
 
@@ -297,9 +282,9 @@ This makes it possible to study realistic trade-offs such as:
 To explore the package further, see:
 
 - the function reference at the package website,
-- the documentation of `inputData()`, `add_actions()`, `add_effects()`, and `solve()`,
+- the documentation of `input_data()`, `add_actions()`, `add_effects()`, and `solve()`,
 - and the multi-objective methods `set_method_weighted()`, `set_method_epsilon_constraint()`, and `set_method_augmecon()`.
 
 If you find a bug or want to suggest an improvement, please open an issue at:
 
-<https://github.com/josesalgr/mosap/issues>
+<https://github.com/josesalgr/paretoscape/issues>

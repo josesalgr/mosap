@@ -29,7 +29,7 @@ multi-objective problem.
 \description{
 Solve a planning problem stored in a \code{Problem} object.
 
-This is the main execution step of the \pkg{mosap} workflow. It reads the
+This is the main execution step of the \pkg{paretoscape} workflow. It reads the
 problem specification stored in \code{x$data}, builds the corresponding
 optimization model when needed, applies the configured solver settings, and
 returns either a \code{\link{solution-class}} or a
@@ -39,7 +39,7 @@ single-objective or multi-objective.
 \details{
 \strong{Role of \code{solve()}}
 
-The typical \pkg{mosap} workflow is:
+The typical \pkg{paretoscape} workflow is:
 \preformatted{
 x <- input_data(...)
 x <- add_...(x, ...)

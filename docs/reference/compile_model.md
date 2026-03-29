@@ -6,7 +6,7 @@ debugging, inspection, and explicit model preparation.
 
 In standard workflows, users normally do not need to call this function,
 because
-[`solve()`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`solve()`](https://josesalgr.github.io/paretoscape/reference/solve.md)
 compiles the model automatically when needed.
 
 ## Usage

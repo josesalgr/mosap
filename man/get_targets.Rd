@@ -29,7 +29,7 @@ achieved value in the solution, the gap between achieved and required values,
 and whether the target was met.
 }
 \details{
-Targets are optional in \code{mosap}. If the solution object does not contain
+Targets are optional in \code{paretoscape}. If the solution object does not contain
 a targets summary table at \code{x$summary$targets}, this function returns
 \code{NULL} without error.
 

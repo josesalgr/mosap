@@ -12,12 +12,12 @@ Two operating modes are supported:
 - **manual mode**: the user supplies the \\\epsilon\\-levels explicitly,
 
 - **automatic mode**: the \\\epsilon\\-levels are generated later during
-  [`solve`](https://josesalgr.github.io/mosap/reference/solve.md) from
-  extreme or payoff information.
+  [`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
+  from extreme or payoff information.
 
 This function does not solve the problem. It stores the method
 configuration in `x$data$method`, to be used later by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 ## Usage
 
@@ -99,7 +99,7 @@ In manual mode, `x$data$method$runs` contains the explicit
 
 In automatic mode, `x$data$method$runs` is `NULL` until the grid is
 generated later during
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 ## Details
 
@@ -175,8 +175,8 @@ In `mode = "auto"`, the user omits `eps` and instead supplies
 
 In this case, the \\\epsilon\\-grid is not built immediately. Instead,
 it is constructed later during
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md) using
-extreme-point or payoff-table information.
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
+using extreme-point or payoff-table information.
 
 In the current implementation, automatic mode supports **exactly two
 objectives only**:
@@ -219,16 +219,16 @@ The configured method stores:
 In manual mode, `x$data$method$runs` contains the explicit design grid.
 In automatic mode, `x$data$method$runs` is initially `NULL` and is
 generated later during
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).For more
-than two objectives, automatic grid generation is currently unavailable
-because the number of epsilon combinations grows rapidly and requires
-explicit user control.
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).For
+more than two objectives, automatic grid generation is currently
+unavailable because the number of epsilon combinations grows rapidly and
+requires explicit user control.
 
 ## See also
 
-[`set_method_augmecon`](https://josesalgr.github.io/mosap/reference/set_method_augmecon.md),
-[`set_method_weighted`](https://josesalgr.github.io/mosap/reference/set_method_weighted.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`set_method_augmecon`](https://josesalgr.github.io/paretoscape/reference/set_method_augmecon.md),
+[`set_method_weighted`](https://josesalgr.github.io/paretoscape/reference/set_method_weighted.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
 
 ## Examples
 

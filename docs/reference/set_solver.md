@@ -1,8 +1,8 @@
 # Configure solver settings
 
 Store solver configuration inside a `Problem` object so that
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md) can
-later run using the stored backend and runtime options.
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
+can later run using the stored backend and runtime options.
 
 This function does not build or solve the optimization model. It only
 updates the solver configuration stored in `x$data$solve_args`.
@@ -94,14 +94,14 @@ An updated `Problem` object with modified solver settings stored in
 
 **Purpose**
 
-The `mosap` workflow separates problem specification from solver
+The `paretoscape` workflow separates problem specification from solver
 configuration. Problem data, actions, effects, targets, objectives, and
 methods are stored in the `Problem` object, and solver settings are
 stored separately in `x$data$solve_args`.
 
 This function allows solver options to be configured once and reused
 later through
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)`(x)`
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)`(x)`
 without repeating the same arguments each time.
 
 **Stored fields**
@@ -191,7 +191,7 @@ selection, emphasis parameters, tolerances, or heuristics.
 **Supported backends**
 
 The `solver` argument selects the backend to be used later by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 Supported values are:
 
 - `"auto"`: let the solving layer choose an available backend,
@@ -209,11 +209,11 @@ backend is checked later when solving.
 
 ## See also
 
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md),
-[`set_solver_gurobi`](https://josesalgr.github.io/mosap/reference/set_solver_gurobi.md),
-[`set_solver_cplex`](https://josesalgr.github.io/mosap/reference/set_solver_cplex.md),
-[`set_solver_cbc`](https://josesalgr.github.io/mosap/reference/set_solver_cbc.md),
-[`set_solver_symphony`](https://josesalgr.github.io/mosap/reference/set_solver_symphony.md)
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md),
+[`set_solver_gurobi`](https://josesalgr.github.io/paretoscape/reference/set_solver_gurobi.md),
+[`set_solver_cplex`](https://josesalgr.github.io/paretoscape/reference/set_solver_cplex.md),
+[`set_solver_cbc`](https://josesalgr.github.io/paretoscape/reference/set_solver_cbc.md),
+[`set_solver_symphony`](https://josesalgr.github.io/paretoscape/reference/set_solver_symphony.md)
 
 ## Examples
 

@@ -35,7 +35,7 @@ This function reads the planning-unit summary stored in
 vector; it simply returns the stored summary after optional filtering.
 
 Let \eqn{w_i} denote the planning-unit selection variable for planning unit
-\eqn{i}. In standard \code{mosap} workflows, the \code{selected} column is the
+\eqn{i}. In standard \code{paretoscape} workflows, the \code{selected} column is the
 user-facing representation of that planning-unit decision, typically coded as
 \code{0} or \code{1}.
 

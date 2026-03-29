@@ -32,7 +32,7 @@ add_actions(
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
 
 - actions:
 
@@ -141,7 +141,7 @@ This function only determines whether a `(pu, action)` pair exists in
 the model. It does not force a feasible action to be selected or
 forbidden beyond structural infeasibility. Fixed decisions should
 instead be imposed later with
-[`add_locked_actions`](https://josesalgr.github.io/mosap/reference/add_locked_actions.md).
+[`add_locked_actions`](https://josesalgr.github.io/paretoscape/reference/add_locked_actions.md).
 
 **Costs.**
 
@@ -177,8 +177,8 @@ feasible action table stored in the problem object.
 
 ## See also
 
-[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md),
-[`add_locked_actions`](https://josesalgr.github.io/mosap/reference/add_locked_actions.md)
+[`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md),
+[`add_locked_actions`](https://josesalgr.github.io/paretoscape/reference/add_locked_actions.md)
 
 ## Examples
 
@@ -221,7 +221,7 @@ p1 <- add_actions(
 )
 
 print(p1)
-#> A mosap object (<Problem>)
+#> A paretoscape object (<Problem>)
 #> ├─data
 #> │├─planning units: <data.frame> (4 total)
 #> │├─costs: min: 1, max: 4

@@ -76,8 +76,8 @@ handled separately through additional objectives or constraints.
 
 ## See also
 
-[`add_objective_min_loss`](https://josesalgr.github.io/mosap/reference/add_objective_min_loss.md),
-[`add_effects`](https://josesalgr.github.io/mosap/reference/add_effects.md)
+[`add_objective_min_loss`](https://josesalgr.github.io/paretoscape/reference/add_objective_min_loss.md),
+[`add_effects`](https://josesalgr.github.io/paretoscape/reference/add_effects.md)
 
 ## Examples
 

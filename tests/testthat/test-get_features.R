@@ -3,20 +3,20 @@ test_that("get_features returns a feature summary for Solution", {
 
   toy <- toy_equivalent_basic()
 
-  p <- mosap::input_data(
+  p <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
     cost = "cost"
   ) |>
-    mosap::add_actions(actions = toy$actions, cost = 0) |>
-    mosap::add_effects(effects = toy$effects, effect_type = "after") |>
-    mosap::add_targets_relative(0.5) |>
-    mosap::add_objective_min_cost(alias = "cost") |>
-    mosap::set_solver_cbc(gap_limit = 0, verbose = FALSE)
+    paretoscape::add_actions(actions = toy$actions, cost = 0) |>
+    paretoscape::add_effects(effects = toy$effects, effect_type = "after") |>
+    paretoscape::add_targets_relative(0.5) |>
+    paretoscape::add_objective_min_cost(alias = "cost") |>
+    paretoscape::set_solver_cbc(gap_limit = 0, verbose = FALSE)
 
-  s <- mosap::solve(p)
-  f <- mosap::get_features(s)
+  s <- paretoscape::solve(p)
+  f <- paretoscape::get_features(s)
 
   expect_true(is.data.frame(f))
   expect_gt(nrow(f), 0)
@@ -28,26 +28,26 @@ test_that("get_features returns a feature summary for SolutionSet run", {
 
   toy <- toy_equivalent_basic()
 
-  p <- mosap::input_data(
+  p <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
     cost = "cost"
   ) |>
-    mosap::add_actions(actions = toy$actions, cost = 0) |>
-    mosap::add_effects(effects = toy$effects, effect_type = "after") |>
-    mosap::add_targets_relative(0.5) |>
-    mosap::add_spatial_boundary(boundary = toy$boundary, include_self = TRUE) |>
-    mosap::add_objective_min_cost(alias = "cost") |>
-    mosap::add_objective_min_fragmentation(alias = "frag") |>
-    mosap::set_method_weighted(
+    paretoscape::add_actions(actions = toy$actions, cost = 0) |>
+    paretoscape::add_effects(effects = toy$effects, effect_type = "after") |>
+    paretoscape::add_targets_relative(0.5) |>
+    paretoscape::add_spatial_boundary(boundary = toy$boundary, include_self = TRUE) |>
+    paretoscape::add_objective_min_cost(alias = "cost") |>
+    paretoscape::add_objective_min_fragmentation(alias = "frag") |>
+    paretoscape::set_method_weighted(
       aliases = c("cost", "frag"),
       weights = c(1, 1)
     ) |>
-    mosap::set_solver_cbc(gap_limit = 0, verbose = FALSE)
+    paretoscape::set_solver_cbc(gap_limit = 0, verbose = FALSE)
 
-  s <- mosap::solve(p)
-  f <- mosap::get_features(s, run = 1)
+  s <- paretoscape::solve(p)
+  f <- paretoscape::get_features(s, run = 1)
 
   expect_true(is.data.frame(f))
   expect_gt(nrow(f), 0)
@@ -58,28 +58,28 @@ test_that("get_features errors for invalid run in SolutionSet", {
 
   toy <- toy_equivalent_basic()
 
-  p <- mosap::input_data(
+  p <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
     cost = "cost"
   ) |>
-    mosap::add_actions(actions = toy$actions, cost = 0) |>
-    mosap::add_effects(effects = toy$effects, effect_type = "after") |>
-    mosap::add_targets_relative(0.5) |>
-    mosap::add_spatial_boundary(boundary = toy$boundary, include_self = TRUE) |>
-    mosap::add_objective_min_cost(alias = "cost") |>
-    mosap::add_objective_min_fragmentation(alias = "frag") |>
-    mosap::set_method_weighted(
+    paretoscape::add_actions(actions = toy$actions, cost = 0) |>
+    paretoscape::add_effects(effects = toy$effects, effect_type = "after") |>
+    paretoscape::add_targets_relative(0.5) |>
+    paretoscape::add_spatial_boundary(boundary = toy$boundary, include_self = TRUE) |>
+    paretoscape::add_objective_min_cost(alias = "cost") |>
+    paretoscape::add_objective_min_fragmentation(alias = "frag") |>
+    paretoscape::set_method_weighted(
       aliases = c("cost", "frag"),
       weights = c(1, 1)
     ) |>
-    mosap::set_solver_cbc(gap_limit = 0, verbose = FALSE)
+    paretoscape::set_solver_cbc(gap_limit = 0, verbose = FALSE)
 
-  s <- mosap::solve(p)
+  s <- paretoscape::solve(p)
 
   expect_error(
-    mosap::get_features(s, run = 999),
+    paretoscape::get_features(s, run = 999),
     "run"
   )
 })

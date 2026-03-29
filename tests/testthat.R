@@ -1,6 +1,6 @@
 # load packages
 library(testthat)
-library(mosap)
+library(paretoscape)
 
 # load solver packages
 # require(gurobi)

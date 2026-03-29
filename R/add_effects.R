@@ -324,7 +324,7 @@ add_effects <- function(
 
   # ---- checks: x
   assertthat::assert_that(!is.null(x), msg = "x is NULL")
-  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a mosap Problem object")
+  assertthat::assert_that(!is.null(x$data), msg = "x does not look like a paretoscape Problem object")
   assertthat::assert_that(
     !is.null(x$data$pu), !is.null(x$data$features), !is.null(x$data$dist_features),
     msg = "x must be created with input_data()"

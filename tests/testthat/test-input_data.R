@@ -1,7 +1,7 @@
 test_that("input_data builds the core problem tables correctly", {
   toy <- toy_equivalent_basic()
 
-  p <- mosap::input_data(
+  p <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
@@ -35,7 +35,7 @@ test_that("input_data fails if required feature distribution columns are missing
   bad_dist$amount <- NULL
 
   expect_error(
-    mosap::input_data(
+    paretoscape::input_data(
       pu = toy$pu,
       features = toy$features,
       dist_features = bad_dist,

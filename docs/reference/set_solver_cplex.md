@@ -1,7 +1,7 @@
 # Configure CPLEX solver settings
 
 Convenience wrapper around
-[`set_solver`](https://josesalgr.github.io/mosap/reference/set_solver.md)
+[`set_solver`](https://josesalgr.github.io/paretoscape/reference/set_solver.md)
 that sets `solver = "cplex"`.
 
 ## Usage
@@ -82,8 +82,8 @@ An updated `Problem` object with CPLEX solver settings.
 
 ## See also
 
-[`set_solver`](https://josesalgr.github.io/mosap/reference/set_solver.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`set_solver`](https://josesalgr.github.io/paretoscape/reference/set_solver.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
 
 ## Examples
 

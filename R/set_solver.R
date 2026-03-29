@@ -11,7 +11,7 @@
 #' @details
 #' \strong{Purpose}
 #'
-#' The \code{mosap} workflow separates problem specification from solver
+#' The \code{paretoscape} workflow separates problem specification from solver
 #' configuration. Problem data, actions, effects, targets, objectives, and
 #' methods are stored in the \code{Problem} object, and solver settings are
 #' stored separately in \code{x$data$solve_args}.

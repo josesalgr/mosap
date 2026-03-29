@@ -1,7 +1,7 @@
 .pkgenv <- new.env(parent = emptyenv())
 
 .onUnload <- function(libpath) {
-  library.dynam.unload("mosap", libpath)
+  library.dynam.unload("paretoscape", libpath)
 }
 
 .onLoad <- function(libname, pkgname) {

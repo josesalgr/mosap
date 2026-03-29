@@ -9,7 +9,7 @@ NULL
 #' @title Problem class
 #'
 #' @description
-#' The \code{Problem} class is the central container used by \pkg{mosap} to
+#' The \code{Problem} class is the central container used by \pkg{paretoscape} to
 #' represent a planning problem before, during, and after model construction.
 #'
 #' A \code{Problem} object stores the full problem specification in a modular
@@ -19,7 +19,7 @@ NULL
 #' model or model snapshot.
 #'
 #' In other words, \code{Problem} is the persistent object that connects the full
-#' \code{mosap} workflow:
+#' \code{paretoscape} workflow:
 #' \preformatted{
 #' input_data()
 #' -> add_*() / set_*()
@@ -581,7 +581,7 @@ Problem <- pproto(
     ch <- .pa_cli_box_chars()
     div_id <- cli::cli_div(theme = .pa_cli_theme())
 
-    cli::cli_text("A mosap object ({.cls Problem})")
+    cli::cli_text("A paretoscape object ({.cls Problem})")
 
     pu <- self$data$pu
     n_pu <- .pa_nrow0(pu)

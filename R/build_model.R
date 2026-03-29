@@ -72,7 +72,7 @@
       nobj <- if (is.data.frame(args$objectives)) nrow(args$objectives) else length(args$objectives)
       if (is.finite(nobj) && nobj > 1) {
         .pa_abort(
-          "Multiple objectives detected (", nobj, "). mosap builds a single-objective MILP.\n",
+          "Multiple objectives detected (", nobj, "). paretoscape builds a single-objective MILP.\n",
           "Use a multiobjective method for epsilon-constraint/AUGMECON/interactive methods (e.g., set_method_weighted)."
         )
       }

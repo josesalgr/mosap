@@ -1,24 +1,24 @@
 test_that("compile_model builds MO superset with boundary auxiliaries when fragmentation is included", {
   toy <- toy_equivalent_basic()
 
-  p2 <- mosap::input_data(
+  p2 <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
     cost = "cost"
   ) |>
-    mosap::add_actions(actions = toy$actions, cost = 0) |>
-    mosap::add_effects(effects = toy$effects, effect_type = "after") |>
-    mosap::add_targets_relative(0.5) |>
-    mosap::add_spatial_boundary(boundary = toy$boundary, include_self = TRUE) |>
-    mosap::add_objective_min_cost(alias = "cost") |>
-    mosap::add_objective_min_fragmentation(alias = "frag") |>
-    mosap::set_method_weighted(
+    paretoscape::add_actions(actions = toy$actions, cost = 0) |>
+    paretoscape::add_effects(effects = toy$effects, effect_type = "after") |>
+    paretoscape::add_targets_relative(0.5) |>
+    paretoscape::add_spatial_boundary(boundary = toy$boundary, include_self = TRUE) |>
+    paretoscape::add_objective_min_cost(alias = "cost") |>
+    paretoscape::add_objective_min_fragmentation(alias = "frag") |>
+    paretoscape::set_method_weighted(
       aliases = c("cost", "frag"),
       weights = c(1, 1)
     )
 
-  p2 <- mosap::compile_model(p2)
+  p2 <- paretoscape::compile_model(p2)
 
   expect_s3_class(p2, "Problem")
   expect_false(is.null(p2$data$model_ptr))

@@ -11,16 +11,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/josesalgr/mosap/blob/HEAD/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/josesalgr/paretoscape/blob/HEAD/DESCRIPTION)
 
-Salgado-Rojas J, Moreno-Faguett M, Aquilue N (2026). *mosap:
-Multi-Objective Spatial Planning*. R package version 1.0.4,
-<https://josesalgr.github.io/mosap/>.
+Salgado-Rojas J, Moreno-Faguett M, Aquilue N (2026). *paretoscape:
+Multi-objective integrated spatial planning*. R package version 1.0.4,
+<https://josesalgr.github.io/paretoscape/>.
 
     @Manual{,
-      title = {mosap: Multi-Objective Spatial Planning},
+      title = {paretoscape: Multi-objective integrated spatial planning},
       author = {Jose Salgado-Rojas and Matias Moreno-Faguett and Nuria Aquilue},
       year = {2026},
       note = {R package version 1.0.4},
-      url = {https://josesalgr.github.io/mosap/},
+      url = {https://josesalgr.github.io/paretoscape/},
     }

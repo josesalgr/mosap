@@ -4,7 +4,7 @@ Plot the spatial distribution of selected actions from a `Solution` or
 `SolutionSet`.
 
 This function maps the selected planning unit–action pairs returned by
-[`get_actions`](https://josesalgr.github.io/mosap/reference/get_actions.md)`(only_selected = TRUE)`
+[`get_actions`](https://josesalgr.github.io/paretoscape/reference/get_actions.md)`(only_selected = TRUE)`
 onto the planning-unit geometry stored in the associated `Problem`
 object.
 
@@ -128,7 +128,7 @@ Planning-unit geometry must be available in `x$problem$data$pu_sf`.
 
 ## See also
 
-[`get_actions`](https://josesalgr.github.io/mosap/reference/get_actions.md),
-[`plot_spatial`](https://josesalgr.github.io/mosap/reference/plot_spatial.md),
-[`plot_spatial_pu`](https://josesalgr.github.io/mosap/reference/plot_spatial_pu.md),
-[`plot_spatial_features`](https://josesalgr.github.io/mosap/reference/plot_spatial_features.md)
+[`get_actions`](https://josesalgr.github.io/paretoscape/reference/get_actions.md),
+[`plot_spatial`](https://josesalgr.github.io/paretoscape/reference/plot_spatial.md),
+[`plot_spatial_pu`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_pu.md),
+[`plot_spatial_features`](https://josesalgr.github.io/paretoscape/reference/plot_spatial_features.md)

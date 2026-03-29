@@ -7,7 +7,7 @@ In the weighted-sum method, several registered atomic objectives are
 combined into a single scalar objective using a weighted linear
 combination. This function stores that configuration in `x$data$method`
 so that it can be used later by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 ## Usage
 
@@ -146,9 +146,9 @@ solutions, that is, solutions lying on the convex hull of the Pareto
 front in objective space. In non-convex multi-objective problems,
 especially mixed integer problems, some efficient solutions cannot be
 obtained by any weighted combination. In such cases, methods such as
-[`set_method_epsilon_constraint`](https://josesalgr.github.io/mosap/reference/set_method_epsilon_constraint.md)
+[`set_method_epsilon_constraint`](https://josesalgr.github.io/paretoscape/reference/set_method_epsilon_constraint.md)
 or
-[`set_method_augmecon`](https://josesalgr.github.io/mosap/reference/set_method_augmecon.md)
+[`set_method_augmecon`](https://josesalgr.github.io/paretoscape/reference/set_method_augmecon.md)
 may be preferable.
 
 **Stored configuration**
@@ -166,13 +166,13 @@ This function stores the method definition in `x$data$method` with:
 - `objective_scaling`.
 
 The actual scalarization is performed later by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md).
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md).
 
 ## See also
 
-[`set_method_epsilon_constraint`](https://josesalgr.github.io/mosap/reference/set_method_epsilon_constraint.md),
-[`set_method_augmecon`](https://josesalgr.github.io/mosap/reference/set_method_augmecon.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`set_method_epsilon_constraint`](https://josesalgr.github.io/paretoscape/reference/set_method_epsilon_constraint.md),
+[`set_method_augmecon`](https://josesalgr.github.io/paretoscape/reference/set_method_augmecon.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)
 
 ## Examples
 

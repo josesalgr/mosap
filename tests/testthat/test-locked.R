@@ -5,20 +5,20 @@ test_that("solve respects locked_in and locked_out planning units", {
   toy$pu$locked_in[1] <- TRUE
   toy$pu$locked_out[4] <- TRUE
 
-  p <- mosap::input_data(
+  p <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
     cost = "cost"
   ) |>
-    mosap::add_actions(actions = toy$actions, cost = 0) |>
-    mosap::add_effects(effects = toy$effects, effect_type = "after") |>
-    mosap::add_targets_relative(0.5) |>
-    mosap::add_locked_pu(locked_in = "locked_in", locked_out = "locked_out") |>
-    mosap::add_objective_min_cost(alias = "cost") |>
-    mosap::set_solver_cbc(gap_limit = 0, verbose = FALSE)
+    paretoscape::add_actions(actions = toy$actions, cost = 0) |>
+    paretoscape::add_effects(effects = toy$effects, effect_type = "after") |>
+    paretoscape::add_targets_relative(0.5) |>
+    paretoscape::add_locked_pu(locked_in = "locked_in", locked_out = "locked_out") |>
+    paretoscape::add_objective_min_cost(alias = "cost") |>
+    paretoscape::set_solver_cbc(gap_limit = 0, verbose = FALSE)
 
-  s <- mosap::solve(p)
+  s <- paretoscape::solve(p)
 
   expect_s3_class(s, "Solution")
   expect_true(is.data.frame(s$summary$actions))

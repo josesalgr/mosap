@@ -124,7 +124,7 @@ Internally, targets added by this function are stored with:
 
 ## See also
 
-[`add_targets_absolute`](https://josesalgr.github.io/mosap/reference/add_targets_absolute.md)
+[`add_targets_absolute`](https://josesalgr.github.io/paretoscape/reference/add_targets_absolute.md)
 
 ## Examples
 

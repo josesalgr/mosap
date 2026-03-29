@@ -8,7 +8,7 @@
 No return value. This page documents the \code{Problem} class.
 }
 \description{
-The \code{Problem} class is the central container used by \pkg{mosap} to
+The \code{Problem} class is the central container used by \pkg{paretoscape} to
 represent a planning problem before, during, and after model construction.
 
 A \code{Problem} object stores the full problem specification in a modular
@@ -18,7 +18,7 @@ registrations, solver settings, and, when available, a built optimization
 model or model snapshot.
 
 In other words, \code{Problem} is the persistent object that connects the full
-\code{mosap} workflow:
+\code{paretoscape} workflow:
 \preformatted{
 input_data()
 -> add_*() / set_*()

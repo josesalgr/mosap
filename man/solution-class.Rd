@@ -9,7 +9,7 @@ No return value. This page documents the \code{Solution} class.
 }
 \description{
 The \code{Solution} class stores the result of solving a single
-\code{\link{Problem}} object in \pkg{mosap}.
+\code{\link{Problem}} object in \pkg{paretoscape}.
 
 A \code{Solution} object contains the original problem definition, the core
 optimization output returned by the solver, user-facing summary tables,

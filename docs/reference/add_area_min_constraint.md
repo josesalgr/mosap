@@ -78,8 +78,8 @@ If one already exists, this function raises an error.
 
 ## See also
 
-[`add_area_max_constraint`](https://josesalgr.github.io/mosap/reference/add_area_max_constraint.md),
-[`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md)
+[`add_area_max_constraint`](https://josesalgr.github.io/paretoscape/reference/add_area_max_constraint.md),
+[`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md)
 
 ## Examples
 

@@ -38,9 +38,9 @@ add_effects(
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
   It must already contain `x$data$dist_actions`; run
-  [`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md)
+  [`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md)
   first.
 
 - effects:
@@ -178,7 +178,7 @@ Missing baseline values are treated as zero.
 
 Effects are only retained for feasible `(pu, action)` pairs listed in
 `x$data$dist_actions`. Thus,
-[`add_actions()`](https://josesalgr.github.io/mosap/reference/add_actions.md)
+[`add_actions()`](https://josesalgr.github.io/paretoscape/reference/add_actions.md)
 must be called first. Pairs marked as locked out (`status == 3`) are
 removed before storing the final effects table.
 
@@ -217,9 +217,9 @@ are written to `x$data$effects_meta`.
 
 ## See also
 
-[`add_actions`](https://josesalgr.github.io/mosap/reference/add_actions.md),
-[`add_benefits`](https://josesalgr.github.io/mosap/reference/add_benefits.md),
-[`add_losses`](https://josesalgr.github.io/mosap/reference/add_losses.md)
+[`add_actions`](https://josesalgr.github.io/paretoscape/reference/add_actions.md),
+[`add_benefits`](https://josesalgr.github.io/paretoscape/reference/add_benefits.md),
+[`add_losses`](https://josesalgr.github.io/paretoscape/reference/add_losses.md)
 
 ## Examples
 
@@ -261,7 +261,7 @@ p <- add_actions(
 )
 
 print(p)
-#> A mosap object (<Problem>)
+#> A paretoscape object (<Problem>)
 #> ├─data
 #> │├─planning units: <data.frame> (3 total)
 #> │├─costs: min: 1, max: 3

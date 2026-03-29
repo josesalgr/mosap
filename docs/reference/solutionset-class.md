@@ -1,17 +1,17 @@
 # SolutionSet class
 
 The `SolutionSet` class stores the result of solving a
-[`Problem`](https://josesalgr.github.io/mosap/reference/problem-class.md)
+[`Problem`](https://josesalgr.github.io/paretoscape/reference/problem-class.md)
 object when multiple runs are produced.
 
 A `SolutionSet` object is the multi-run counterpart of
-[`solution-class`](https://josesalgr.github.io/mosap/reference/solution-class.md).
+[`solution-class`](https://josesalgr.github.io/paretoscape/reference/solution-class.md).
 It contains the original problem, run-level design and outcome tables,
 the list of individual `Solution` objects, diagnostics summarizing the
 full set of runs, method metadata, and additional metadata.
 
 Objects of this class are typically created by
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md) in
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md) in
 workflows that generate more than one optimization run, such as
 weighted-sum scans, \\\epsilon\\-constraint designs, or AUGMECON grids.
 
@@ -122,7 +122,7 @@ a registered objective. For example:
 - `value_benefit`.
 
 This naming convention is used by downstream functions such as
-[`plot_tradeoff`](https://josesalgr.github.io/mosap/reference/plot_tradeoff.md).
+[`plot_tradeoff`](https://josesalgr.github.io/paretoscape/reference/plot_tradeoff.md).
 
 Depending on the solving method, the run table may also contain design
 columns such as:
@@ -163,7 +163,8 @@ process. Depending on the implementation, it may summarize:
 
 **Printing**
 
-The [`print()`](https://josesalgr.github.io/mosap/reference/print.md)
+The
+[`print()`](https://josesalgr.github.io/paretoscape/reference/print.md)
 method provides a concise summary of the full solution set. It reports:
 
 - the optimization method name,
@@ -224,15 +225,15 @@ should use:
 
 ## Methods
 
-- [`print()`](https://josesalgr.github.io/mosap/reference/print.md):
+- [`print()`](https://josesalgr.github.io/paretoscape/reference/print.md):
 
   Print a concise summary of the solution set, including method name,
   number of runs, and run-level diagnostics.
 
-- [`show()`](https://josesalgr.github.io/mosap/reference/show.md):
+- [`show()`](https://josesalgr.github.io/paretoscape/reference/show.md):
 
   Alias of
-  [`print()`](https://josesalgr.github.io/mosap/reference/print.md).
+  [`print()`](https://josesalgr.github.io/paretoscape/reference/print.md).
 
 - `repr()`:
 
@@ -257,10 +258,10 @@ should use:
 
 ## See also
 
-[`solution-class`](https://josesalgr.github.io/mosap/reference/solution-class.md),
-[`plot_tradeoff`](https://josesalgr.github.io/mosap/reference/plot_tradeoff.md),
-[`get_pu`](https://josesalgr.github.io/mosap/reference/get_pu.md),
-[`get_actions`](https://josesalgr.github.io/mosap/reference/get_actions.md),
-[`get_features`](https://josesalgr.github.io/mosap/reference/get_features.md),
-[`get_targets`](https://josesalgr.github.io/mosap/reference/get_targets.md),
-[`solve`](https://josesalgr.github.io/mosap/reference/solve.md)
+[`solution-class`](https://josesalgr.github.io/paretoscape/reference/solution-class.md),
+[`plot_tradeoff`](https://josesalgr.github.io/paretoscape/reference/plot_tradeoff.md),
+[`get_pu`](https://josesalgr.github.io/paretoscape/reference/get_pu.md),
+[`get_actions`](https://josesalgr.github.io/paretoscape/reference/get_actions.md),
+[`get_features`](https://josesalgr.github.io/paretoscape/reference/get_features.md),
+[`get_targets`](https://josesalgr.github.io/paretoscape/reference/get_targets.md),
+[`solve`](https://josesalgr.github.io/paretoscape/reference/solve.md)

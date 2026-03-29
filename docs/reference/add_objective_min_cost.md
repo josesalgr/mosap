@@ -90,8 +90,8 @@ costs with action-specific implementation costs.
 
 ## See also
 
-[`add_objective_max_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_profit.md),
-[`add_objective_max_net_profit`](https://josesalgr.github.io/mosap/reference/add_objective_max_net_profit.md)
+[`add_objective_max_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_profit.md),
+[`add_objective_max_net_profit`](https://josesalgr.github.io/paretoscape/reference/add_objective_max_net_profit.md)
 
 ## Examples
 

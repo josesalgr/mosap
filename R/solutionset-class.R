@@ -397,7 +397,7 @@ SolutionSet <- pproto(
     design_txt <- if (length(run_cols$design) == 0L) "none" else paste(run_cols$design, collapse = ", ")
     value_txt  <- if (length(run_cols$values) == 0L) "none" else paste(run_cols$values, collapse = ", ")
 
-    cli::cli_text("A mosap solution set ({.cls SolutionSet})")
+    cli::cli_text("A paretoscape solution set ({.cls SolutionSet})")
 
     # ---- METHOD
     cli::cli_text("{ch$j}{ch$b}{.h method}", .envir = environment())

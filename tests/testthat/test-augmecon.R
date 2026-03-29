@@ -7,33 +7,33 @@ test_that("augmecon returns a SolutionSet with runs", {
   names(bnd)[names(bnd) == "id1"] <- "pu1"
   names(bnd)[names(bnd) == "id2"] <- "pu2"
 
-  p <- mosap::input_data(
+  p <- paretoscape::input_data(
     pu = toy$pu,
     features = toy$features,
     dist_features = toy$dist_features,
     cost = "cost"
   ) |>
-    mosap::add_actions(actions = toy$actions, cost = 0) |>
-    mosap::add_effects(effects = toy$effects, effect_type = "after") |>
-    mosap::add_targets_relative(0.5) |>
-    mosap::add_spatial_boundary(
+    paretoscape::add_actions(actions = toy$actions, cost = 0) |>
+    paretoscape::add_effects(effects = toy$effects, effect_type = "after") |>
+    paretoscape::add_targets_relative(0.5) |>
+    paretoscape::add_spatial_boundary(
       boundary = bnd,
       weight_col = "boundary",
       include_self = TRUE
     ) |>
-    mosap::add_objective_min_cost(alias = "cost") |>
-    mosap::add_objective_max_benefit(alias = "benefit") |>
-    mosap::add_objective_min_fragmentation(alias = "frag") |>
-    mosap::set_method_augmecon(
+    paretoscape::add_objective_min_cost(alias = "cost") |>
+    paretoscape::add_objective_max_benefit(alias = "benefit") |>
+    paretoscape::add_objective_min_fragmentation(alias = "frag") |>
+    paretoscape::set_method_augmecon(
       primary = "cost",
       aliases = c("cost", "benefit", "frag"),
       n_points = 2,
       include_extremes = TRUE,
       augmentation = 1e-3
     ) |>
-    mosap::set_solver_cbc(gap_limit = 0, verbose = FALSE)
+    paretoscape::set_solver_cbc(gap_limit = 0, verbose = FALSE)
 
-  s <- mosap::solve(p)
+  s <- paretoscape::solve(p)
 
   expect_s3_class(s, "SolutionSet")
   expect_true(is.list(s$solution))

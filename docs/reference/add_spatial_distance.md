@@ -24,12 +24,12 @@ add_spatial_distance(
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md).
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md).
 
 - coords:
 
   Optional coordinates specification, following the same rules as in
-  [`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md).
+  [`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md).
 
 - max_distance:
 
@@ -77,15 +77,15 @@ where \\\varepsilon = \code{distance_eps}\\ is a small constant.
 The implementation computes an \\O(n^2)\\ distance matrix and is
 therefore best suited to small or moderate numbers of planning units.
 For large problems,
-[`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md)
+[`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md)
 is often more scalable.
 
 The resulting relation is registered as undirected.
 
 ## See also
 
-[`add_spatial_knn`](https://josesalgr.github.io/mosap/reference/add_spatial_knn.md),
-[`add_spatial_relations`](https://josesalgr.github.io/mosap/reference/add_spatial_relations.md)
+[`add_spatial_knn`](https://josesalgr.github.io/paretoscape/reference/add_spatial_knn.md),
+[`add_spatial_relations`](https://josesalgr.github.io/paretoscape/reference/add_spatial_relations.md)
 
 ## Examples
 

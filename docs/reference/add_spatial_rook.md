@@ -17,7 +17,7 @@ add_spatial_rook(x, geometry = NULL, name = "rook", weight = 1)
 - x:
 
   A `Problem` object created with
-  [`input_data`](https://josesalgr.github.io/mosap/reference/input_data.md)
+  [`input_data`](https://josesalgr.github.io/paretoscape/reference/input_data.md)
   or another object containing aligned planning-unit polygons.
 
 - geometry:
@@ -53,8 +53,8 @@ The resulting relation is stored as an undirected spatial relation.
 
 ## See also
 
-[`add_spatial_queen`](https://josesalgr.github.io/mosap/reference/add_spatial_queen.md),
-[`add_spatial_boundary`](https://josesalgr.github.io/mosap/reference/add_spatial_boundary.md)
+[`add_spatial_queen`](https://josesalgr.github.io/paretoscape/reference/add_spatial_queen.md),
+[`add_spatial_boundary`](https://josesalgr.github.io/paretoscape/reference/add_spatial_boundary.md)
 
 ## Examples
 
