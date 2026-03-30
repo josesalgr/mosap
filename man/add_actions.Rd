@@ -201,7 +201,7 @@ p1 <- add_actions(
 
 print(p1)
 
-head(p1$data$dist_actions)
+utils::head(p1$data$dist_actions)
 
 # Example 2: specify feasible pairs explicitly
 include_df <- data.frame(

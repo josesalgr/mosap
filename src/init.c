@@ -27,7 +27,7 @@ extern SEXP _paretoscape_rcpp_add_base_variables(SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _paretoscape_rcpp_add_linking_z_le_w(SEXP, SEXP, SEXP, SEXP);
 extern SEXP _paretoscape_rcpp_fix_z_ineligible_by_positive_delta(SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _paretoscape_rcpp_add_linear_constraint(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-extern SEXP _paretoscape_rcpp_add_constraint_action_max_per_pu(SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP _paretoscape_rcpp_add_action_max_per_pu(SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP _paretoscape_rcpp_add_linking_w_le_sum_x(SEXP, SEXP, SEXP, SEXP);
 
 //targets
@@ -82,7 +82,7 @@ static const R_CallMethodDef CallEntries[] = {
   {"_paretoscape_rcpp_add_objective_min_cost", (DL_FUNC) &_paretoscape_rcpp_add_objective_min_cost, 8},
   {"_paretoscape_rcpp_reset_objective", (DL_FUNC) &_paretoscape_rcpp_reset_objective, 2},
   {"_paretoscape_rcpp_add_to_objective", (DL_FUNC) &_paretoscape_rcpp_add_to_objective, 3},
-  {"_paretoscape_rcpp_add_constraint_action_max_per_pu", (DL_FUNC) &_paretoscape_rcpp_add_constraint_action_max_per_pu, 5},
+  {"_paretoscape_rcpp_add_action_max_per_pu", (DL_FUNC) &_paretoscape_rcpp_add_action_max_per_pu, 5},
   {"_paretoscape_rcpp_add_to_objective_scalar", (DL_FUNC) &_paretoscape_rcpp_add_to_objective_scalar, 3},
   {"_paretoscape_rcpp_prepare_objective_min_fragmentation", (DL_FUNC) &_paretoscape_rcpp_prepare_objective_min_fragmentation, 4},
   {"_paretoscape_rcpp_add_objective_min_fragmentation", (DL_FUNC) &_paretoscape_rcpp_add_objective_min_fragmentation, 6},

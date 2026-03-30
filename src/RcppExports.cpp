@@ -91,6 +91,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_add_action_max_per_pu
+Rcpp::List rcpp_add_action_max_per_pu(SEXP x, Rcpp::DataFrame dist_actions_data, int max_per_pu, Rcpp::IntegerVector internal_pu_ids, Rcpp::IntegerVector internal_action_ids);
+RcppExport SEXP _paretoscape_rcpp_add_action_max_per_pu(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP max_per_puSEXP, SEXP internal_pu_idsSEXP, SEXP internal_action_idsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
+    Rcpp::traits::input_parameter< int >::type max_per_pu(max_per_puSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type internal_pu_ids(internal_pu_idsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type internal_action_ids(internal_action_idsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_add_action_max_per_pu(x, dist_actions_data, max_per_pu, internal_pu_ids, internal_action_ids));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_add_base_variables
 Rcpp::List rcpp_add_base_variables(SEXP x, Rcpp::DataFrame pu_data, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_features_data, bool add_z);
 RcppExport SEXP _paretoscape_rcpp_add_base_variables(SEXP xSEXP, SEXP pu_dataSEXP, SEXP dist_actions_dataSEXP, SEXP dist_features_dataSEXP, SEXP add_zSEXP) {
@@ -103,21 +118,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_features_data(dist_features_dataSEXP);
     Rcpp::traits::input_parameter< bool >::type add_z(add_zSEXP);
     rcpp_result_gen = Rcpp::wrap(rcpp_add_base_variables(x, pu_data, dist_actions_data, dist_features_data, add_z));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpp_add_constraint_action_max_per_pu
-Rcpp::List rcpp_add_constraint_action_max_per_pu(SEXP x, Rcpp::DataFrame dist_actions_data, int max_per_pu, Rcpp::IntegerVector internal_pu_ids, Rcpp::IntegerVector internal_action_ids);
-RcppExport SEXP _paretoscape_rcpp_add_constraint_action_max_per_pu(SEXP xSEXP, SEXP dist_actions_dataSEXP, SEXP max_per_puSEXP, SEXP internal_pu_idsSEXP, SEXP internal_action_idsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
-    Rcpp::traits::input_parameter< int >::type max_per_pu(max_per_puSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type internal_pu_ids(internal_pu_idsSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type internal_action_ids(internal_action_idsSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_constraint_action_max_per_pu(x, dist_actions_data, max_per_pu, internal_pu_ids, internal_action_ids));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -341,8 +341,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // rcpp_add_target_recovery
-Rcpp::List rcpp_add_target_recovery(SEXP x, Rcpp::DataFrame features_data, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_benefit_data, SEXP target_col_sexp, double tol);
-RcppExport SEXP _paretoscape_rcpp_add_target_recovery(SEXP xSEXP, SEXP features_dataSEXP, SEXP dist_actions_dataSEXP, SEXP dist_benefit_dataSEXP, SEXP target_col_sexpSEXP, SEXP tolSEXP) {
+Rcpp::List rcpp_add_target_recovery(SEXP x, Rcpp::DataFrame features_data, Rcpp::DataFrame dist_actions_data, Rcpp::DataFrame dist_benefit_data, std::string target_col, double tol);
+RcppExport SEXP _paretoscape_rcpp_add_target_recovery(SEXP xSEXP, SEXP features_dataSEXP, SEXP dist_actions_dataSEXP, SEXP dist_benefit_dataSEXP, SEXP target_colSEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -350,9 +350,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type features_data(features_dataSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_actions_data(dist_actions_dataSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type dist_benefit_data(dist_benefit_dataSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type target_col_sexp(target_col_sexpSEXP);
+    Rcpp::traits::input_parameter< std::string >::type target_col(target_colSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpp_add_target_recovery(x, features_data, dist_actions_data, dist_benefit_data, target_col_sexp, tol));
+    rcpp_result_gen = Rcpp::wrap(rcpp_add_target_recovery(x, features_data, dist_actions_data, dist_benefit_data, target_col, tol));
     return rcpp_result_gen;
 END_RCPP
 }

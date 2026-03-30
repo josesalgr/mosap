@@ -820,9 +820,6 @@
   }
   rcpp_reset_objective(op, modelsense)
 
-  if (exists("rcpp_reset_objective_blocks", mode = "function")) {
-    rcpp_reset_objective_blocks(op)
-  }
 
   # ------------------------------------------------------------
   # ONE atomic objective (prepare + add)
@@ -1011,43 +1008,6 @@
 
     objective_id <- "max_net_profit"
 
-  } else if (identical(mtype, "maximizeRepresentation")) {
-
-    if (!exists("rcpp_prepare_objective_max_representation", mode = "function")) .pa_abort("Missing rcpp_prepare_objective_max_representation().")
-    if (!exists("rcpp_add_objective_max_representation",     mode = "function")) .pa_abort("Missing rcpp_add_objective_max_representation().")
-
-    acol <- as.character(oargs$amount_col %||% "amount")[1]
-
-    feats <- oargs$features %||% NULL
-    feats_internal <- integer(0)
-    if (!is.null(feats)) {
-      m <- match(feats, x$data$features$id)
-      if (anyNA(m)) .pa_abort("maximizeRepresentation: some features not in x$data$features$id: ", paste(feats[is.na(m)], collapse=", "))
-      feats_internal <- as.integer(x$data$features$internal_id[m])
-    }
-
-    stop("It is not yet programmed.")
-
-    rcpp_prepare_objective_max_representation(
-      op,
-      dist_features_data = x$data$dist_features,
-      amount_col = acol,
-      features_to_use = feats_internal,
-      internal_feature_col = "internal_feature",
-      block_name = "objective_max_representation",
-      tag = as.character(oargs$tag %||% "")[1]
-    )
-
-    res <- rcpp_add_objective_max_representation(
-      op,
-      dist_features_data = x$data$dist_features,
-      amount_col = acol,
-      features_to_use = feats_internal,
-      internal_feature_col = "internal_feature",
-      weight = 1.0
-    )
-
-    objective_id <- "max_representation"
 
   } else if (identical(mtype, "minimizeActionFragmentation")) {
 
@@ -1246,11 +1206,11 @@
     return(x)
   }
 
-  if (!exists("rcpp_add_constraint_action_max_per_pu", mode = "function")) {
-    stop("Missing rcpp_add_constraint_action_max_per_pu().", call. = FALSE)
+  if (!exists("rcpp_add_action_max_per_pu", mode = "function")) {
+    stop("Missing rcpp_add_action_max_per_pu().", call. = FALSE)
   }
 
-  res <- rcpp_add_constraint_action_max_per_pu(
+  res <- rcpp_add_action_max_per_pu(
     x$data$model_ptr,
     dist_actions_data = da,
     max_per_pu = 1L,

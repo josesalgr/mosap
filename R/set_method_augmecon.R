@@ -244,7 +244,7 @@ set_method_augmecon <- function(
   # ---- aliases
   if (is.null(aliases)) {
     aliases <- .pamo_get_specs(x)
-    obj_alias <- names(specs_all)
+    obj_alias <- names(aliases)
     aliases <- obj_alias
   } else {
     if (!is.character(aliases) || length(aliases) == 0L || anyNA(aliases)) {

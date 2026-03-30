@@ -17,7 +17,7 @@ Rcpp::List rcpp_add_target_recovery(
     Rcpp::DataFrame features_data,
     Rcpp::DataFrame dist_actions_data,
     Rcpp::DataFrame dist_benefit_data,
-    SEXP target_col_sexp = R_NilValue,
+    std::string target_col,
     double tol = 1e-12) {
 
   Rcpp::XPtr<OptimizationProblem> op = Rcpp::as<Rcpp::XPtr<OptimizationProblem>>(x);
@@ -45,17 +45,20 @@ Rcpp::List rcpp_add_target_recovery(
   }
 
   // ---- Determine target column name
-  std::string target_col = "target_recovery";
+  //std::string target_col = "target_recovery";
 
-  if (!Rf_isNull(target_col_sexp)) {
-    if (TYPEOF(target_col_sexp) == STRSXP && Rf_length(target_col_sexp) >= 1) {
-      target_col = Rcpp::as<std::string>(target_col_sexp);
-    } else if (TYPEOF(target_col_sexp) == LGLSXP && Rf_length(target_col_sexp) >= 1) {
-      int flag = LOGICAL(target_col_sexp)[0];
-      if (flag == 0) target_col = "target";  // legacy
-    } else {
-      Rcpp::stop("Argument 'target_col' must be a character scalar (preferred) or logical (legacy).");
-    }
+  // if (!Rf_isNull(target_col)) {
+  //   if (TYPEOF(target_col) == STRSXP && Rf_length(target_col) >= 1) {
+  //     target_col = Rcpp::as<std::string>(target_col);
+  //   } else if (TYPEOF(target_col) == LGLSXP && Rf_length(target_col) >= 1) {
+  //     int flag = LOGICAL(target_col)[0];
+  //     if (flag == 0) target_col = "target";  // legacy
+  //   } else {
+  //     Rcpp::stop("Argument 'target_col' must be a character scalar (preferred) or logical (legacy).");
+  //   }
+  // }
+  if (target_col.empty()) {
+    target_col = "target_recovery";
   }
 
   // ---- Extract feature ids and targets (prefer target_col, else fallback to 'target')

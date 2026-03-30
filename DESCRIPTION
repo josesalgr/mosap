@@ -25,10 +25,8 @@ Imports:
     Matrix,
     proto,
     magrittr,
-    tidyr,
     dplyr,
     Rcpp,
-    rlang,
     cli,
     sf,
     methods,
@@ -42,6 +40,11 @@ Suggests:
     roxygen2,
     prioritizr,
     Rsymphony (>= 0.1-31),
+    Rcplex,
+    gurobi,
+    slam,
+    rcbc,
+    rlang,
     rmarkdown,
     testthat (>= 3.0.0),
     raster,
@@ -52,7 +55,6 @@ Suggests:
     data.table,
     purrr,
     readr,
-    slam,
     tibble,
     reshape2
 LinkingTo:
@@ -82,13 +84,13 @@ Collate:
     'add_targets.R'
     'build_model.R'
     'compile_model.R'
+    'data-sim.R'
     'internalMO.R'
     'get_solution.R'
     'globals.R'
     'input_data.R'
     'package.R'
     'plot.R'
-    'presolve.R'
     'print.R'
     'problem-class.R'
     'set_method_augmecon.R'
@@ -98,7 +100,6 @@ Collate:
     'solutionset-class.R'
     'solution-class.R'
     'show.R'
-    'simData.R'
     'solve.R'
     'utils-pipe.R'
     'zzz.R'

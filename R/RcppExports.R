@@ -29,12 +29,12 @@ rcpp_add_action_locks <- function(x, dist_actions_data) {
     .Call(`_paretoscape_rcpp_add_action_locks`, x, dist_actions_data)
 }
 
-rcpp_add_base_variables <- function(x, pu_data, dist_actions_data, dist_features_data, add_z = TRUE) {
-    .Call(`_paretoscape_rcpp_add_base_variables`, x, pu_data, dist_actions_data, dist_features_data, add_z)
+rcpp_add_action_max_per_pu <- function(x, dist_actions_data, max_per_pu, internal_pu_ids, internal_action_ids) {
+    .Call(`_paretoscape_rcpp_add_action_max_per_pu`, x, dist_actions_data, max_per_pu, internal_pu_ids, internal_action_ids)
 }
 
-rcpp_add_constraint_action_max_per_pu <- function(x, dist_actions_data, max_per_pu = 1L, internal_pu_ids = integerVector(), internal_action_ids = integerVector()) {
-    .Call(`_paretoscape_rcpp_add_constraint_action_max_per_pu`, x, dist_actions_data, max_per_pu, internal_pu_ids, internal_action_ids)
+rcpp_add_base_variables <- function(x, pu_data, dist_actions_data, dist_features_data, add_z = TRUE) {
+    .Call(`_paretoscape_rcpp_add_base_variables`, x, pu_data, dist_actions_data, dist_features_data, add_z)
 }
 
 rcpp_add_linear_constraint <- function(model_ptr, j0, x, sense, rhs, name = "", block_name = "linear_constraint", tag = "") {
@@ -77,7 +77,7 @@ rcpp_add_objective_min_fragmentation_actions <- function(x, dist_actions_data, r
     .Call(`_paretoscape_rcpp_add_objective_min_fragmentation_actions`, x, dist_actions_data, relation_data, actions_to_use, action_weights, weight, weight_multiplier, block_name, tag)
 }
 
-rcpp_add_objective_min_intervention_impact <- function(x, pu_data, dist_actions_data, dist_features_data, subset_key = "", impact_col = "amount", features_to_use = integerVector(), actions_to_use = integerVector(), internal_feature_col = "internal_feature", weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_intervention_impact", tag = "") {
+rcpp_add_objective_min_intervention_impact <- function(x, pu_data, dist_actions_data, dist_features_data, subset_key, impact_col, features_to_use, actions_to_use, internal_feature_col, weight = 1.0, weight_multiplier = 1.0, block_name = "objective_add_min_intervention_impact", tag = "") {
     .Call(`_paretoscape_rcpp_add_objective_min_intervention_impact`, x, pu_data, dist_actions_data, dist_features_data, subset_key, impact_col, features_to_use, actions_to_use, internal_feature_col, weight, weight_multiplier, block_name, tag)
 }
 
@@ -89,8 +89,8 @@ rcpp_add_pu_locks <- function(x, pu_data, block_name = "pu_locks", tag = "") {
     .Call(`_paretoscape_rcpp_add_pu_locks`, x, pu_data, block_name, tag)
 }
 
-rcpp_add_target_recovery <- function(x, features_data, dist_actions_data, dist_benefit_data, target_col_sexp = NULL, tol = 1e-12) {
-    .Call(`_paretoscape_rcpp_add_target_recovery`, x, features_data, dist_actions_data, dist_benefit_data, target_col_sexp, tol)
+rcpp_add_target_recovery <- function(x, features_data, dist_actions_data, dist_benefit_data, target_col, tol = 1e-12) {
+    .Call(`_paretoscape_rcpp_add_target_recovery`, x, features_data, dist_actions_data, dist_benefit_data, target_col, tol)
 }
 
 rcpp_fix_z_ineligible_by_positive_delta <- function(x, dist_features_data, dist_benefit_data, fix_lb_too = TRUE, eps = 1e-12) {
@@ -141,7 +141,7 @@ rcpp_prepare_objective_min_fragmentation_actions <- function(x, dist_actions_dat
     .Call(`_paretoscape_rcpp_prepare_objective_min_fragmentation_actions`, x, dist_actions_data, relation_data, actions_to_use, block_name, tag)
 }
 
-rcpp_prepare_objective_min_intervention_impact <- function(x, pu_data, dist_actions_data, dist_features_data, subset_key = "", impact_col = "amount", features_to_use = integerVector(), actions_to_use = integerVector(), internal_feature_col = "internal_feature", block_name = "objective_min_intervention_impact", tag = "") {
+rcpp_prepare_objective_min_intervention_impact <- function(x, pu_data, dist_actions_data, dist_features_data, subset_key, impact_col, features_to_use, actions_to_use, internal_feature_col = "internal_feature", block_name = "objective_min_intervention_impact", tag = "") {
     .Call(`_paretoscape_rcpp_prepare_objective_min_intervention_impact`, x, pu_data, dist_actions_data, dist_features_data, subset_key, impact_col, features_to_use, actions_to_use, internal_feature_col, block_name, tag)
 }
 

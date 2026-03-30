@@ -750,7 +750,7 @@
   b$data$model_args$mo_mode <- TRUE
 
   # la clave del superset: needs estructurales, independientes del método
-  b$data$model_args$needs <- modifyList(
+  b$data$model_args$needs <- utils::modifyList(
     b$data$model_args$needs %||% list(),
     spec$needs
   )
@@ -949,7 +949,7 @@
     gap[r]     <- as.numeric(one$gap %||% NA_real_)
 
     # evaluate all registered aliases on the obtained solution
-    alias_values <- setNames(
+    alias_values <- stats::setNames(
       vapply(
         aliases,
         function(a) .pamo_eval_alias_on_solution(x, one$solution, a),
@@ -1167,7 +1167,7 @@
     runtime[r] <- as.numeric(one$runtime %||% NA_real_)
     gap[r]     <- as.numeric(one$gap %||% NA_real_)
 
-    alias_values <- setNames(
+    alias_values <- stats::setNames(
       vapply(
         aliases,
         function(a) .pamo_eval_alias_on_solution(x, one$solution, a),
@@ -1868,33 +1868,6 @@ add_objective <- function(x, objective) {
           model_sense = "min"
         )
       }
-
-    } else if (identical(type, "intervention_boundary_cut")) {
-
-      acts <- .chr(t$actions)
-      if (!is.null(acts)) {
-        stop(
-          "Subset by actions is not currently supported for 'intervention_boundary_cut' ",
-          "with the current C++ signature.",
-          call. = FALSE
-        )
-      }
-
-      rel_name <- as.character(t$relation_name %||% "boundary")[1]
-      rel_model <- base_superset$data$spatial_relations_model[[rel_name]] %||%
-        base_superset$data$spatial_relations[[rel_name]]
-
-      if (is.null(rel_model)) {
-        stop("Missing relation '", rel_name, "'.", call. = FALSE)
-      }
-
-      rcpp_add_objective_min_fragmentation_interventions(
-        op,
-        dist_actions_data = base_superset$data$dist_actions_model,
-        relation_data = rel_model,
-        weight_multiplier = as.numeric(t$weight_multiplier %||% 1)[1],
-        weight = 1.0
-      )
 
     } else if (identical(type, "intervention_impact")) {
 
@@ -3458,7 +3431,7 @@ add_objective <- function(x, objective) {
   base$data$has_model <- TRUE
 
   base$data$mo_cache <- base$data$mo_cache %||% list()
-  base$data$mo_cache$augmecon <- modifyList(
+  base$data$mo_cache$augmecon <- utils::modifyList(
     base$data$mo_cache$augmecon %||% list(),
     list(
       ir_primary = ir_primary,
@@ -3622,7 +3595,7 @@ add_objective <- function(x, objective) {
     runtime[r] <- as.numeric(one$runtime %||% NA_real_)
     gap[r]     <- as.numeric(one$gap %||% NA_real_)
 
-    alias_values <- setNames(
+    alias_values <- stats::setNames(
       vapply(
         aliases,
         function(a) .pamo_eval_alias_on_solution(x, one$solution, a),
@@ -4322,7 +4295,7 @@ add_objective <- function(x, objective) {
 
   # guardar metadata útil
   base$data$mo_cache <- base$data$mo_cache %||% list()
-  base$data$mo_cache$augmecon <- modifyList(
+  base$data$mo_cache$augmecon <- utils::modifyList(
     base$data$mo_cache$augmecon %||% list(),
     list(
       secondary_aliases = secondary_aliases,

@@ -191,7 +191,7 @@ set_solver <- function(x,
 
   dots <- list(...)
   if (length(dots) > 0) {
-    solver_params <- modifyList(solver_params %||% list(), dots)
+    solver_params <- utils::modifyList(solver_params %||% list(), dots)
   }
   if (!is.list(solver_params)) stop("solver_params must be a list.", call. = FALSE)
 
@@ -240,7 +240,7 @@ set_solver <- function(x,
   }
 
   # merge solver_params with stored solver_params (do not drop existing ones)
-  out$solver_params <- modifyList(out$solver_params %||% list(), solver_params)
+  out$solver_params <- utils::modifyList(out$solver_params %||% list(), solver_params)
 
   x$data$solve_args <- out
   x

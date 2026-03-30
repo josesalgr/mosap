@@ -843,7 +843,7 @@ methods::setMethod(
           "`dist_features$feature` must contain either valid feature ids ",
           "from `features$id` or valid feature names from `features$name`.\n",
           "Unmatched values: ",
-          paste(head(bad, 20), collapse = ", "),
+          paste(utils::head(bad, 20), collapse = ", "),
           if (length(bad) > 20) " ..." else "",
           call. = FALSE
         )
@@ -862,7 +862,7 @@ methods::setMethod(
     if (length(bad_pu) > 0) {
       stop(
         "Some `dist_features$pu` ids are not present in `pu`: ",
-        paste(head(bad_pu, 20), collapse = ", "),
+        paste(utils::head(bad_pu, 20), collapse = ", "),
         if (length(bad_pu) > 20) " ..." else "",
         call. = FALSE
       )
@@ -872,7 +872,7 @@ methods::setMethod(
     if (length(bad_feat) > 0) {
       stop(
         "Some `dist_features$feature` ids are not present in `features`: ",
-        paste(head(bad_feat, 20), collapse = ", "),
+        paste(utils::head(bad_feat, 20), collapse = ", "),
         if (length(bad_feat) > 20) " ..." else "",
         call. = FALSE
       )

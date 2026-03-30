@@ -193,7 +193,7 @@
 #'
 #' print(p1)
 #'
-#' head(p1$data$dist_actions)
+#' utils::head(p1$data$dist_actions)
 #'
 #' # Example 2: specify feasible pairs explicitly
 #' include_df <- data.frame(
@@ -461,7 +461,7 @@ add_actions <- function(
     actions$internal_id <- seq_len(nrow(actions))
   } else {
     actions$internal_id <- as.integer(actions$internal_id)
-    if (assertthat::anyNA(actions$internal_id)) {
+    if (base::anyNA(actions$internal_id)) {
       stop("actions$internal_id contains NA.", call. = FALSE)
     }
     if (anyDuplicated(actions$internal_id) != 0) {

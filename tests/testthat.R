@@ -8,4 +8,4 @@ library(paretoscape)
 # require(Rcplex)
 # require(rcbc)
 
-test_check("mosap")
+test_check("paretoscape")

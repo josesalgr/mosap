@@ -130,8 +130,8 @@ typically takes the form
 \examples{
 # Minimal problem
 pu <- data.frame(
-  id = 1:3,
-  cost = c(2, 3, 1)
+  id = 1:4,
+  cost = c(2, 3, 1, 4)
 )
 
 features <- data.frame(

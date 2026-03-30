@@ -403,7 +403,7 @@ available_to_solve <- function(package = ""){
         if (length(bad) > 0) {
           stop(
             "Unknown feature name(s): ", paste0("'", unique(bad), "'", collapse = ", "),
-            ". Valid names include: ", paste0("'", head(feat_names, 10), "'", collapse = ", "),
+            ". Valid names include: ", paste0("'", utils::head(feat_names, 10), "'", collapse = ", "),
             if (length(feat_names) > 10) " ..." else "",
             call. = FALSE
           )
@@ -927,7 +927,7 @@ available_to_solve <- function(package = ""){
     miss <- features[!features %in% present]
 
     if (length(miss) > 0) {
-      ex <- paste(head(sort(unique(miss)), 8), collapse = ", ")
+      ex <- paste(utils::head(sort(unique(miss)), 8), collapse = ", ")
       stop(
         "Infeasible targets detected: some features in ", what, " targets have no contributions in the model tables.\n",
         "Missing feature ids: ", ex,
@@ -1584,7 +1584,7 @@ available_to_solve <- function(package = ""){
   stored <- x$data$solve_args %||% list()
   if (!is.list(stored)) stored <- list()
 
-  out <- modifyList(defaults, stored)
+  out <- utils::modifyList(defaults, stored)
 
   # ---- explicit overrides (optional)
   if (!is.null(gap_limit)) out$gap_limit <- gap_limit
@@ -1604,7 +1604,7 @@ available_to_solve <- function(package = ""){
   # solver_params override/merge
   if (!is.null(solver_params)) {
     if (!is.list(solver_params)) stop("solver_params must be a list.", call. = FALSE)
-    out$solver_params <- modifyList(out$solver_params %||% list(), solver_params)
+    out$solver_params <- utils::modifyList(out$solver_params %||% list(), solver_params)
   }
 
   # ---- normalize
@@ -2868,7 +2868,7 @@ available_to_solve <- function(package = ""){
 .pa_mark_mo_needs <- function(x, needs) {
   stopifnot(inherits(x, "Problem"))
   x$data$mo <- x$data$mo %||% list()
-  x$data$mo$needs <- modifyList(x$data$mo$needs %||% list(), needs)
+  x$data$mo$needs <- utils::modifyList(x$data$mo$needs %||% list(), needs)
   x$data$meta$model_dirty <- TRUE
   x
 }
@@ -3777,7 +3777,7 @@ NULL
       params$FuncPieceLength <- round(1 / as.numeric(model$args$segments), digits = 1)
     }
 
-    params <- modifyList(params, solver_params_user)
+    params <- utils::modifyList(params, solver_params_user)
 
     sol <- gurobi::gurobi(model, params)
 
@@ -3835,7 +3835,7 @@ NULL
       timem = "elapsed",
       heuristicsOnOff = "on"
     )
-    cbc_args <- modifyList(cbc_args, solver_params_user)
+    cbc_args <- utils::modifyList(cbc_args, solver_params_user)
 
     rt <- system.time({
       sol_cbc <- rcbc::cbc_solve(
@@ -3882,7 +3882,7 @@ NULL
       epgap = gap_limit,
       tilim = time_limit
     )
-    params <- modifyList(params, solver_params_user)
+    params <- utils::modifyList(params, solver_params_user)
 
     if (any(solution_limit, output_file)) {
       warning(
@@ -4082,10 +4082,10 @@ NULL
   tbl$benefit <- as.numeric(tbl$benefit)
   tbl$loss    <- as.numeric(tbl$loss)
 
-  if (na_to_zero) {
-    tbl$benefit[is.na(tbl$benefit)] <- 0
-    tbl$loss[is.na(tbl$loss)] <- 0
-  }
+  #if (na_to_zero) {
+  tbl$benefit[is.na(tbl$benefit)] <- 0
+  tbl$loss[is.na(tbl$loss)] <- 0
+  #}
 
   if (any(tbl$benefit < 0, na.rm = TRUE) || any(tbl$loss < 0, na.rm = TRUE)) {
     stop(
