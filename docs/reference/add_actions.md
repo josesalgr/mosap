@@ -228,19 +228,19 @@ print(p1)
 #> │└─features: 2 total ("sp1", "sp2")
 #> └─actions and effects
 #> │├─actions: 2 total ("Conservation", "Restoration")
-#> │├─dist_actions: 8 feasible rows
+#> │├─feasible action pairs: 8 feasible rows
 #> │├─action costs: min: 5, max: 12
-#> │├─dist_effects: none specified
-#> │└─dist_profit: none specified
+#> │├─effect data: none
+#> │└─profit data: none
 #> └─spatial
 #> │├─geometry: none
-#> │├─pu_coords: none
+#> │├─coordinates: none
 #> │└─relations: none
 #> └─targets and constraints
 #> │├─targets: none
 #> │├─area constraints: none
-#> │├─pu_locks: none
-#> │└─action_locks: none
+#> │├─planning-unit locks: none
+#> │└─action locks: none
 #> └─model
 #> │├─status: not built yet (will build in solve())
 #> │├─objectives: none
@@ -249,7 +249,7 @@ print(p1)
 #> │└─checks: incomplete (no objective registered)
 #> # ℹ Use `x$data` to inspect stored tables and model snapshots.
 
-head(p1$data$dist_actions)
+utils::head(p1$data$dist_actions)
 #>   pu       action cost status internal_pu internal_action
 #> 1  1 conservation    5      0           1               1
 #> 5  1  restoration   12      0           1               2

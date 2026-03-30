@@ -97,15 +97,23 @@ The final relation is stored in `x$data$spatial_relations[[name]]`.
 
 ``` r
 pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
-features <- data.frame(id = "sp1")
-dist_features <- data.frame(pu = 1:3, feature = "sp1", amount = c(1, 1, 1))
+
+features <- data.frame(
+ id = 1,
+ name = "sp1"
+)
+
+dist_features <- data.frame(
+ pu = 1:3,
+ feature = 1,
+ amount = c(1, 1, 1)
+)
 
 p <- input_data(
-  pu = pu,
-  features = features,
-  dist_features = dist_features
+ pu = pu,
+ features = features,
+ dist_features = dist_features
 )
-#> Error: features$id must be numeric/integer ids (got non-numeric strings).
 
 rel <- data.frame(
   pu1 = c(1, 1, 2),
@@ -118,8 +126,10 @@ p <- add_spatial_relations(
   relations = rel,
   name = "my_relation"
 )
-#> Error: object 'p' not found
 
 p$data$spatial_relations$my_relation
-#> Error: object 'p' not found
+#>   internal_pu1 internal_pu2 weight pu1 pu2 relation_name
+#> 1            1            2      1   1   2   my_relation
+#> 2            1            3      1   1   3   my_relation
+#> 3            2            3      2   2   3   my_relation
 ```

@@ -158,11 +158,9 @@ Core classes used across the package.
 
 Simulated datasets distributed with the package.
 
-- [`sim_pu_data`](https://josesalgr.github.io/paretoscape/reference/simData.md)
-  [`sim_features_data`](https://josesalgr.github.io/paretoscape/reference/simData.md)
-  [`sim_dist_features_data`](https://josesalgr.github.io/paretoscape/reference/simData.md)
-  [`sim_threats_data`](https://josesalgr.github.io/paretoscape/reference/simData.md)
-  [`sim_dist_threats_data`](https://josesalgr.github.io/paretoscape/reference/simData.md)
-  [`sim_sensitivity_data`](https://josesalgr.github.io/paretoscape/reference/simData.md)
-  [`sim_boundary_data`](https://josesalgr.github.io/paretoscape/reference/simData.md)
-  : Simulated multi-action planning data
+- [`sim_dist_features`](https://josesalgr.github.io/paretoscape/reference/sim_dist_features.md)
+  : Simulated feature distribution
+- [`sim_features`](https://josesalgr.github.io/paretoscape/reference/sim_features.md)
+  : Simulated features
+- [`sim_pu_sf`](https://josesalgr.github.io/paretoscape/reference/sim_pu_sf.md)
+  : Simulated planning units

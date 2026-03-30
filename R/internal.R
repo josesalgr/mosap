@@ -4029,6 +4029,19 @@ NULL
   # ------------------------------------------------------------
   # 3) Build human-readable tables (you implement this helper)
   # ------------------------------------------------------------
+
+  has_feasible_solution <- status_code %in% c(0L, 2L, 4L)
+
+  if (!has_feasible_solution) {
+    stop(
+      "Solver did not return a feasible solution.\n",
+      "solver: ", solver, "\n",
+      "status_code: ", status_code, "\n",
+      "status: ", status_cbc %||% "unknown",
+      call. = FALSE
+    )
+  }
+
   summary <- .pa_extract_solution_tables(x, solvec)
 
   x$data$runtime_updates <- NULL

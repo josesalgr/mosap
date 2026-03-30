@@ -158,8 +158,8 @@ typically takes the form \$\$ \max \sum\_{(i,a) \in \mathcal{F}}
 ``` r
 # Minimal problem
 pu <- data.frame(
-  id = 1:3,
-  cost = c(2, 3, 1)
+  id = 1:4,
+  cost = c(2, 3, 1, 4)
 )
 
 features <- data.frame(
@@ -178,26 +178,38 @@ p <- input_data(
   features = features,
   dist_features = dist_features
 )
-#> Error: dist_features contains unknown PU ids: 4
 
 p <- add_actions(
   x = p,
   actions = data.frame(id = c("harvest", "restoration"))
 )
-#> Error: object 'p' not found
 
 # 1) Constant profit for every feasible (pu, action)
 p1 <- add_profit(p, profit = 10)
-#> Error: object 'p' not found
 p1$data$dist_profit
-#> Error: object 'p1' not found
+#>   pu      action profit internal_pu internal_action
+#> 1  1     harvest     10           1               1
+#> 5  1 restoration     10           1               2
+#> 2  2     harvest     10           2               1
+#> 6  2 restoration     10           2               2
+#> 3  3     harvest     10           3               1
+#> 7  3 restoration     10           3               2
+#> 4  4     harvest     10           4               1
+#> 8  4 restoration     10           4               2
 
 # 2) Profit per action using a named vector
 pr <- c(harvest = 50, restoration = -5)
 p2 <- add_profit(p, profit = pr)
-#> Error: object 'p' not found
 p2$data$dist_profit
-#> Error: object 'p2' not found
+#>   pu      action profit internal_pu internal_action
+#> 1  1     harvest     50           1               1
+#> 5  1 restoration     -5           1               2
+#> 2  2     harvest     50           2               1
+#> 6  2 restoration     -5           2               2
+#> 3  3     harvest     50           3               1
+#> 7  3 restoration     -5           3               2
+#> 4  4     harvest     50           4               1
+#> 8  4 restoration     -5           4               2
 
 # 3) Profit per action using a data frame
 pr_df <- data.frame(
@@ -205,9 +217,16 @@ pr_df <- data.frame(
   profit = c(40, 15)
 )
 p3 <- add_profit(p, profit = pr_df)
-#> Error: object 'p' not found
 p3$data$dist_profit
-#> Error: object 'p3' not found
+#>   pu      action profit internal_pu internal_action
+#> 1  1     harvest     40           1               1
+#> 2  1 restoration     15           1               2
+#> 3  2     harvest     40           2               1
+#> 4  2 restoration     15           2               2
+#> 5  3     harvest     40           3               1
+#> 6  3 restoration     15           3               2
+#> 7  4     harvest     40           4               1
+#> 8  4 restoration     15           4               2
 
 # 4) Profit per (pu, action) pair
 pr_pair <- data.frame(
@@ -216,7 +235,9 @@ pr_pair <- data.frame(
   profit = c(100, 80, 30)
 )
 p4 <- add_profit(p, profit = pr_pair)
-#> Error: object 'p' not found
 p4$data$dist_profit
-#> Error: object 'p4' not found
+#>   pu      action profit internal_pu internal_action
+#> 1  1     harvest    100           1               1
+#> 3  2     harvest     80           2               1
+#> 6  3 restoration     30           3               2
 ```

@@ -3,6 +3,7 @@
 <url><loc>https://josesalgr.github.io/paretoscape/authors.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/CONTRIBUTING.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/index.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/LICENSE.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/news/index.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/reference/add_actions.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/reference/add_action_max_per_pu.html</loc></url>
@@ -63,6 +64,16 @@
 <url><loc>https://josesalgr.github.io/paretoscape/reference/set_solver_symphony.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/reference/show.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/reference/simData.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_boundary_data.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_dist_features.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_dist_features_data.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_dist_threats_data.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_features.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_features_data.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_pu_data.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_pu_sf.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_sensitivity_data.html</loc></url>
+<url><loc>https://josesalgr.github.io/paretoscape/reference/sim_threats_data.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/reference/solution-class.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/reference/solutionset-class.html</loc></url>
 <url><loc>https://josesalgr.github.io/paretoscape/reference/solve.html</loc></url>

@@ -268,19 +268,19 @@ print(p)
 #> │└─features: 2 total ("sp1", "sp2")
 #> └─actions and effects
 #> │├─actions: 2 total ("Conservation", "Restoration")
-#> │├─dist_actions: 6 feasible rows
+#> │├─feasible action pairs: 6 feasible rows
 #> │├─action costs: min: 2, max: 4
-#> │├─dist_effects: none specified
-#> │└─dist_profit: none specified
+#> │├─effect data: none
+#> │└─profit data: none
 #> └─spatial
 #> │├─geometry: none
-#> │├─pu_coords: none
+#> │├─coordinates: none
 #> │└─relations: none
 #> └─targets and constraints
 #> │├─targets: none
 #> │├─area constraints: none
-#> │├─pu_locks: none
-#> │└─action_locks: none
+#> │├─planning-unit locks: none
+#> │└─action locks: none
 #> └─model
 #> │├─status: not built yet (will build in solve())
 #> │├─objectives: none

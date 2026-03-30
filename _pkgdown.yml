@@ -123,4 +123,3 @@ reference:
     desc: Simulated datasets distributed with the package.
     contents:
       - starts_with("sim_")
-      - simData

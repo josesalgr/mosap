@@ -170,7 +170,7 @@ We now add a relative target requiring each feature to reach at least 20% of its
 ```{r}
 p <- add_targets_relative(
   x = p,
-  targets = 0.20
+  targets = 0.05
 )
 
 print(p)

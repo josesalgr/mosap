@@ -427,19 +427,19 @@ print(p1)
 #> │├─costs: min: 1, max: 4
 #> │└─features: 2 total ("feature_1", "feature_2")
 #> └─actions and effects
-#> │├─actions: none specified
-#> │├─dist_actions: none
-#> │├─dist_effects: none specified
-#> │└─dist_profit: none specified
+#> │├─actions: none
+#> │├─feasible action pairs: none
+#> │├─effect data: none
+#> │└─profit data: none
 #> └─spatial
 #> │├─geometry: none
-#> │├─pu_coords: none
+#> │├─coordinates: none
 #> │└─relations: none
 #> └─targets and constraints
 #> │├─targets: none
 #> │├─area constraints: none
-#> │├─pu_locks: none
-#> │└─action_locks: none
+#> │├─planning-unit locks: none
+#> │└─action locks: none
 #> └─model
 #> │├─status: not built yet (will build in solve())
 #> │├─objectives: none
@@ -467,19 +467,19 @@ print(p2)
 #> │├─costs: min: 1, max: 1
 #> │└─features: 155 total ("ACCGENT", "ACCNISU", "ACRARUN", ...)
 #> └─actions and effects
-#> │├─actions: none specified
-#> │├─dist_actions: none
-#> │├─dist_effects: none specified
-#> │└─dist_profit: none specified
+#> │├─actions: none
+#> │├─feasible action pairs: none
+#> │├─effect data: none
+#> │└─profit data: none
 #> └─spatial
 #> │├─geometry: sf (11109 rows)
-#> │├─pu_coords: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)
+#> │├─coordinates: 11109 rows (x: 2868900..3007900, y: 2110700..2280700)
 #> │└─relations: none
 #> └─targets and constraints
 #> │├─targets: none
 #> │├─area constraints: none
-#> │├─pu_locks: none
-#> │└─action_locks: none
+#> │├─planning-unit locks: none
+#> │└─action locks: none
 #> └─model
 #> │├─status: not built yet (will build in solve())
 #> │├─objectives: none
