@@ -5,8 +5,10 @@
 
 <!-- badges: start -->
 
-[![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![lifecycle](https://img.shields.io/badge/Lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html)
+[![R-CMD-check-Ubuntu](https://github.com/josesalgr/paretoscape/actions/workflows/R-CMD-check-ubuntu.yaml/badge.svg)](https://github.com/josesalgr/paretoscape/actions)
+[![R-CMD-check-Windows](https://github.com/josesalgr/paretoscape/actions/workflows/R-CMD-check-windows.yaml/badge.svg)](https://github.com/josesalgr/paretoscape/actions)
+[![R-CMD-check-MacOS](https://github.com/josesalgr/paretoscape/actions/workflows/R-CMD-check-macos.yaml/badge.svg)](https://github.com/josesalgr/paretoscape/actions)
 <!-- badges: end -->
 
 `paretoscape` provides an exact optimisation framework for
