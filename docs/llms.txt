@@ -1,4 +1,4 @@
-# multiscape: Multi-Objective integrated spatial Planning in R
+# Multi-Objective spatial planning in R
 
 `multiscape` provides an exact optimisation framework for
 **multi-objective spatial planning** in problems where decisions are
