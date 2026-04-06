@@ -265,5 +265,5 @@ already materialized as a built optimization model.
 [`create_problem`](https://josesalgr.github.io/multiscape/reference/create_problem.md),
 [`add_actions`](https://josesalgr.github.io/multiscape/reference/add_actions.md),
 [`add_effects`](https://josesalgr.github.io/multiscape/reference/add_effects.md),
-`add_targets_absolute`,
+[`add_constraint_targets_absolute`](https://josesalgr.github.io/multiscape/reference/add_constraint_targets_absolute.md),
 [`solve`](https://josesalgr.github.io/multiscape/reference/solve.md)

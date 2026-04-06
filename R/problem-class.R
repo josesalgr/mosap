@@ -183,7 +183,7 @@ NULL
 #' \code{\link{create_problem}},
 #' \code{\link{add_actions}},
 #' \code{\link{add_effects}},
-#' \code{\link{add_targets_absolute}},
+#' \code{\link{add_constraint_targets_absolute}},
 #' \code{\link{solve}}
 NULL
 
