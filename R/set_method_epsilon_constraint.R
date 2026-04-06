@@ -225,7 +225,7 @@
 #'
 #' @seealso
 #' \code{\link{set_method_augmecon}},
-#' \code{\link{set_method_weighted}},
+#' \code{\link{set_method_weighted_sum}},
 #' \code{\link{solve}}
 #'
 #' @export
