@@ -1191,7 +1191,6 @@
   x
 }
 
-
 .pa_build_model_apply_constraints <- function(x) {
 
   if (!is.null(x$data$targets) &&
@@ -1209,6 +1208,10 @@
 
   if (exists(".pa_apply_area_constraints_if_present", mode = "function")) {
     x <- .pa_apply_area_constraints_if_present(x)
+  }
+
+  if (exists(".pa_apply_budget_constraints_if_present", mode = "function")) {
+    x <- .pa_apply_budget_constraints_if_present(x)
   }
 
   x

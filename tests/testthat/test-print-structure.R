@@ -60,3 +60,25 @@ test_that("printing SolutionSet does not fail", {
 
   expect_no_error(print(s))
 })
+
+
+test_that("printing Problem with area and budget constraints does not fail", {
+  toy <- toy_multiaction_semantics()
+
+  p <- multiscape::create_problem(
+    pu = transform(toy$pu, area_ha = c(1, 1, 1, 1, 1)),
+    features = toy$features,
+    dist_features = toy$dist_features,
+    cost = "cost"
+  ) |>
+    multiscape::add_actions(actions = toy$actions, cost = c(conservation = 1, restoration = 2)) |>
+    multiscape::add_constraint_area(area = 2, sense = "max", area_col = "area_ha") |>
+    multiscape::add_constraint_budget(
+      budget = 10,
+      sense = "max",
+      include_pu_cost = TRUE,
+      include_action_cost = TRUE
+    )
+
+  expect_no_error(print(p))
+})
