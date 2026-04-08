@@ -7,35 +7,31 @@ NULL
 #' Fix feasible planning unit--action decisions to be selected or excluded.
 #'
 #' This function modifies the status of existing feasible
-#' \code{(pu, action)} pairs stored in \code{x$data$dist_actions}. It does not
+#' \code{(pu, action)} pairs stored in the feasible action table. It does not
 #' create new feasible action pairs and therefore must be used only after
 #' \code{\link{add_actions}} has been called.
 #'
-#' Locked decisions are represented through status codes:
-#' \itemize{
-#'   \item \code{0}: free decision,
-#'   \item \code{2}: locked in,
-#'   \item \code{3}: locked out.
-#' }
-#'
 #' @details
-#' Let \eqn{\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}} denote the set
-#' of feasible planning unit--action pairs already defined in
-#' \code{x$data$dist_actions}, where \eqn{\mathcal{P}} is the set of planning
-#' units and \eqn{\mathcal{A}} is the set of actions.
+#' Use this function when only specific feasible \code{(pu, action)} decisions
+#' must be forced in or out of the solution, rather than whole planning units.
+#'
+#' Let \eqn{\mathcal{I}} denote the set of planning units and
+#' \eqn{\mathcal{A}} the set of actions. Let
+#' \eqn{\mathcal{D} \subseteq \mathcal{I} \times \mathcal{A}} denote the set of
+#' feasible planning unit--action pairs already defined in the problem.
 #'
 #' This function allows the user to define two subsets:
 #' \itemize{
-#'   \item \eqn{\mathcal{L}^{in} \subseteq \mathcal{F}}, the set of feasible
+#'   \item \eqn{\mathcal{D}^{in} \subseteq \mathcal{D}}, the set of feasible
 #'   pairs that must be selected,
-#'   \item \eqn{\mathcal{L}^{out} \subseteq \mathcal{F}}, the set of feasible
+#'   \item \eqn{\mathcal{D}^{out} \subseteq \mathcal{D}}, the set of feasible
 #'   pairs that must not be selected.
 #' }
 #'
-#' These sets are encoded by updating the \code{status} column of
-#' \code{x$data$dist_actions}. The function validates that all requested
-#' locked-in and locked-out pairs are already feasible. Therefore, it cannot be
-#' used to introduce new planning unit--action combinations into the problem.
+#' These sets are encoded by updating the \code{status} column of the feasible
+#' action table. The function validates that all requested locked-in and
+#' locked-out pairs are already feasible. Therefore, it cannot be used to
+#' introduce new planning unit--action combinations into the problem.
 #'
 #' In optimization terms, if \eqn{x_{ia}} denotes the decision variable
 #' associated with planning unit \eqn{i} and action \eqn{a}, then:
@@ -46,6 +42,10 @@ NULL
 #'
 #' The exact translation into solver-side constraints occurs later when the
 #' model is built.
+#'
+#' In contrast, \code{\link{add_constraint_locked_pu}} fixes whole planning
+#' units through the unit-selection variables, whereas this function fixes only
+#' specific feasible \code{(pu, action)} decisions.
 #'
 #' \strong{Accepted formats}
 #'
@@ -63,7 +63,7 @@ NULL
 #' treated as \code{FALSE}.
 #'
 #' If an \code{sf} specification is supplied, the problem object must contain
-#' \code{x$data$pu_sf}, and planning units are matched spatially using
+#' planning-unit geometry, and planning units are matched spatially using
 #' \code{sf::st_intersects()}.
 #'
 #' \strong{Conflict checking}
@@ -72,16 +72,16 @@ NULL
 #' \code{locked_in} and \code{locked_out}. Such overlaps are rejected.
 #'
 #' In addition, if a planning unit is already marked as locked out at the
-#' planning-unit level through \code{x$data$pu$locked_out}, then all feasible
-#' actions in that planning unit are forced to \code{status = 3}. Any attempt to
-#' lock in an action within such a planning unit raises an error.
+#' planning-unit level, then all feasible actions in that planning unit are
+#' forced to \code{status = 3}. Any attempt to lock in an action within such a
+#' planning unit raises an error.
 #'
 #' \strong{Order of precedence}
 #'
 #' User-supplied locked-in and locked-out action requests are first applied to
-#' \code{x$data$dist_actions}. Afterwards, any planning-unit-level
-#' \code{locked_out} flag stored in \code{x$data$pu} is enforced, overriding
-#' action-level status and ensuring consistency with planning-unit exclusions.
+#' the feasible action table. Afterwards, any planning-unit-level
+#' \code{locked_out} flag is enforced, overriding action-level status and
+#' ensuring consistency with planning-unit exclusions.
 #'
 #' @param x A \code{Problem} object with action feasibility already defined via
 #'   \code{\link{add_actions}}.
@@ -94,9 +94,9 @@ NULL
 #'   pairs that must not be selected. It may be \code{NULL}, a
 #'   \code{data.frame}, or a named list.
 #'
-#' @return An updated \code{Problem} object in which
-#'   \code{x$data$dist_actions$status} has been modified to reflect locked-in and
-#'   locked-out decisions.
+#' @return An updated \code{Problem} object in which the status column of the
+#'   feasible action table has been modified to reflect locked-in and locked-out
+#'   decisions.
 #'
 #' @examples
 #' pu <- data.frame(

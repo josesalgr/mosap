@@ -72,8 +72,8 @@ optional planning-unit and action-cost penalties.</p>
 
 
 <dt id="arg-profit-col">profit_col<a class="anchor" aria-label="anchor" href="#arg-profit-col"></a></dt>
-<dd><p>Character string giving the profit column in
-<code>x$data$dist_profit</code>.</p></dd>
+<dd><p>Character string giving the profit column in the stored
+profit table.</p></dd>
 
 
 <dt id="arg-include-pu-cost">include_pu_cost<a class="anchor" aria-label="anchor" href="#arg-include-pu-cost"></a></dt>
@@ -101,7 +101,10 @@ multi-objective workflows.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let:</p><ul><li><p>\(x_{ia} \in \{0,1\}\) denote whether action \(a\) is selected
+    <p>Use this function when decisions generate returns and the objective should
+optimize the resulting net balance after subtracting selected cost
+components.</p>
+<p>Let:</p><ul><li><p>\(x_{ia} \in \{0,1\}\) denote whether action \(a\) is selected
 in planning unit \(i\),</p></li>
 <li><p>\(w_i \in \{0,1\}\) denote whether planning unit \(i\) is
 selected,</p></li>
@@ -112,15 +115,15 @@ selected,</p></li>
 </ul><p>In its most general form, the objective is:</p>
 <p>$$
 \max \left(
-\sum_{(i,a) \in \mathcal{F}^{\star}} \pi_{ia} x_{ia}
+\sum_{(i,a) \in \mathcal{D}^{\star}} \pi_{ia} x_{ia}
 -
-\sum_{i \in \mathcal{P}} c_i^{PU} w_i
+\sum_{i \in \mathcal{I}} c_i^{PU} w_i
 -
-\sum_{(i,a) \in \mathcal{F}^{\star}} c_{ia}^{A} x_{ia}
+\sum_{(i,a) \in \mathcal{D}^{\star}} c_{ia}^{A} x_{ia}
 \right),
 $$</p>
-<p>where \(\mathcal{F}^{\star}\) denotes the subset of feasible
-planning unit–action pairs included in the objective.</p>
+<p>where \(\mathcal{D}^{\star}\) denotes the subset of feasible
+planning unit–action decisions included in the objective.</p>
 <p>If <code>actions = NULL</code>, all feasible actions contribute to both the profit
 term and the action-cost term.</p>
 <p>If <code>actions</code> is provided, the profit term and the action-cost term are
@@ -128,9 +131,6 @@ restricted to that subset. The planning-unit cost term, if included, remains
 global.</p>
 <p>If <code>include_pu_cost = FALSE</code>, the planning-unit cost term is omitted.</p>
 <p>If <code>include_action_cost = FALSE</code>, the action-cost term is omitted.</p>
-<p>This objective is appropriate when decisions generate revenues or returns and
-the analyst wishes to optimize the resulting net balance after accounting for
-selected cost components.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

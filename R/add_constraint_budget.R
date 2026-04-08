@@ -9,16 +9,20 @@
 #' \code{Problem} object so that it can later be incorporated when the
 #' optimization model is assembled. Multiple budget constraints can be added by
 #' calling this function repeatedly, provided that no duplicated combination of
-#' \code{actions} and \code{sense} is introduced.
+#' action subset and constraint sense is introduced.
 #'
 #' @details
-#' Let \eqn{\mathcal{P}} denote the set of planning units and let
+#' Use this function when spending limits or minimum spending requirements must
+#' be imposed either on the full problem or on the subset of selected decisions
+#' associated with specific actions.
+#'
+#' Let \eqn{\mathcal{I}} denote the set of planning units and let
 #' \eqn{\mathcal{A}} denote the set of actions. Let
 #' \eqn{w_i \in \{0,1\}} denote the binary variable indicating whether planning
-#' unit \eqn{i \in \mathcal{P}} is selected by at least one decision in the
+#' unit \eqn{i \in \mathcal{I}} is selected by at least one decision in the
 #' model, and let \eqn{x_{ia} \in \{0,1\}} denote the binary variable
 #' indicating whether action \eqn{a \in \mathcal{A}} is selected in planning
-#' unit \eqn{i \in \mathcal{P}}.
+#' unit \eqn{i \in \mathcal{I}}.
 #'
 #' The total constrained budget can include two cost components:
 #'
@@ -38,18 +42,18 @@
 #'
 #' If only planning-unit costs are included:
 #' \deqn{
-#' \sum_{i \in \mathcal{P}} c_i^{pu} w_i
+#' \sum_{i \in \mathcal{I}} c_i^{pu} w_i
 #' }
 #'
 #' If only action costs are included:
 #' \deqn{
-#' \sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}} c_{ia}^{act} x_{ia}
+#' \sum_{i \in \mathcal{I}} \sum_{a \in \mathcal{A}} c_{ia}^{act} x_{ia}
 #' }
 #'
 #' If both components are included:
 #' \deqn{
-#' \sum_{i \in \mathcal{P}} c_i^{pu} w_i +
-#' \sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}} c_{ia}^{act} x_{ia}
+#' \sum_{i \in \mathcal{I}} c_i^{pu} w_i +
+#' \sum_{i \in \mathcal{I}} \sum_{a \in \mathcal{A}} c_{ia}^{act} x_{ia}
 #' }
 #'
 #' Depending on \code{sense}, this function stores one of the following
@@ -70,7 +74,8 @@
 #' C = B
 #' }
 #'
-#' If \code{sense = "equal"} and \code{tolerance > 0}:
+#' If \code{sense = "equal"} and \code{tolerance > 0}, the equality is stored as
+#' a two-sided band:
 #' \deqn{
 #' B - \tau \le C \le B + \tau
 #' }
@@ -78,21 +83,20 @@
 #' where \eqn{C} denotes the selected cost expression and \eqn{\tau} is the
 #' value supplied through \code{tolerance}.
 #'
-#' When \code{actions} is not \code{NULL}, the constraint is applied only to the
-#' selected decisions associated with the specified subset of actions. Let
-#' \eqn{\mathcal{A}^*} denote that subset. In that case, the constrained
-#' quantity is
+#' When \code{actions} is not \code{NULL}, only action costs can be included.
+#' In that case, let \eqn{\mathcal{A}^\star \subseteq \mathcal{A}} denote the
+#' selected subset of actions, and the constrained quantity is
 #' \deqn{
-#' \sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}^*} c_{ia}^{act} x_{ia}.
+#' \sum_{i \in \mathcal{I}} \sum_{a \in \mathcal{A}^\star} c_{ia}^{act} x_{ia}.
 #' }
 #'
 #' Action-specific budget constraints only support action costs. Therefore,
 #' \code{include_pu_cost = TRUE} is only allowed when \code{actions = NULL},
 #' because planning-unit costs are not action-specific.
 #'
-#' This function only stores the constraint specification in
-#' \code{x$data$constraints$budget}; it does not validate the feasibility of
-#' the threshold against the available cost data at this stage.
+#' This function only stores the constraint specification; it does not validate
+#' the feasibility of the threshold against the available cost data at this
+#' stage.
 #'
 #' Multiple budget constraints can be stored in a \code{Problem} object.
 #' However, at most one can be stored for the same combination of action subset
@@ -129,7 +133,7 @@
 #'   \code{NULL}, a default name is generated.
 #'
 #' @return An updated \code{Problem} object with the new budget-constraint
-#'   specification appended to \code{x$data$constraints$budget}.
+#'   specification appended to the stored budget-constraint table.
 #'
 #' @seealso
 #' \code{\link{create_problem}}

@@ -55,6 +55,10 @@ An updated `Problem` object.
 
 ## Details
 
+Use this function when neighbourhood should be defined by a fixed
+distance radius rather than by polygon topology or a fixed number of
+neighbours.
+
 Let \\s_i = (x_i, y_i)\\ denote the coordinates of planning unit \\i\\.
 Let \\d\_{ij}\\ be the Euclidean distance between planning units \\i\\
 and \\j\\.
@@ -72,7 +76,7 @@ Edge weights are assigned according to `weight_mode`:
 - `"inverse_sq"`: \$\$\omega\_{ij} = \frac{1}{\max(d\_{ij},
   \varepsilon)^2},\$\$
 
-where \\\varepsilon = \code{distance_eps}\\ is a small constant.
+where \\\varepsilon\\ = `distance_eps` is a small constant.
 
 The implementation computes an \\O(n^2)\\ distance matrix and is
 therefore best suited to small or moderate numbers of planning units.

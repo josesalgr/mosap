@@ -40,13 +40,16 @@ An updated `Problem` object.
 
 ## Details
 
+Use this function when neighbourhood should include both shared edges
+and corner-touching polygon contacts.
+
 This constructor derives an adjacency graph from polygon geometry using
 a queen criterion. If planning units \\i\\ and \\j\\ touch at any
 boundary point, then an edge \\(i,j)\\ is added to the relation.
 
-Let \\G = (V,E)\\ denote the resulting graph. Then: \$\$ (i,j) \in E
-\quad \Longleftrightarrow \quad \partial i \cap \partial j \neq
-\varnothing. \$\$
+Let \\G = (\mathcal{I}, E)\\ denote the resulting graph. Then: \$\$
+(i,j) \in E \quad \Longleftrightarrow \quad \partial i \cap \partial j
+\neq \varnothing. \$\$
 
 Thus, queen adjacency includes all rook neighbours plus corner-touching
 neighbours.

@@ -1,20 +1,60 @@
 #' Compile the optimization model stored in a Problem
 #'
 #' @description
-#' Materializes the optimization model represented by a `Problem` object without
-#' solving it. This is an advanced function mainly intended for debugging,
-#' inspection, and explicit model preparation.
+#' Materializes the optimization model represented by a \code{Problem} object
+#' without solving it. This is an advanced function mainly intended for
+#' debugging, inspection, and explicit model preparation.
 #'
 #' In standard workflows, users normally do not need to call this function,
-#' because [solve()] compiles the model automatically when needed.
+#' because \code{\link{solve}} compiles the model automatically when needed.
 #'
-#' @param x A `Problem` object.
-#' @param force Logical. If `TRUE`, rebuild the model even if a current compiled
-#'   model already exists.
+#' @details
+#' Use this function when you want to prepare the optimization model explicitly
+#' before solving, inspect compiled model structures, or verify that the problem
+#' compiles successfully.
+#'
+#' Conceptually, a \code{Problem} object stores a declarative optimization
+#' specification: planning data, actions, effects, targets, constraints,
+#' objectives, spatial relations, and optional method or solver settings.
+#' \code{compile_model()} transforms that stored specification into an internal
+#' compiled model representation that can later be reused by the solving layer.
+#'
+#' The exact compiled representation is implementation-specific, but it may
+#' include indexed variables, prepared constraint blocks, objective structures,
+#' and internal model snapshots or pointers.
+#'
+#' Compilation does not solve the optimization problem. Therefore, a problem may
+#' compile successfully and still later be infeasible, numerically difficult, or
+#' otherwise fail during solver execution.
+#'
+#' @param x A \code{Problem} object.
+#' @param force Logical. If \code{TRUE}, rebuild the model even if a current
+#'   compiled model already exists.
 #' @param ... Reserved for future extensions.
 #'
 #' @return
-#' A `Problem` object with compiled model structures stored internally.
+#' A \code{Problem} object with compiled model structures stored internally.
+#'
+#' @examples
+#' \dontrun{
+#' x <- create_problem(
+#'   pu = pu,
+#'   features = features,
+#'   dist_features = dist_features
+#' )
+#'
+#' x <- x |>
+#'   add_constraint_targets_relative(0.3) |>
+#'   add_objective_min_cost(alias = "cost")
+#'
+#' x <- compile_model(x)
+#'
+#' # Force recompilation
+#' x <- compile_model(x, force = TRUE)
+#' }
+#'
+#' @seealso
+#' \code{\link{solve}}
 #'
 #' @export
 compile_model <- function(x, force = FALSE, ...) {

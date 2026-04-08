@@ -32,22 +32,23 @@ and bookkeeping.}
 }
 \value{
 An updated \code{Problem} object with absolute targets appended to
-\code{x$data$targets}.
+the stored target table.
 }
 \description{
 Add feature-level absolute targets to a planning problem.
 
-These targets are stored in \code{x$data$targets} and later translated into
-linear constraints when the optimization model is built.
-
-Absolute targets are interpreted directly in the same units as the feature
-contributions used by the model.
-
-Each call appends one or more target definitions to the problem. This makes
+These targets are stored in the problem object and later translated into
+linear constraints when the optimization model is built. Absolute targets
+are interpreted directly in the same units as the feature
+contributions used by the model. Each call appends one or more target definitions to the problem. This makes
 it possible to combine multiple target rules, including targets associated
 with different action subsets.
 }
 \details{
+Use this function when target requirements are naturally expressed in the
+original units of the modelled feature contributions, rather than as
+proportions of current baseline totals.
+
 Let \eqn{\mathcal{F}} denote the set of features. For each targeted feature
 \eqn{f \in \mathcal{F}}, this function stores an absolute target threshold
 \eqn{T_f \ge 0}.
@@ -55,16 +56,18 @@ Let \eqn{\mathcal{F}} denote the set of features. For each targeted feature
 When the optimization model is built, each such target is interpreted as a
 lower-bound constraint of the form:
 \deqn{
-\sum_{(i,a) \in \mathcal{S}_f} c_{iaf} x_{ia} \ge T_f,
+\sum_{(i,a) \in \mathcal{D}_f^{\star}} c_{iaf} x_{ia} \ge T_f,
 }
 where:
 \itemize{
+\item \eqn{i \in \mathcal{I}} indexes planning units,
+\item \eqn{a \in \mathcal{A}} indexes actions,
 \item \eqn{x_{ia}} indicates whether action \eqn{a} is selected in planning
 unit \eqn{i},
 \item \eqn{c_{iaf}} is the contribution of that action to feature
 \eqn{f},
-\item \eqn{\mathcal{S}_f} is the set of planning unit--action pairs allowed
-to count toward the target.
+\item \eqn{\mathcal{D}_f^{\star}} is the subset of planning unit--action
+pairs allowed to count toward the target for feature \eqn{f}.
 }
 
 In the absolute case, the stored target threshold is simply:
@@ -93,14 +96,9 @@ If \code{targets} does not explicitly identify features:
 respect to that feature set.
 }
 
-Internally, targets added by this function are stored with:
-\itemize{
-\item \code{type = "actions"},
-\item \code{sense = "ge"},
-\item \code{target_unit = "absolute"},
-\item \code{target_raw = target_value},
-\item \code{basis_total = NA}.
-}
+Repeated calls append new target rules rather than replacing previous ones.
+This allows cumulative target modelling, including multiple rules on the same
+feature with different contributing action subsets.
 }
 \examples{
 \dontrun{

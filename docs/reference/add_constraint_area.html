@@ -10,12 +10,12 @@ This function stores one area-constraint specification in the
 Problem object so that it can later be incorporated when the
 optimization model is assembled. Multiple area constraints can be added by
 calling this function repeatedly, provided that no duplicated combination of
-actions and sense is introduced."><meta property="og:description" content="Add an area constraint to a planning problem.
+action subset and constraint sense is introduced."><meta property="og:description" content="Add an area constraint to a planning problem.
 This function stores one area-constraint specification in the
 Problem object so that it can later be incorporated when the
 optimization model is assembled. Multiple area constraints can be added by
 calling this function repeatedly, provided that no duplicated combination of
-actions and sense is introduced."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
+action subset and constraint sense is introduced."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
@@ -60,7 +60,7 @@ actions and sense is introduced."><meta property="og:image" content="https://jos
 <code>Problem</code> object so that it can later be incorporated when the
 optimization model is assembled. Multiple area constraints can be added by
 calling this function repeatedly, provided that no duplicated combination of
-<code>actions</code> and <code>sense</code> is introduced.</p>
+action subset and constraint sense is introduced.</p>
     </div>
 
     <div class="section level2">
@@ -135,8 +135,12 @@ specification appended to <code>x$data$constraints$area</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(\mathcal{P}\) denote the set of planning units and let
-\(a_i \ge 0\) be the area associated with planning unit \(i \in \mathcal{P}\).</p>
+    <p>Use this function when area requirements must be imposed either on the total
+selected landscape or on the subset of selected decisions associated with
+specific actions.</p>
+<p>Let \(\mathcal{I}\) denote the set of planning units and let
+\(a_i \ge 0\) be the area associated with planning unit
+\(i \in \mathcal{I}\)</p>
 <p>When <code>actions = NULL</code>, the constraint refers to the total selected area
 in the problem. In that case, let \(w_i \in \{0,1\}\) denote the binary
 variable indicating whether planning unit \(i\) is selected by at least one
@@ -145,41 +149,42 @@ decision in the model.</p>
 constraints:</p>
 <p>If <code>sense = "min"</code>:
 $$
-\sum_{i \in \mathcal{P}} a_i w_i \ge A
+\sum_{i \in \mathcal{I}} a_i w_i \ge A
 $$</p>
 <p>If <code>sense = "max"</code>:
 $$
-\sum_{i \in \mathcal{P}} a_i w_i \le A
+\sum_{i \in \mathcal{I}} a_i w_i \le A
 $$</p>
 <p>If <code>sense = "equal"</code> and <code>tolerance = 0</code>:
 $$
-\sum_{i \in \mathcal{P}} a_i w_i = A
+\sum_{i \in \mathcal{I}} a_i w_i = A
 $$</p>
-<p>If <code>sense = "equal"</code> and <code>tolerance &gt; 0</code>:
+<p>If <code>sense = "equal"</code> and <code>tolerance &gt; 0</code>, the equality is stored as
+a two-sided band:
 $$
-A - \tau \le \sum_{i \in \mathcal{P}} a_i w_i \le A + \tau
+A - \tau \le \sum_{i \in \mathcal{I}} a_i w_i \le A + \tau
 $$
 where \(\tau\) is the value supplied through <code>tolerance</code>.</p>
 <p>When <code>actions</code> is not <code>NULL</code>, the constraint is applied only to the
 selected decisions associated with the specified subset of actions. Let
-\(\mathcal{A}^*\) denote that subset and let
+\(\mathcal{A}^\star \subseteq \mathcal{A}\) denote that subset and let
 \(x_{ia} \in \{0,1\}\) denote the binary variable indicating whether action
-\(a \in \mathcal{A}^*\) is selected in planning unit
-\(i \in \mathcal{P}\). In that case, the constrained quantity is
+\(a \in \mathcal{A}^\star\) is selected in planning unit
+\(i \in \mathcal{I}\). In that case, the constrained quantity is
 $$
-\sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}^*} a_i x_{ia}.
+\sum_{i \in \mathcal{I}} \sum_{a \in \mathcal{A}^\star} a_i x_{ia}.
 $$</p>
 <p>Under formulations where at most one action can be selected per planning
 unit, this coincides with the area allocated to that subset of actions.</p>
-<p>Areas are obtained from <code>x$data$pu</code>. If <code>area_col</code> is provided, that
-column is used. Otherwise, the model builder later determines the default
-area source according to the internal rules of the package. The value of
-<code>area_unit</code> indicates the unit in which <code>area</code> and
+<p>Areas are obtained from the planning-unit table. If <code>area_col</code> is
+provided, that column is used. Otherwise, the model builder later determines
+the default area source according to the internal rules of the package. The
+value of <code>area_unit</code> indicates the unit in which <code>area</code> and
 <code>tolerance</code> are expressed and therefore how the stored threshold should
 be interpreted.</p>
-<p>This function only stores the constraint specification in
-<code>x$data$constraints$area</code>; it does not validate the feasibility of the
-threshold against the available planning units at this stage.</p>
+<p>This function only stores the constraint specification; it does not validate
+the feasibility of the threshold against the available planning units at this
+stage.</p>
 <p>Multiple area constraints can be stored in a <code>Problem</code> object. However,
 at most one can be stored for the same combination of action subset and
 constraint sense. Attempting to add a duplicated

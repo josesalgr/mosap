@@ -25,14 +25,22 @@ problem, or
 \item a \code{\link{solutionset-class}} object when solving a configured
 multi-objective problem.
 }
+
+A \code{Solution} represents one optimization run. A \code{SolutionSet}
+represents multiple runs together with their run table, design information,
+and individual \code{Solution} objects.
+
+After solving, users will typically inspect or visualize the returned results
+through methods associated with \code{Solution} and
+\code{SolutionSet} objects.
 }
 \description{
 Solve a planning problem stored in a \code{Problem} object.
 
-This is the main execution step of the \pkg{multiscape} workflow. It reads the
-problem specification stored in \code{x$data}, builds the corresponding
-optimization model when needed, applies the configured solver settings, and
-returns either a \code{\link{solution-class}} or a
+This is the main execution step of the \pkg{multiscape} workflow. It reads
+the problem specification stored in a \code{Problem} object, builds the
+corresponding optimization model when needed, applies the configured solver
+settings, and returns either a \code{\link{solution-class}} or a
 \code{\link{solutionset-class}} depending on whether the workflow is
 single-objective or multi-objective.
 }
@@ -47,20 +55,24 @@ x <- set_...(x, ...)
 res <- solve(x)
 }
 
-Thus, \code{solve()} is the stage at which the stored problem specification is
-turned into one or more optimization runs.
+Thus, \code{solve()} is the stage at which the stored problem specification
+is turned into one or more optimization runs.
 
-\strong{What \code{solve()} reads from the problem object}
+For most users, \code{solve()} is the standard execution entry point.
+Explicit compilation with \code{compile_model()} is optional and is mainly
+useful for advanced inspection or debugging workflows.
 
-The function uses the information stored in \code{x$data}, including:
+\strong{What \code{solve()} uses from the problem object}
+
+The function uses the information already stored in the \code{Problem}
+object, including:
 \itemize{
 \item baseline planning data,
 \item actions, effects, profit, and spatial relations,
 \item targets and constraints,
 \item registered objectives,
-\item an optional multi-objective method configuration in
-\code{x$data$method},
-\item solver settings in \code{x$data$solve_args}.
+\item an optional multi-objective method configuration,
+\item solver settings.
 }
 
 If a model has not yet been built, it is built internally during the solve
@@ -71,45 +83,42 @@ reuse or refresh it depending on the internal model state.
 
 The behaviour of \code{solve()} depends on the problem configuration.
 
-\strong{Single-objective case}
+\itemize{
+\item \strong{Single-objective case.} If exactly one objective is active
+and no multi-objective method is configured, \code{solve()} runs a single
+optimization problem and returns a \code{\link{solution-class}} object.
 
-If exactly one objective is registered and no multi-objective method is
-configured, \code{solve()} runs a single optimization problem and returns a
-\code{\link{solution-class}} object.
+\item \strong{Multi-objective case.} If a multi-objective method is
+configured, \code{solve()} dispatches internally according to the stored
+method name and returns a \code{\link{solutionset-class}} object.
+}
 
-\strong{Multi-objective case}
-
-If a multi-objective method is configured in \code{x$data$method},
-\code{solve()} dispatches internally according to the stored method name.
-
-Currently supported method names are:
+Currently supported multi-objective method names are:
 \itemize{
 \item \code{"weighted"},
 \item \code{"epsilon_constraint"},
 \item \code{"augmecon"}.
 }
 
-In these cases, \code{solve()} runs the corresponding multi-objective solving
-workflow and returns a \code{\link{solutionset-class}} object.
-
-\strong{Consistency check}
+\strong{Consistency rule}
 
 If multiple objectives are registered but no multi-objective method has been
-selected, \code{solve()} stops with an error. In other words:
+selected, \code{solve()} stops with an error. In practical terms:
 
 \itemize{
-\item one objective and no MO method \eqn{\Rightarrow} single-objective
-solve,
-\item multiple objectives and a valid MO method \eqn{\Rightarrow}
-multi-objective solve,
-\item multiple objectives and no MO method \eqn{\Rightarrow} error.
+\item one objective and no multi-objective method
+\eqn{\Rightarrow} single-objective solve,
+\item multiple objectives and a valid multi-objective method
+\eqn{\Rightarrow} multi-objective solve,
+\item multiple objectives and no multi-objective method
+\eqn{\Rightarrow} error.
 }
 
 \strong{Solver settings}
 
-Solver configuration is read from \code{x$data$solve_args}, typically created
-with \code{\link{set_solver}} or one of its convenience wrappers such as
-\code{\link{set_solver_gurobi}}.
+Solver configuration is read from the \code{Problem} object, typically after
+calling \code{\link{set_solver}} or one of its convenience wrappers such as
+\code{\link{set_solver_gurobi}} or \code{\link{set_solver_cbc}}.
 
 These settings may include:
 \itemize{
@@ -121,54 +130,92 @@ These settings may include:
 \item backend-specific solver parameters.
 }
 
-\strong{Return value}
-
-The return type depends on the configured workflow:
-\itemize{
-\item \code{Solution}: for single-objective optimization,
-\item \code{SolutionSet}: for multi-objective optimization.
-}
-
-A \code{Solution} represents one optimization run. A \code{SolutionSet}
-represents multiple runs together with their run table, design information,
-and individual \code{Solution} objects.
-
 \strong{Method dispatch}
 
 \code{solve()} is an S3 generic. The public method documented here is
-\code{solve.Problem()}, which operates on \code{Problem} objects. solve() is
-the only function that should normally materialize the optimization model.
+\code{solve.Problem()}, which operates on \code{Problem} objects.
 }
 \examples{
-\dontrun{
 # ------------------------------------------------------------
-# Single-objective solve
+# Minimal single-objective example
 # ------------------------------------------------------------
+pu <- data.frame(
+  id = 1:4,
+  cost = c(1, 2, 3, 4)
+)
+
+features <- data.frame(
+  id = 1:2,
+  name = c("sp1", "sp2")
+)
+
+dist_features <- data.frame(
+  pu = c(1, 1, 2, 3, 4),
+  feature = c(1, 2, 2, 1, 2),
+  amount = c(5, 2, 3, 4, 1)
+)
+
+actions <- data.frame(
+  id = c("conservation", "restoration")
+)
+
+effects <- data.frame(
+  action = rep(c("conservation", "restoration"), each = 2),
+  feature = rep(features$id, times = 2),
+  multiplier = c(0.10, 0.10, 0.50, 0.50)
+)
+
 x <- create_problem(
   pu = pu,
   features = features,
   dist_features = dist_features
-)
+) |>
+  add_actions(
+    actions = actions,
+    cost = c(conservation = 1, restoration = 2)
+  ) |>
+  add_effects(
+    effects = effects,
+    effect_type = "after"
+  ) |>
+  add_constraint_targets_relative(0.05) |>
+  add_objective_min_cost(alias = "cost")
 
-x <- x |>
-  add_constraint_targets_relative(0.3) |>
+if (requireNamespace("rcbc", quietly = TRUE)) {
+  x <- set_solver_cbc(x, verbose = FALSE)
+  sol <- solve(x)
+  print(sol)
+}
+
+# ------------------------------------------------------------
+# Minimal multi-objective example
+# ------------------------------------------------------------
+x_mo <- create_problem(
+  pu = pu,
+  features = features,
+  dist_features = dist_features
+) |>
+  add_actions(
+    actions = actions,
+    cost = c(conservation = 1, restoration = 2)
+  ) |>
+  add_effects(
+    effects = effects,
+    effect_type = "after"
+  ) |>
+  add_constraint_targets_relative(0.05) |>
   add_objective_min_cost(alias = "cost") |>
-  set_solver_gurobi(time_limit = 300, gap_limit = 0.01)
-
-sol <- solve(x)
-
-# ------------------------------------------------------------
-# Multi-objective solve
-# ------------------------------------------------------------
-x <- x |>
-  add_objective_min_fragmentation(alias = "frag") |>
+  add_objective_max_benefit(alias = "benefit") |>
   set_method_weighted_sum(
-    aliases = c("cost", "frag"),
+    aliases = c("cost", "benefit"),
     weights = c(0.5, 0.5),
     normalize_weights = TRUE
   )
 
-solset <- solve(x)
+if (requireNamespace("rcbc", quietly = TRUE)) {
+  x_mo <- set_solver_cbc(x_mo, verbose = FALSE)
+  solset <- solve(x_mo)
+  print(solset)
 }
 
 }
@@ -176,7 +223,10 @@ solset <- solve(x)
 \code{\link{problem-class}},
 \code{\link{solution-class}},
 \code{\link{solutionset-class}},
+\code{\link{compile_model}},
 \code{\link{set_solver}},
+\code{\link{set_solver_cbc}},
+\code{\link{set_solver_gurobi}},
 \code{\link{set_method_weighted_sum}},
 \code{\link{set_method_epsilon_constraint}},
 \code{\link{set_method_augmecon}}

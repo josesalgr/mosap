@@ -3,10 +3,10 @@
 Define planning units that must be included in, or excluded from, the
 optimization problem.
 
-This function updates the planning-unit table stored in `x$data$pu` by
-creating or replacing the logical columns `locked_in` and `locked_out`.
-These columns are later used by the model builder when translating the
-`Problem` object into optimization constraints.
+This function updates the planning-unit table stored in the `Problem`
+object by creating or replacing the logical columns `locked_in` and
+`locked_out`. These columns are later used by the model builder when
+translating the problem into optimization constraints.
 
 Lock information may be supplied either directly as logical vectors, as
 vectors of planning-unit ids, or by referencing columns in the raw
@@ -29,43 +29,47 @@ add_constraint_locked_pu(x, locked_in = NULL, locked_out = NULL)
 - locked_in:
 
   Optional locked-in specification. It may be `NULL`, a column name in
-  `x$data$pu_data_raw`, a logical vector, or a vector of planning-unit
-  ids.
+  the raw planning-unit data, a logical vector, or a vector of
+  planning-unit ids.
 
 - locked_out:
 
   Optional locked-out specification. It may be `NULL`, a column name in
-  `x$data$pu_data_raw`, a logical vector, or a vector of planning-unit
-  ids.
+  the raw planning-unit data, a logical vector, or a vector of
+  planning-unit ids.
 
 ## Value
 
-An updated `Problem` object in which `x$data$pu` contains logical
-columns `locked_in` and `locked_out`.
+An updated `Problem` object in which the planning-unit table contains
+logical columns `locked_in` and `locked_out`.
 
 ## Details
 
-Let \\\mathcal{P}\\ denote the set of planning units and let \\w_i \in
+Use this function when whole planning units must be forced into or out
+of the solution, regardless of which action may later be selected in
+them.
+
+Let \\\mathcal{I}\\ denote the set of planning units and let \\w_i \in
 \\0,1\\\\ denote the binary variable indicating whether planning unit
-\\i \in \mathcal{P}\\ is selected by the model.
+\\i \in \mathcal{I}\\ is selected by the model.
 
 This function defines two subsets:
 
-- \\\mathcal{P}^{in} \subseteq \mathcal{P}\\, the planning units that
+- \\\mathcal{I}^{in} \subseteq \mathcal{I}\\, the planning units that
   must be included,
 
-- \\\mathcal{P}^{out} \subseteq \mathcal{P}\\, the planning units that
+- \\\mathcal{I}^{out} \subseteq \mathcal{I}\\, the planning units that
   must be excluded.
 
 Conceptually, these sets correspond to the following conditions:
 
-- if \\i \in \mathcal{P}^{in}\\, then \\w_i = 1\\,
+- if \\i \in \mathcal{I}^{in}\\, then \\w_i = 1\\,
 
-- if \\i \in \mathcal{P}^{out}\\, then \\w_i = 0\\.
+- if \\i \in \mathcal{I}^{out}\\, then \\w_i = 0\\.
 
 These constraints are not imposed immediately by this function; instead,
-they are stored in `x$data$pu$locked_in` and `x$data$pu$locked_out` and
-enforced later when building the optimization model.
+they are stored in the planning-unit table and enforced later when
+building the optimization model.
 
 **Philosophy**
 
@@ -76,16 +80,21 @@ Locking planning units is treated as a separate modelling step so that
 users can define or revise selection restrictions after the `Problem`
 object has already been created.
 
+In contrast,
+[`add_constraint_locked_actions`](https://josesalgr.github.io/multiscape/reference/add_constraint_locked_actions.md)
+is used to fix specific feasible `(pu, action)` decisions rather than
+whole planning units.
+
 **Supported input formats**
 
 For both `locked_in` and `locked_out`, the function accepts:
 
 - `NULL`, meaning that no planning units are locked on that side,
 
-- a single character string, interpreted as a column name in
-  `x$data$pu_data_raw`,
+- a single character string, interpreted as a column name in the raw
+  planning-unit data,
 
-- a logical vector of length `nrow(x$data$pu)`,
+- a logical vector of length `nrow(pu)`,
 
 - a vector of planning-unit ids.
 
@@ -98,9 +107,9 @@ as `FALSE`.
 **Replacement behaviour**
 
 Each call to `add_constraint_locked_pu()` replaces any existing
-`locked_in` and `locked_out` columns in `x$data$pu`. In other words, the
-function defines the complete current set of locked planning units; it
-does not merge new values with previous ones.
+`locked_in` and `locked_out` columns in the planning-unit table. In
+other words, the function defines the complete current set of locked
+planning units; it does not merge new values with previous ones.
 
 **Consistency checks**
 

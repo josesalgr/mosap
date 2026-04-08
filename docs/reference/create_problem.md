@@ -2,20 +2,13 @@
 
 Create a `Problem` object from tabular or spatial inputs.
 
-This is the main entry point to the `multiscape` workflow. The function
-standardizes planning-unit data, feature definitions, and feature
-distributions into the internal structure required by downstream
-functions such as
-[`add_actions()`](https://josesalgr.github.io/multiscape/reference/add_actions.md),
-[`add_effects()`](https://josesalgr.github.io/multiscape/reference/add_effects.md),
-`add_targets_absolute()`,
-[`set_solver()`](https://josesalgr.github.io/multiscape/reference/set_solver.md),
-and
-[`solve()`](https://josesalgr.github.io/multiscape/reference/solve.md).
+`create_problem()` is the main entry point to the `multiscape` workflow.
+Its role is to standardize heterogeneous planning inputs into a common
+internal representation that can later be used by actions, effects,
+targets, constraints, spatial relations, objectives, and solvers.
 
-Depending on the input types, `create_problem()` dispatches to one of
-several supported workflows. In all cases, the result is a `Problem`
-object with a tabular internal core, optionally augmented with spatial
+In all supported workflows, the result is a `Problem` object with a
+canonical tabular core, optionally enriched with aligned spatial
 metadata such as coordinates, geometry, raster references, or raw
 planning-unit attributes.
 
@@ -99,7 +92,7 @@ create_problem(
 
 - features:
 
-  Feature input. Depending on the selected method, this may be:
+  Feature input. Depending on the selected workflow, this may be:
 
   - a `data.frame` with at least an `id` column,
 
@@ -111,10 +104,10 @@ create_problem(
 
 - dist_features:
 
-  Feature-distribution input. In tabular and hybrid modes, this must be
-  a `data.frame` with columns `pu`, `feature`, and `amount`. In spatial
-  modes it may be omitted or set to `NULL`, in which case it is derived
-  automatically.
+  Feature-distribution input. In tabular and hybrid workflows, this must
+  be a `data.frame` with columns `pu`, `feature`, and `amount`. In
+  spatial modes it may be omitted or set to `NULL`, in which case it is
+  derived automatically.
 
 - cost:
 
@@ -147,187 +140,117 @@ create_problem(
 
 ## Value
 
-A `Problem` object to be used in downstream `multiscape` workflows. The
-object always contains a tabular internal planning core and may
-additionally contain spatial metadata depending on the input mode.
+A `Problem` object for downstream `multiscape` workflows. The returned
+object always contains a canonical tabular core with planning units,
+features, and feature-distribution data, and may additionally contain
+aligned spatial metadata depending on the input mode.
 
 ## Details
 
-**Overview**
+A `Problem` object created by `create_problem()` is the basic input
+structure used throughout downstream `multiscape` workflows.
 
-The role of `create_problem()` is to construct the internal input data
-model used by `multiscape`. Regardless of the input mode, the function
-aims to produce a consistent problem representation containing, at
-minimum:
+The returned object always contains a canonical tabular planning core
+and may additionally store aligned spatial metadata depending on the
+input workflow. This is the internal representation on which later
+functions such as
+[`add_actions()`](https://josesalgr.github.io/multiscape/reference/add_actions.md),
+[`add_effects()`](https://josesalgr.github.io/multiscape/reference/add_effects.md),
+`add_constraint_targets()`,
+[`add_spatial_relations()`](https://josesalgr.github.io/multiscape/reference/add_spatial_relations.md),
+and
+[`solve()`](https://josesalgr.github.io/multiscape/reference/solve.md)
+operate.
 
-- a planning-unit table `x$data$pu`,
+**Conceptual role of `create_problem()`**
 
-- a feature table `x$data$features`,
+Regardless of the input workflow, `create_problem()` aims to produce a
+consistent internal representation containing at least:
 
-- a feature-distribution table `x$data$dist_features`.
+- a planning-unit table,
 
-Internally, this means that the problem is always reduced to a tabular
-core of the form:
+- a feature table,
 
-- planning units \\i \in \mathcal{P}\\,
+- a feature-distribution table.
+
+Internally, the problem is always reduced to a tabular core of the form:
+
+- planning units \\i \in \mathcal{I}\\,
 
 - features \\f \in \mathcal{F}\\,
 
-- non-negative baseline amounts \\a\_{if} \ge 0\\ stored in
-  `dist_features`,
+- non-negative baseline amounts \\a\_{if} \ge 0\\,
 
 - and, when available, spatial metadata associated with planning units.
 
-Thus, after `create_problem()` has run, the landscape is represented by
-baseline feature amounts \\a\_{if}\\, where \\a\_{if}\\ denotes the
-amount of feature \\f\\ in planning unit \\i\\.
+The feature-distribution table provides the canonical sparse
+representation of these baseline amounts. Thus, after `create_problem()`
+has run, the landscape is internally represented by baseline feature
+amounts \\a\_{if}\\, where \\a\_{if}\\ denotes the amount of feature
+\\f\\ in planning unit \\i\\. These baseline amounts are later combined
+with actions, effects, targets, objectives, and constraints to build the
+optimization model.
 
-These baseline amounts are later combined with actions, effects,
-targets, objectives, and constraints to build the optimization model.
+**Which input mode should I use?**
 
-**Supported input modes**
+`create_problem()` supports four main workflows. The best choice depends
+on the form of your data and on whether you want to preserve geometry.
 
-Four workflows are supported.
+- **Tabular mode.** Use this when `pu`, `features`, and `dist_features`
+  are already available as `data.frame` objects and no spatial
+  derivation is needed. This is the simplest workflow: all problem
+  components are already tabular, so `create_problem()` only
+  standardizes them into the canonical internal representation.
 
-**1. Tabular mode**
+- **Vector-PU spatial mode.** Use this when planning units are polygons
+  and feature information is stored in one or more raster layers. In
+  this mode, `dist_features` is derived by aggregating raster values
+  over planning-unit polygons.
 
-If `pu`, `features`, and `dist_features` are all `data.frame` objects,
-the problem is built directly from tabular data. No spatial package is
-required.
+- **Raster-cell fast mode.** Use this when both `pu` and `features` are
+  rasters and each valid raster cell should become one planning unit.
+  This mode avoids raster-to-polygon conversion, treats `NA` feature
+  values as zero before building `dist_features`, keeps only strictly
+  positive amounts in the stored distribution table, and is generally
+  the preferred option for large regular grids.
 
-**2. Vector-PU spatial mode**
+- **Hybrid sf + tabular mode.** Use this when you already have a curated
+  tabular `dist_features` table but still want to preserve planning-unit
+  geometry and attributes for later plotting, spatial relations, or
+  feasibility specifications. Here, the feature distribution is already
+  tabular, but geometry and raw attributes are preserved from the `sf`
+  planning-unit object for later spatial operations.
 
-If `dist_features` is missing or `NULL`, `pu` is a spatial vector
-object, and `features` is a raster stack, the function derives
-`dist_features` by aggregating raster values over planning-unit
-polygons.
+**How cost is interpreted across modes**
 
-**3. Raster-cell fast mode**
+`cost` handling depends on the selected workflow.
 
-If `dist_features` is missing or `NULL`, and both `pu` and `features`
-are rasters, the function enters a raster-cell workflow in which each
-valid raster cell becomes one planning unit.
+- **Tabular mode.** In purely tabular mode, `cost` is not used by this
+  generic method. Planning-unit costs are expected to already be present
+  in the `pu` table supplied to the internal tabular builder.
 
-In this mode:
+- **Vector-PU spatial mode.** In vector-PU mode, `cost` is required and
+  may be either:
 
-- `pu` is used as a mask or template,
+  - the name of a numeric attribute column in the planning-unit layer,
 
-- `cost` must be a single-layer raster,
+  - or a cost raster to be aggregated over polygons using the
+    `cost_aggregation` argument.
 
-- a raster cell becomes a planning unit if and only if the corresponding
-  `pu` cell is not `NA`, and the corresponding `cost` cell is finite and
-  strictly positive,
+- **Raster-cell fast mode.** In raster-cell mode, `cost` must be a
+  single-layer raster aligned with `pu` and `features`. A raster cell
+  becomes a planning unit only if the mask cell is not missing and the
+  corresponding cost value is finite and strictly positive. In other
+  words, if \\m_i\\ denotes the mask value of cell \\i\\ and \\c_i\\ its
+  cost value, then cell \\i\\ is retained only when the mask is observed
+  and \\c_i \> 0\\.
 
-- equivalently, if \\m_i\\ denotes the raster-mask value and \\c_i\\ the
-  cost of cell \\i\\, then cell \\i\\ is retained only if \\m_i \neq
-  \mathrm{NA}\\ and \\c_i \> 0\\,
+- **Hybrid sf + tabular mode.** In hybrid mode, `cost` must be either:
 
-- each valid cell is assigned a new sequential planning-unit id,
+  - the name of a numeric attribute column in the `sf` layer,
 
-- feature values are extracted directly by cell without
-  raster-to-polygon conversion,
-
-- feature values equal to `NA` are treated as zero before building
-  `dist_features`,
-
-- only strictly positive feature amounts are stored in
-  `x$data$dist_features`.
-
-This mode is substantially faster than converting large rasters to
-polygons and is generally the preferred option for large regular grids.
-
-**4. Hybrid sf-tabular mode**
-
-If `pu` is an `sf` object, while `features` and `dist_features` are
-`data.frame`s, the problem is built from the supplied tabular feature
-distribution while preserving planning-unit geometry and raw spatial
-attributes.
-
-This mode is useful when the user already has a curated tabular
-`dist_features` table but still wants to retain geometry for later
-spatial operations such as boundary construction, plotting, or spatial
-feasibility specifications.
-
-**What is stored in the resulting object**
-
-In all modes, the returned object contains a tabular planning core.
-Depending on the input mode, additional components may also be stored:
-
-- `x$data$pu`:
-
-  Planning-unit table, always present.
-
-- `x$data$features`:
-
-  Feature table, always present.
-
-- `x$data$dist_features`:
-
-  Baseline planning unit–feature amounts, always present.
-
-- `x$data$pu_data_raw`:
-
-  Raw planning-unit attributes aligned by planning-unit id, when
-  available.
-
-- `x$data$pu_coords`:
-
-  Planning-unit coordinates, when available or derivable.
-
-- `x$data$pu_sf`:
-
-  Planning-unit geometry as `sf`, when available and safely alignable.
-
-- `x$data$pu_raster_id`:
-
-  Raster mask/template used to derive planning units from raster cells
-  or rasterized planning units, when available.
-
-- `x$data$cell_index`:
-
-  Indices of valid raster cells in raster-cell mode.
-
-- `x$data$cost_raster`:
-
-  Stored cost raster in raster-cell mode.
-
-- `x$data$features_raster`:
-
-  Stored feature raster stack in raster-cell mode.
-
-**Spatial relations are not created automatically**
-
-This function does *not* create boundary, adjacency, distance, or other
-spatial relations automatically. Spatial relations must be added
-explicitly afterwards using functions such as:
-
-- [`add_spatial_boundary`](https://josesalgr.github.io/multiscape/reference/add_spatial_boundary.md),
-
-- [`add_spatial_rook`](https://josesalgr.github.io/multiscape/reference/add_spatial_rook.md),
-
-- [`add_spatial_queen`](https://josesalgr.github.io/multiscape/reference/add_spatial_queen.md),
-
-- [`add_spatial_knn`](https://josesalgr.github.io/multiscape/reference/add_spatial_knn.md),
-
-- [`add_spatial_distance`](https://josesalgr.github.io/multiscape/reference/add_spatial_distance.md),
-
-- [`add_spatial_relations`](https://josesalgr.github.io/multiscape/reference/add_spatial_relations.md).
-
-In raster-cell mode, spatial relations will typically be created from
-coordinates rather than polygons, for example using
-[`add_spatial_knn`](https://josesalgr.github.io/multiscape/reference/add_spatial_knn.md)
-or
-[`add_spatial_distance`](https://josesalgr.github.io/multiscape/reference/add_spatial_distance.md).
-
-**Locks are not interpreted automatically**
-
-This function does not interpret planning-unit lock information, even if
-the input data contain fields such as `locked_in`, `locked_out`, or
-Marxan-style status codes. Such information may be preserved in
-`x$data$pu_data_raw`, but it is not activated automatically.
-
-Locked planning units should be defined later with
-[`add_constraint_locked_pu`](https://josesalgr.github.io/multiscape/reference/add_constraint_locked_pu.md).
+  - or omitted if the `sf` attributes already contain a column literally
+    named `cost`.
 
 **Feature identifiers**
 
@@ -351,30 +274,6 @@ sequential ids are created with a warning.
 In raster-cell mode, planning-unit ids are always created sequentially
 from the valid raster cells retained after masking and cost filtering.
 
-**Cost handling**
-
-In purely tabular mode, `cost` is not used by this generic method
-because planning-unit costs are expected to already be present in the
-`pu` table supplied to the internal tabular builder.
-
-In spatial modes, `cost` is required:
-
-- in vector-PU mode, it may be either:
-
-  - the name of a numeric attribute column in the planning-unit layer,
-
-  - or a cost raster to be aggregated over polygons;
-
-- in raster-cell mode, it must be a single-layer raster aligned with
-  `pu` and `features`;
-
-- in hybrid `sf` + tabular mode, it must be either:
-
-  - the name of an attribute column in the `sf` object,
-
-  - or omitted if the `sf` attributes already contain a column literally
-    named `cost`.
-
 **Ordering and alignment**
 
 In spatial modes, planning units, derived coordinates, raw attributes,
@@ -384,6 +283,10 @@ planning-unit id order before the final `Problem` object is created.
 This alignment is critical because later functions assume that all
 stored planning-unit components refer to the same ordered set of
 planning units.
+
+After `create_problem()`, typical next steps include adding actions,
+spatial relations, targets or other constraints, objectives, and then
+solving the resulting problem.
 
 ## See also
 

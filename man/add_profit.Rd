@@ -8,8 +8,8 @@ add_profit(x, profit = NULL)
 }
 \arguments{
 \item{x}{A \code{Problem} object created with \code{\link{create_problem}}. It
-must already contain \code{x$data$dist_actions} and \code{x$data$actions};
-run \code{\link{add_actions}} first.}
+must already contain feasible actions and an action catalogue; run
+\code{\link{add_actions}} first.}
 
 \item{profit}{Profit specification. One of:
 \itemize{
@@ -24,14 +24,14 @@ profit.
 }}
 }
 \value{
-An updated \code{Problem} object with \code{x$data$dist_profit}
-created or replaced. The stored table contains columns \code{pu},
-\code{action}, \code{profit}, \code{internal_pu}, and
-\code{internal_action}, and includes only rows with non-zero profit.
+An updated \code{Problem} object with a stored profit table created
+or replaced. The stored table contains columns \code{pu}, \code{action},
+\code{profit}, \code{internal_pu}, and \code{internal_action}, and
+includes only rows with non-zero profit.
 }
 \description{
 Define economic profit values for feasible planning unit--action pairs and
-store them in \code{x$data$dist_profit}.
+store them in a profit table.
 
 Profit is stored separately from ecological effects. In particular,
 \code{profit} is not the same as ecological \code{benefit} or
@@ -40,18 +40,25 @@ allows the package to distinguish economic returns from ecological
 consequences when building objectives, constraints, and reporting summaries.
 }
 \details{
-Let \eqn{\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}} denote the set
-of feasible planning unit--action pairs currently stored in
-\code{x$data$dist_actions}, where \eqn{\mathcal{P}} is the set of planning
-units and \eqn{\mathcal{A}} is the set of actions.
+\strong{When to use \code{add_profit()}.}
 
-This function assigns to each feasible pair \eqn{(i,a) \in \mathcal{F}} a
-numeric profit value \eqn{\pi_{ia} \in \mathbb{R}} and stores the result in
-\code{x$data$dist_profit}.
+Use this function when economic returns, penalties, or other action-specific
+financial values are part of the planning problem. Typical downstream uses
+include objectives such as \code{\link{add_objective_max_profit}} and
+\code{\link{add_objective_max_net_profit}}.
+
+Let \eqn{\mathcal{I}} denote the set of planning units and
+\eqn{\mathcal{A}} the set of actions. Let
+\eqn{\mathcal{D} \subseteq \mathcal{I} \times \mathcal{A}} denote the set of
+feasible planning unit--action pairs currently stored in the problem.
+
+This function assigns to each feasible pair \eqn{(i,a) \in \mathcal{D}} a
+numeric profit value \eqn{\pi_{ia} \in \mathbb{R}} and stores the result in a
+profit table.
 
 Thus, the stored table can be interpreted as a mapping
 \deqn{
-\pi : \mathcal{F} \to \mathbb{R},
+\pi : \mathcal{D} \to \mathbb{R},
 }
 where \eqn{\pi_{ia}} represents the economic return associated with selecting
 action \eqn{a} in planning unit \eqn{i}.
@@ -60,7 +67,7 @@ Profit values may be positive, zero, or negative. Positive values represent
 gains or revenues, zero represents no net profit contribution, and negative
 values can be used to encode penalties or net economic losses.
 
-The resulting table \code{x$data$dist_profit} contains:
+The stored table contains:
 \itemize{
 \item \code{pu}: external planning-unit id,
 \item \code{action}: action id,
@@ -92,22 +99,24 @@ unmatched feasible pairs are interpreted as zero-profit pairs.
 \strong{Storage behaviour}
 
 This function stores only rows with non-zero profit values. Feasible pairs
-whose final profit is zero are omitted from \code{x$data$dist_profit}.
+whose final profit is zero are omitted from the stored profit table.
 Missing values produced during matching or joins are treated as zero before
-this filtering step.
+this filtering step. Therefore, the resulting table is a sparse
+representation of economic returns over the feasible decision space.
 
 \strong{Data-only behaviour}
 
 This function is purely data-oriented. It does not build or modify the
 optimization model, and it does not change feasibility. It simply assigns
-profit values to rows already present in \code{x$data$dist_actions}.
+profit values to rows already present in the feasible action table.
 
 In particular:
 \itemize{
 \item it does not add new feasible \code{(pu, action)} pairs,
 \item it does not remove infeasible pairs,
 \item it does not apply solver-side filtering such as dropping locked-out
-decisions.
+decisions,
+\item it does not modify ecological effect tables.
 }
 
 Any such filtering is expected to occur later when model-ready tables are
@@ -124,7 +133,7 @@ For example, if \eqn{x_{ia} \in \{0,1\}} denotes whether action \eqn{a} is
 selected in planning unit \eqn{i}, then a profit-maximization objective
 typically takes the form
 \deqn{
-\max \sum_{(i,a) \in \mathcal{F}} \pi_{ia} x_{ia}.
+\max \sum_{(i,a) \in \mathcal{D}} \pi_{ia} x_{ia}.
 }
 }
 \examples{

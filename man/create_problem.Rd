@@ -69,17 +69,17 @@ create_problem(
 \item or a raster file path.
 }}
 
-\item{features}{Feature input. Depending on the selected method, this may be:
+\item{features}{Feature input. Depending on the selected workflow, this may be:
 \itemize{
 \item a \code{data.frame} with at least an \code{id} column,
 \item a \code{terra::SpatRaster} with one layer per feature,
 \item or a raster file path.
 }}
 
-\item{dist_features}{Feature-distribution input. In tabular and hybrid modes,
-this must be a \code{data.frame} with columns \code{pu}, \code{feature},
-and \code{amount}. In spatial modes it may be omitted or set to
-\code{NULL}, in which case it is derived automatically.}
+\item{dist_features}{Feature-distribution input. In tabular and hybrid
+workflows, this must be a \code{data.frame} with columns \code{pu},
+\code{feature}, and \code{amount}. In spatial modes it may be omitted or
+set to \code{NULL}, in which case it is derived automatically.}
 
 \item{cost}{In spatial modes, planning-unit cost information. Depending on the
 input mode, this may be:
@@ -102,161 +102,126 @@ of \code{"mean"} or \code{"sum"}.}
 \item{...}{Additional arguments forwarded to internal builders.}
 }
 \value{
-A \code{Problem} object to be used in downstream \code{multiscape}
-workflows. The object always contains a tabular internal planning core and
-may additionally contain spatial metadata depending on the input mode.
+A \code{Problem} object for downstream \code{multiscape} workflows.
+The returned object always contains a canonical tabular core with planning
+units, features, and feature-distribution data, and may additionally
+contain aligned spatial metadata depending on the input mode.
 }
 \description{
 Create a \code{Problem} object from tabular or spatial inputs.
 
-This is the main entry point to the \code{multiscape} workflow. The function
-standardizes planning-unit data, feature definitions, and feature
-distributions into the internal structure required by downstream functions
-such as \code{add_actions()}, \code{add_effects()},
-\code{add_targets_absolute()}, \code{set_solver()}, and \code{solve()}.
+\code{create_problem()} is the main entry point to the \code{multiscape}
+workflow. Its role is to standardize heterogeneous planning inputs into a
+common internal representation that can later be used by actions, effects,
+targets, constraints, spatial relations, objectives, and solvers.
 
-Depending on the input types, \code{create_problem()} dispatches to one of several
-supported workflows. In all cases, the result is a \code{Problem} object with
-a tabular internal core, optionally augmented with spatial metadata such as
-coordinates, geometry, raster references, or raw planning-unit attributes.
+In all supported workflows, the result is a \code{Problem} object with a
+canonical tabular core, optionally enriched with aligned spatial metadata
+such as coordinates, geometry, raster references, or raw planning-unit
+attributes.
 }
 \details{
-\strong{Overview}
+A \code{Problem} object created by \code{create_problem()} is the basic input
+structure used throughout downstream \code{multiscape} workflows.
 
-The role of \code{create_problem()} is to construct the internal input data model
-used by \code{multiscape}. Regardless of the input mode, the function aims to
-produce a consistent problem representation containing, at minimum:
+The returned object always contains a canonical tabular planning core and may
+additionally store aligned spatial metadata depending on the input workflow.
+This is the internal representation on which later functions such as
+\code{add_actions()}, \code{add_effects()},
+\code{add_constraint_targets()}, \code{add_spatial_relations()}, and
+\code{solve()} operate.
+
+\strong{Conceptual role of \code{create_problem()}}
+
+Regardless of the input workflow, \code{create_problem()} aims to produce a
+consistent internal representation containing at least:
 \itemize{
-\item a planning-unit table \code{x$data$pu},
-\item a feature table \code{x$data$features},
-\item a feature-distribution table \code{x$data$dist_features}.
+\item a planning-unit table,
+\item a feature table,
+\item a feature-distribution table.
 }
 
-Internally, this means that the problem is always reduced to a tabular core
-of the form:
+Internally, the problem is always reduced to a tabular core of the form:
 \itemize{
-\item planning units \eqn{i \in \mathcal{P}},
+\item planning units \eqn{i \in \mathcal{I}},
 \item features \eqn{f \in \mathcal{F}},
-\item non-negative baseline amounts \eqn{a_{if} \ge 0} stored in
-\code{dist_features},
+\item non-negative baseline amounts \eqn{a_{if} \ge 0},
 \item and, when available, spatial metadata associated with planning units.
 }
 
-Thus, after \code{create_problem()} has run, the landscape is represented by
-baseline feature amounts \eqn{a_{if}}, where \eqn{a_{if}} denotes the amount
-of feature \eqn{f} in planning unit \eqn{i}.
+The feature-distribution table provides the canonical sparse representation of
+these baseline amounts. Thus, after \code{create_problem()} has run, the
+landscape is internally represented by baseline feature amounts
+\eqn{a_{if}}, where \eqn{a_{if}} denotes the amount of feature \eqn{f} in
+planning unit \eqn{i}. These baseline amounts are later combined with
+actions, effects, targets, objectives, and constraints to build the
+optimization model.
 
-These baseline amounts are later combined with actions, effects, targets,
-objectives, and constraints to build the optimization model.
+\strong{Which input mode should I use?}
 
-\strong{Supported input modes}
+\code{create_problem()} supports four main workflows. The best choice depends
+on the form of your data and on whether you want to preserve geometry.
 
-Four workflows are supported.
-
-\strong{1. Tabular mode}
-
-If \code{pu}, \code{features}, and \code{dist_features} are all
-\code{data.frame} objects, the problem is built directly from tabular data.
-No spatial package is required.
-
-\strong{2. Vector-PU spatial mode}
-
-If \code{dist_features} is missing or \code{NULL}, \code{pu} is a spatial
-vector object, and \code{features} is a raster stack, the function derives
-\code{dist_features} by aggregating raster values over planning-unit polygons.
-
-\strong{3. Raster-cell fast mode}
-
-If \code{dist_features} is missing or \code{NULL}, and both \code{pu} and
-\code{features} are rasters, the function enters a raster-cell workflow in
-which each valid raster cell becomes one planning unit.
-
-In this mode:
 \itemize{
-\item \code{pu} is used as a mask or template,
-\item \code{cost} must be a single-layer raster,
-\item a raster cell becomes a planning unit if and only if the
-corresponding \code{pu} cell is not \code{NA}, and the corresponding
-\code{cost} cell is finite and strictly positive,
-\item equivalently, if \eqn{m_i} denotes the raster-mask value and
-\eqn{c_i} the cost of cell \eqn{i}, then cell \eqn{i} is retained only if
-\eqn{m_i \neq \mathrm{NA}} and \eqn{c_i > 0},
-\item each valid cell is assigned a new sequential planning-unit id,
-\item feature values are extracted directly by cell without raster-to-polygon
-conversion,
-\item feature values equal to \code{NA} are treated as zero before building
-\code{dist_features},
-\item only strictly positive feature amounts are stored in
-\code{x$data$dist_features}.
+\item \strong{Tabular mode.} Use this when \code{pu}, \code{features}, and
+\code{dist_features} are already available as \code{data.frame} objects and
+no spatial derivation is needed. This is the simplest workflow: all problem
+components are already tabular, so \code{create_problem()} only
+standardizes them into the canonical internal representation.
+
+\item \strong{Vector-PU spatial mode.} Use this when planning units are
+polygons and feature information is stored in one or more raster layers. In
+this mode, \code{dist_features} is derived by aggregating raster values
+over planning-unit polygons.
+
+\item \strong{Raster-cell fast mode.} Use this when both \code{pu} and
+\code{features} are rasters and each valid raster cell should become one
+planning unit. This mode avoids raster-to-polygon conversion, treats
+\code{NA} feature values as zero before building \code{dist_features},
+keeps only strictly positive amounts in the stored distribution table, and
+is generally the preferred option for large regular grids.
+
+\item \strong{Hybrid sf + tabular mode.} Use this when you already have a
+curated tabular \code{dist_features} table but still want to preserve
+planning-unit geometry and attributes for later plotting, spatial
+relations, or feasibility specifications. Here, the feature distribution is
+already tabular, but geometry and raw attributes are preserved from the
+\code{sf} planning-unit object for later spatial operations.
 }
 
-This mode is substantially faster than converting large rasters to polygons
-and is generally the preferred option for large regular grids.
+\strong{How cost is interpreted across modes}
 
-\strong{4. Hybrid sf-tabular mode}
+\code{cost} handling depends on the selected workflow.
 
-If \code{pu} is an \code{sf} object, while \code{features} and
-\code{dist_features} are \code{data.frame}s, the problem is built from the
-supplied tabular feature distribution while preserving planning-unit geometry
-and raw spatial attributes.
-
-This mode is useful when the user already has a curated tabular
-\code{dist_features} table but still wants to retain geometry for later
-spatial operations such as boundary construction, plotting, or spatial
-feasibility specifications.
-
-\strong{What is stored in the resulting object}
-
-In all modes, the returned object contains a tabular planning core. Depending
-on the input mode, additional components may also be stored:
-\describe{
-\item{\code{x$data$pu}}{Planning-unit table, always present.}
-\item{\code{x$data$features}}{Feature table, always present.}
-\item{\code{x$data$dist_features}}{Baseline planning unit--feature amounts,
-always present.}
-\item{\code{x$data$pu_data_raw}}{Raw planning-unit attributes aligned by
-planning-unit id, when available.}
-\item{\code{x$data$pu_coords}}{Planning-unit coordinates, when available or
-derivable.}
-\item{\code{x$data$pu_sf}}{Planning-unit geometry as \code{sf}, when
-available and safely alignable.}
-\item{\code{x$data$pu_raster_id}}{Raster mask/template used to derive
-planning units from raster cells or rasterized planning units, when
-available.}
-\item{\code{x$data$cell_index}}{Indices of valid raster cells in raster-cell
-mode.}
-\item{\code{x$data$cost_raster}}{Stored cost raster in raster-cell mode.}
-\item{\code{x$data$features_raster}}{Stored feature raster stack in
-raster-cell mode.}
-}
-
-\strong{Spatial relations are not created automatically}
-
-This function does \emph{not} create boundary, adjacency, distance, or other
-spatial relations automatically. Spatial relations must be added explicitly
-afterwards using functions such as:
 \itemize{
-\item \code{\link{add_spatial_boundary}},
-\item \code{\link{add_spatial_rook}},
-\item \code{\link{add_spatial_queen}},
-\item \code{\link{add_spatial_knn}},
-\item \code{\link{add_spatial_distance}},
-\item \code{\link{add_spatial_relations}}.
+\item \strong{Tabular mode.} In purely tabular mode, \code{cost} is not
+used by this generic method. Planning-unit costs are expected to already be
+present in the \code{pu} table supplied to the internal tabular builder.
+
+\item \strong{Vector-PU spatial mode.} In vector-PU mode, \code{cost} is
+required and may be either:
+\itemize{
+\item the name of a numeric attribute column in the planning-unit layer,
+\item or a cost raster to be aggregated over polygons using the
+\code{cost_aggregation} argument.
 }
 
-In raster-cell mode, spatial relations will typically be created from
-coordinates rather than polygons, for example using
-\code{\link{add_spatial_knn}} or \code{\link{add_spatial_distance}}.
+\item \strong{Raster-cell fast mode.} In raster-cell mode, \code{cost}
+must be a single-layer raster aligned with \code{pu} and \code{features}.
+A raster cell becomes a planning unit only if the mask cell is not missing
+and the corresponding cost value is finite and strictly positive. In other
+words, if \eqn{m_i} denotes the mask value of cell \eqn{i} and \eqn{c_i}
+its cost value, then cell \eqn{i} is retained only when the mask is
+observed and \eqn{c_i > 0}.
 
-\strong{Locks are not interpreted automatically}
-
-This function does not interpret planning-unit lock information, even if the
-input data contain fields such as \code{locked_in}, \code{locked_out}, or
-Marxan-style status codes. Such information may be preserved in
-\code{x$data$pu_data_raw}, but it is not activated automatically.
-
-Locked planning units should be defined later with
-\code{\link{add_constraint_locked_pu}}.
+\item \strong{Hybrid sf + tabular mode.} In hybrid mode, \code{cost} must
+be either:
+\itemize{
+\item the name of a numeric attribute column in the \code{sf} layer,
+\item or omitted if the \code{sf} attributes already contain a column
+literally named \code{cost}.
+}
+}
 
 \strong{Feature identifiers}
 
@@ -266,8 +231,8 @@ raster layer, with:
 \itemize{
 \item \code{id = 1, 2, \dots, nlyr(features)},
 \item \code{name} equal to the raster layer name, if available,
-\item otherwise a generated name of the form
-\code{"feature.1"}, \code{"feature.2"}, and so on.
+\item otherwise a generated name of the form \code{"feature.1"},
+\code{"feature.2"}, and so on.
 }
 
 \strong{Planning-unit identifiers}
@@ -279,29 +244,6 @@ sequential ids are created with a warning.
 In raster-cell mode, planning-unit ids are always created sequentially from
 the valid raster cells retained after masking and cost filtering.
 
-\strong{Cost handling}
-
-In purely tabular mode, \code{cost} is not used by this generic method
-because planning-unit costs are expected to already be present in the
-\code{pu} table supplied to the internal tabular builder.
-
-In spatial modes, \code{cost} is required:
-\itemize{
-\item in vector-PU mode, it may be either:
-\itemize{
-\item the name of a numeric attribute column in the planning-unit layer,
-\item or a cost raster to be aggregated over polygons;
-}
-\item in raster-cell mode, it must be a single-layer raster aligned with
-\code{pu} and \code{features};
-\item in hybrid \code{sf} + tabular mode, it must be either:
-\itemize{
-\item the name of an attribute column in the \code{sf} object,
-\item or omitted if the \code{sf} attributes already contain a column
-literally named \code{cost}.
-}
-}
-
 \strong{Ordering and alignment}
 
 In spatial modes, planning units, derived coordinates, raw attributes,
@@ -310,6 +252,10 @@ id order before the final \code{Problem} object is created.
 
 This alignment is critical because later functions assume that all stored
 planning-unit components refer to the same ordered set of planning units.
+
+After \code{create_problem()}, typical next steps include adding actions,
+spatial relations, targets or other constraints, objectives, and then solving
+the resulting problem.
 }
 \examples{
 # ------------------------------------------------------

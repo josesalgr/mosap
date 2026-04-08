@@ -13,8 +13,7 @@ add_losses(
 }
 \arguments{
 \item{x}{A \code{Problem} object created with \code{\link{create_problem}}. It
-must already contain \code{x$data$dist_actions}; run
-\code{\link{add_actions}} first.}
+must already contain feasible actions; run \code{\link{add_actions}} first.}
 
 \item{losses}{Alias of \code{effects}, used for symmetry with
 \code{add_benefits()}.}
@@ -32,23 +31,25 @@ converting raster values to planning-unit level. Must be one of
 \code{"sum"} or \code{"mean"}.}
 }
 \value{
-An updated \code{Problem} object with:
+An updated \code{Problem} object containing:
 \describe{
-\item{\code{x$data$dist_effects}}{The canonical filtered effects table,
+\item{\code{dist_effects}}{The canonical filtered effects table,
 containing only rows with \code{loss > 0}.}
-\item{\code{x$data$dist_loss}}{A convenience table containing only the loss
+\item{\code{dist_loss}}{A convenience table containing only the loss
 component.}
-\item{\code{x$data$losses_meta}}{Metadata for the stored loss table.}
+\item{\code{losses_meta}}{Metadata for the stored loss table.}
 }
 }
 \description{
 Convenience wrapper around \code{\link{add_effects}} that keeps only negative
 effects, represented by rows with \code{loss > 0}.
 
-This function is useful when the user wants to work only with the damaging
-consequences of actions. Internally, it calls \code{add_effects()} with
-\code{component = "loss"} and stores the resulting canonical effects table in
-\code{x$data$dist_effects}.
+This function is useful when the workflow is focused only on damaging
+consequences of actions and a loss-only wrapper is more convenient than
+calling \code{add_effects(..., component = "loss")} directly. Internally,
+it calls \code{add_effects()} with \code{component = "loss"}.
+The canonical stored result therefore contains only rows whose effect
+satisfies \eqn{\mathrm{loss}_{iaf} > 0}.
 
 In addition, a mirror table containing only the loss component is stored in
 \code{x$data$dist_loss}.
@@ -58,8 +59,16 @@ pu <- data.frame(id = 1:2, cost = c(1, 2))
 features <- data.frame(id = 1, name = "sp1")
 dist_features <- data.frame(pu = 1:2, feature = 1, amount = c(5, 10))
 
-p <- create_problem(pu = pu, features = features, dist_features = dist_features)
-p <- add_actions(p, data.frame(id = "harvest"))
+p <- create_problem(
+  pu = pu,
+  features = features,
+  dist_features = dist_features
+)
+
+p <- add_actions(
+  p,
+  data.frame(id = "harvest")
+)
 
 eff <- data.frame(
   pu = c(1, 2),
@@ -74,5 +83,6 @@ p$data$dist_loss
 }
 \seealso{
 \code{\link{add_effects}},
-\code{\link{add_benefits}}
+\code{\link{add_benefits}},
+\code{\link{add_objective_min_loss}}
 }

@@ -6,16 +6,15 @@
     }
   };
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Add action effects to a planning problem — add_effects"><meta name="description" content="Define the effects of management actions on features across planning units.
-Effects are stored in a canonical representation in
-x$data$dist_effects, with one row per
-(pu, action, feature) triple and two non-negative columns:
+Effects are stored in a canonical representation in a effects table, with one
+row per (pu, action, feature) triple and two non-negative columns:
 benefit: the positive component of the effect,
 loss: the magnitude of the negative component of the effect.
 
 
 The net effect is therefore interpreted as
 $$
-\Delta_{i a f} = \mathrm{benefit}_{i a f} - \mathrm{loss}_{i a f},
+\Delta_{iaf} = \mathrm{benefit}_{iaf} - \mathrm{loss}_{iaf},
 $$
 where \(i\) indexes planning units, \(a\) indexes actions, and
 \(f\) indexes features.
@@ -23,16 +22,15 @@ Under the semantics adopted by this package, each
 (pu, action, feature) triple represents a single net effect.
 Consequently, after validation and aggregation, a stored row cannot have both
 benefit &amp;gt; 0 and loss &amp;gt; 0 at the same time."><meta property="og:description" content="Define the effects of management actions on features across planning units.
-Effects are stored in a canonical representation in
-x$data$dist_effects, with one row per
-(pu, action, feature) triple and two non-negative columns:
+Effects are stored in a canonical representation in a effects table, with one
+row per (pu, action, feature) triple and two non-negative columns:
 benefit: the positive component of the effect,
 loss: the magnitude of the negative component of the effect.
 
 
 The net effect is therefore interpreted as
 $$
-\Delta_{i a f} = \mathrm{benefit}_{i a f} - \mathrm{loss}_{i a f},
+\Delta_{iaf} = \mathrm{benefit}_{iaf} - \mathrm{loss}_{iaf},
 $$
 where \(i\) indexes planning units, \(a\) indexes actions, and
 \(f\) indexes features.
@@ -80,13 +78,12 @@ benefit &amp;gt; 0 and loss &amp;gt; 0 at the same time."><meta property="og:ima
 
     <div class="ref-description section level2">
     <p>Define the effects of management actions on features across planning units.</p>
-<p>Effects are stored in a canonical representation in
-<code>x$data$dist_effects</code>, with one row per
-<code>(pu, action, feature)</code> triple and two non-negative columns:</p><ul><li><p><code>benefit</code>: the positive component of the effect,</p></li>
+<p>Effects are stored in a canonical representation in a effects table, with one
+row per <code>(pu, action, feature)</code> triple and two non-negative columns:</p><ul><li><p><code>benefit</code>: the positive component of the effect,</p></li>
 <li><p><code>loss</code>: the magnitude of the negative component of the effect.</p></li>
 </ul><p>The net effect is therefore interpreted as
 $$
-\Delta_{i a f} = \mathrm{benefit}_{i a f} - \mathrm{loss}_{i a f},
+\Delta_{iaf} = \mathrm{benefit}_{iaf} - \mathrm{loss}_{iaf},
 $$
 where \(i\) indexes planning units, \(a\) indexes actions, and
 \(f\) indexes features.</p>
@@ -113,8 +110,7 @@ Consequently, after validation and aggregation, a stored row cannot have both
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>A <code>Problem</code> object created with <code><a href="create_problem.html">create_problem</a></code>. It
-must already contain <code>x$data$dist_actions</code>; run
-<code><a href="add_actions.html">add_actions</a></code> first.</p></dd>
+must already contain feasible actions; run <code><a href="add_actions.html">add_actions</a></code> first.</p></dd>
 
 
 <dt id="arg-effects">effects<a class="anchor" aria-label="anchor" href="#arg-effects"></a></dt>
@@ -149,13 +145,13 @@ canonical effects table is retained. Must be one of:</p><ul><li><p><code>"any"</
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An updated <code>Problem</code> object with:</p><dl><dt><code>x$data$dist_effects</code></dt>
+    <p>An updated <code>Problem</code> object containing:</p><dl><dt><code>dist_effects</code></dt>
 <dd><p>A canonical effects table with columns
 <code>pu</code>, <code>action</code>, <code>feature</code>, <code>benefit</code>, <code>loss</code>,
 <code>internal_pu</code>, <code>internal_action</code>, <code>internal_feature</code>, and
 optional labels such as <code>feature_name</code> and <code>action_name</code>.</p></dd>
 
-<dt><code>x$data$effects_meta</code></dt>
+<dt><code>effects_meta</code></dt>
 <dd><p>Metadata describing how effects were
 interpreted and stored.</p></dd>
 
@@ -163,25 +159,32 @@ interpreted and stored.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>This function provides a unified interface for specifying action effects from
+    <p><strong>When to use <code>add_effects()</code>.</strong></p>
+<p>Use this function when you want to specify what feasible actions do to
+features. It is the stage at which an action-based decision space is linked
+to feature-level ecological or functional consequences.</p>
+<p>This function provides a unified interface for specifying action effects from
 several input formats while enforcing a single internal representation.
 Regardless of how the user supplies the effects, the stored output always
 follows the same canonical structure based on non-negative
 <code>benefit</code>/<code>loss</code> components.</p>
-<p>Let \(b_{if}\) denote the baseline amount of feature \(f\) in planning
-unit \(i\), taken from <code>x$data$dist_features$amount</code>. Let
-\(\Delta_{i a f}\) denote the net change caused by applying action
+<p>Let \(i \in \mathcal{I}\) index planning units,
+\(a \in \mathcal{A}\) index actions, and
+\(f \in \mathcal{F}\) index features.
+Let \(b_{if}\) denote the baseline amount of feature \(f\) in planning
+unit \(i\), as given by the feature-distribution table. Let
+\(\Delta_{iaf}\) denote the net change caused by applying action
 \(a\) in planning unit \(i\) to feature \(f\). The canonical stored
 representation is:</p>
 <p>$$
-\mathrm{benefit}_{i a f} = \max(\Delta_{i a f}, 0),
+\mathrm{benefit}_{iaf} = \max(\Delta_{iaf}, 0),
 $$</p>
 <p>$$
-\mathrm{loss}_{i a f} = \max(-\Delta_{i a f}, 0).
+\mathrm{loss}_{iaf} = \max(-\Delta_{iaf}, 0).
 $$</p>
-<p>Hence:</p><ul><li><p>if \(\Delta_{i a f} &gt; 0\), then <code>benefit &gt; 0</code> and <code>loss = 0</code>,</p></li>
-<li><p>if \(\Delta_{i a f} &lt; 0\), then <code>benefit = 0</code> and <code>loss &gt; 0</code>,</p></li>
-<li><p>if \(\Delta_{i a f} = 0\), then both are zero.</p></li>
+<p>Hence:</p><ul><li><p>if \(\Delta_{iaf} &gt; 0\), then <code>benefit &gt; 0</code> and <code>loss = 0</code>,</p></li>
+<li><p>if \(\Delta_{iaf} &lt; 0\), then <code>benefit = 0</code> and <code>loss &gt; 0</code>,</p></li>
+<li><p>if \(\Delta_{iaf} = 0\), then both are zero.</p></li>
 </ul><p><strong>Why split effects into benefit and loss?</strong></p>
 <p>This representation avoids ambiguity in downstream optimization models. It
 allows the package to support, for example, objectives that maximize
@@ -194,9 +197,9 @@ combine both components differently in multi-objective formulations.</p>
 effects are constructed by multiplying baseline feature amounts by the
 supplied multiplier:
 $$
-  \Delta_{i a f} = b_{if} \times m_{a f},
+  \Delta_{iaf} = b_{if} \times m_{af},
   $$
-where \(m_{a f}\) is the multiplier associated with action \(a\) and
+where \(m_{af}\) is the multiplier associated with action \(a\) and
 feature \(f\). This specification is expanded over all feasible
 <code>(pu, action)</code> pairs.</p></li>
 <li><p>A <code>data.frame(pu, action, feature, ...)</code> giving explicit effects
@@ -218,21 +221,22 @@ changes directly.</p>
 <p>If <code>effect_type = "after"</code>, supplied values are interpreted as
 after-action amounts and converted internally to net effects using:</p>
 <p>$$
-\Delta_{i a f} = \mathrm{after}_{i a f} - b_{if}.
+\Delta_{iaf} = \mathrm{after}_{iaf} - b_{if}.
 $$</p>
 <p>Missing baseline values are treated as zero.</p>
 <p><strong>Feasibility and locked-out decisions</strong></p>
-<p>Effects are only retained for feasible <code>(pu, action)</code> pairs listed in
-<code>x$data$dist_actions</code>. Thus, <code><a href="add_actions.html">add_actions()</a></code> must be called first.
-Pairs marked as locked out (<code>status == 3</code>) are removed before storing
-the final effects table.</p>
+<p>Effects are only retained for feasible <code>(pu, action)</code> pairs. Thus,
+<code><a href="add_actions.html">add_actions()</a></code> must be called first. Pairs marked as locked out
+(<code>status == 3</code>) are removed before storing the final effects table.</p>
+<p>This function does not define the action-decision layer itself; it builds on
+the feasible <code>(pu, action)</code> pairs already stored in the problem.</p>
 <p><strong>Duplicate rows and semantic validation</strong></p>
 <p>If multiple rows are supplied for the same <code>(pu, action, feature)</code>
 triple, they are aggregated by summing <code>benefit</code> and <code>loss</code>
 separately. The resulting triple must still respect the package semantics,
 namely that both components cannot be strictly positive simultaneously.
 Inputs violating this rule are rejected.</p>
-<p><strong>Component selection</strong></p>
+<p><strong>Component filtering</strong></p>
 <p>After canonicalization and validation, rows can be restricted to:</p><ul><li><p><code>component = "any"</code>: keep all non-zero effects,</p></li>
 <li><p><code>component = "benefit"</code>: keep only rows with <code>benefit &gt; 0</code>,</p></li>
 <li><p><code>component = "loss"</code>: keep only rows with <code>loss &gt; 0</code>.</p></li>
@@ -242,10 +246,12 @@ Inputs violating this rule are rejected.</p>
 planning-unit raster or geometry when needed before extraction or zonal
 aggregation.</p>
 <p><strong>Stored output</strong></p>
-<p>The resulting table <code>x$data$dist_effects</code> contains user-facing ids,
-internal integer ids, and optional labels for actions and features. Metadata
-describing the stored representation and input interpretation are written to
-<code>x$data$effects_meta</code>.</p>
+<p>The resulting effects table contains user-facing ids, internal integer ids,
+and optional labels for actions and features. Metadata describing the stored
+representation and input interpretation are written to an effects metadata
+field.</p>
+<p>After defining effects, typical next steps include adding objectives that use
+beneficial or harmful effects, and then solving the configured problem.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

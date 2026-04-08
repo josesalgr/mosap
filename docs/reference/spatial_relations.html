@@ -8,21 +8,21 @@
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Spatial relations infrastructure — spatial_relations"><meta name="description" content="Define a unified internal representation for spatial relations between
 planning units and provide constructors for building such relations from
 common spatial inputs.
-Spatial relations in mulstiscape are graph-like structures defined over the
-set of planning units. They are used to represent adjacency, shared boundary
-length, proximity, neighbourhood graphs, or other pairwise spatial
+Spatial relations in multiscape are graph-like structures defined over
+the set of planning units. They are used to represent adjacency, shared
+boundary length, proximity, neighbourhood graphs, or other pairwise spatial
 relationships that may later be used by objectives, constraints, or
 diagnostics.
-Relations are stored inside the problem object as
+Relations are stored inside the Problem object as
 x$data$spatial_relations[[name]]."><meta property="og:description" content="Define a unified internal representation for spatial relations between
 planning units and provide constructors for building such relations from
 common spatial inputs.
-Spatial relations in mulstiscape are graph-like structures defined over the
-set of planning units. They are used to represent adjacency, shared boundary
-length, proximity, neighbourhood graphs, or other pairwise spatial
+Spatial relations in multiscape are graph-like structures defined over
+the set of planning units. They are used to represent adjacency, shared
+boundary length, proximity, neighbourhood graphs, or other pairwise spatial
 relationships that may later be used by objectives, constraints, or
 diagnostics.
-Relations are stored inside the problem object as
+Relations are stored inside the Problem object as
 x$data$spatial_relations[[name]]."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -66,12 +66,12 @@ x$data$spatial_relations[[name]]."><meta property="og:image" content="https://jo
     <p>Define a unified internal representation for spatial relations between
 planning units and provide constructors for building such relations from
 common spatial inputs.</p>
-<p>Spatial relations in <code>mulstiscape</code> are graph-like structures defined over the
-set of planning units. They are used to represent adjacency, shared boundary
-length, proximity, neighbourhood graphs, or other pairwise spatial
+<p>Spatial relations in <code>multiscape</code> are graph-like structures defined over
+the set of planning units. They are used to represent adjacency, shared
+boundary length, proximity, neighbourhood graphs, or other pairwise spatial
 relationships that may later be used by objectives, constraints, or
 diagnostics.</p>
-<p>Relations are stored inside the problem object as
+<p>Relations are stored inside the <code>Problem</code> object as
 <code>x$data$spatial_relations[[name]]</code>.</p>
     </div>
 
@@ -95,7 +95,7 @@ on the relation type.</p></dd>
 <code>distance</code>, <code>source</code>, or other diagnostic fields. These extra
 columns are preserved when possible.</p>
 <p>Thus, a spatial relation can be interpreted as a weighted graph
-\(G = (V, E, \omega)\), where:</p><ul><li><p>\(V\) is the set of planning units,</p></li>
+\(G = (\mathcal{I}, E, \omega)\), where:</p><ul><li><p>\(\mathcal{I}\) is the set of planning units,</p></li>
 <li><p>\(E\) is the set of stored edges,</p></li>
 <li><p>\(\omega_{ij} \ge 0\) is the weight associated with edge
 \((i,j)\).</p></li>
@@ -106,28 +106,16 @@ case, each unordered pair is typically stored once, usually with
 <p><strong>Boundary relations and diagonal terms</strong></p>
 <p>The function <code><a href="add_spatial_boundary.html">add_spatial_boundary</a></code> supports boundary-length
 relations derived either from a boundary table or from polygon geometry.</p>
-<p>If <code>include_self = TRUE</code>, diagonal entries \((i,i)\) are added to
+<p>If <code>include_self = TRUE</code>, diagonal entries \((i,i)\) may be added to
 represent exposed boundary. These diagonal weights are intended for
 boundary-based compactness or fragmentation formulations, where perimeter
 exposed to the outside of the selected solution should contribute to the
 objective.</p>
-<p>In that case, the diagonal entry for planning unit \(i\) is computed as:
-$$
-\omega_{ii}^{\mathrm{diag}} =
-\mathrm{edge\_factor} \times
-\max\left\{
-p_i - \sum_{j \neq i} \omega_{ij},
-0
-\right\},
-$$
-where \(p_i\) is the total perimeter of planning unit \(i\) and
-\(\sum_{j \neq i} \omega_{ij}\) is the total shared boundary length with
-neighbouring planning units.</p>
 <p><strong>Geometry safety</strong></p>
 <p>All <code>sf</code>-based constructors operate only through spatial predicates,
 topological relations, or boundary-length calculations. They never subdivide,
-cut, or alter planning-unit geometries. Planning units are aligned to
-<code>x$data$pu$id</code> before spatial relations are computed.</p>
+cut, or alter planning-unit geometries. Planning units are aligned to the
+internal planning-unit order before spatial relations are computed.</p>
 <p><strong>Available constructors</strong></p>
 <p>The following functions build and register spatial relations:</p><ul><li><p><code><a href="add_spatial_relations.html">add_spatial_relations</a></code>: register a precomputed relation,</p></li>
 <li><p><code><a href="add_spatial_boundary.html">add_spatial_boundary</a></code>: shared boundary length relation,</p></li>

@@ -62,17 +62,18 @@ An updated `Problem` object.
 
 ## Details
 
-Let \\\mathcal{P}\\ denote the set of planning units and let
+Use this function when spatial cohesion should be encouraged separately
+for each selected action pattern.
+
+Let \\\mathcal{I}\\ denote the set of planning units and let
 \\\mathcal{A}\\ denote the set of actions.
 
 Let \\x\_{ia} \in \\0,1\\\\ indicate whether action \\a \in
-\mathcal{A}\\ is selected in planning unit \\i \in \mathcal{P}\\.
+\mathcal{A}\\ is selected in planning unit \\i \in \mathcal{I}\\.
 
-Let the chosen spatial relation
-`x$data$spatial_relations[[relation_name]]` define weighted pairs with
-weights \\\omega\_{ij} \ge 0\\, and let \\\lambda =
-\code{weight_multiplier}\\ be the global scaling factor applied to these
-weights.
+Let the chosen spatial relation define weighted pairs with weights
+\\\omega\_{ij} \ge 0\\, and let \\\lambda = \code{weight_multiplier}\\
+be the global scaling factor applied to these weights.
 
 If `actions` is supplied, only the selected subset \\\mathcal{A}^{\star}
 \subseteq \mathcal{A}\\ contributes to the final objective. If
@@ -80,11 +81,8 @@ If `actions` is supplied, only the selected subset \\\mathcal{A}^{\star}
 
 The internal preparation step constructs one auxiliary variable
 \\b\_{ija} \in \[0,1\]\\ for each unique non-diagonal undirected edge
-\\(i,j)\\ with \\i \< j\\ and for each action \\a\\. These variables are
-created globally for all actions.
-
-For each edge–action combination, the intended semantics is: \$\$
-b\_{ija} = x\_{ia} \land x\_{ja}. \$\$
+\\(i,j)\\ with \\i \< j\\ and for each action \\a\\. The intended
+semantics is: \$\$ b\_{ija} = x\_{ia} \land x\_{ja}. \$\$
 
 Whenever both decision variables \\x\_{ia}\\ and \\x\_{ja}\\ exist in
 the model, this conjunction is enforced by the linearization: \$\$
@@ -93,7 +91,7 @@ b\_{ija} \le x\_{ia}, \$\$ \$\$ b\_{ija} \le x\_{ja}, \$\$ \$\$ b\_{ija}
 
 If one of the two action variables does not exist because the
 corresponding `(pu, action)` pair is not feasible, the auxiliary
-variable is forced to zero: \$\$ b\_{ija} = 0. \$\$
+variable is forced to zero.
 
 Therefore, \\b\_{ija}=1\\ if and only if action \\a\\ is selected in
 both adjacent planning units \\i\\ and \\j\\; otherwise \\b\_{ija}=0\\.
@@ -130,12 +128,6 @@ This differs from planning-unit fragmentation:
 
 - `add_objective_min_action_fragmentation()` encourages cohesion of each
   selected action pattern separately.
-
-A key implementation detail is that the auxiliary block is built over
-the global set of unique undirected non-diagonal edges and all actions,
-even if a later subset of actions is used in the objective. Missing
-edge–action combinations induced by infeasible decisions are fixed to
-zero.
 
 Setting `weight_multiplier = 0` removes the contribution of the spatial
 relation from the objective after scaling.

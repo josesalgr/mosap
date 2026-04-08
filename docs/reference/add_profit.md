@@ -1,7 +1,7 @@
 # Add profit to a planning problem
 
 Define economic profit values for feasible planning unit–action pairs
-and store them in `x$data$dist_profit`.
+and store them in a profit table.
 
 Profit is stored separately from ecological effects. In particular,
 `profit` is not the same as ecological `benefit` or `loss` as
@@ -23,8 +23,7 @@ add_profit(x, profit = NULL)
 
   A `Problem` object created with
   [`create_problem`](https://josesalgr.github.io/multiscape/reference/create_problem.md).
-  It must already contain `x$data$dist_actions` and `x$data$actions`;
-  run
+  It must already contain feasible actions and an action catalogue; run
   [`add_actions`](https://josesalgr.github.io/multiscape/reference/add_actions.md)
   first.
 
@@ -45,24 +44,33 @@ add_profit(x, profit = NULL)
 
 ## Value
 
-An updated `Problem` object with `x$data$dist_profit` created or
+An updated `Problem` object with a stored profit table created or
 replaced. The stored table contains columns `pu`, `action`, `profit`,
 `internal_pu`, and `internal_action`, and includes only rows with
 non-zero profit.
 
 ## Details
 
-Let \\\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\\ denote the
-set of feasible planning unit–action pairs currently stored in
-`x$data$dist_actions`, where \\\mathcal{P}\\ is the set of planning
-units and \\\mathcal{A}\\ is the set of actions.
+**When to use `add_profit()`.**
 
-This function assigns to each feasible pair \\(i,a) \in \mathcal{F}\\ a
+Use this function when economic returns, penalties, or other
+action-specific financial values are part of the planning problem.
+Typical downstream uses include objectives such as
+[`add_objective_max_profit`](https://josesalgr.github.io/multiscape/reference/add_objective_max_profit.md)
+and
+[`add_objective_max_net_profit`](https://josesalgr.github.io/multiscape/reference/add_objective_max_net_profit.md).
+
+Let \\\mathcal{I}\\ denote the set of planning units and \\\mathcal{A}\\
+the set of actions. Let \\\mathcal{D} \subseteq \mathcal{I} \times
+\mathcal{A}\\ denote the set of feasible planning unit–action pairs
+currently stored in the problem.
+
+This function assigns to each feasible pair \\(i,a) \in \mathcal{D}\\ a
 numeric profit value \\\pi\_{ia} \in \mathbb{R}\\ and stores the result
-in `x$data$dist_profit`.
+in a profit table.
 
 Thus, the stored table can be interpreted as a mapping \$\$ \pi :
-\mathcal{F} \to \mathbb{R}, \$\$ where \\\pi\_{ia}\\ represents the
+\mathcal{D} \to \mathbb{R}, \$\$ where \\\pi\_{ia}\\ represents the
 economic return associated with selecting action \\a\\ in planning unit
 \\i\\.
 
@@ -71,7 +79,7 @@ represent gains or revenues, zero represents no net profit contribution,
 and negative values can be used to encode penalties or net economic
 losses.
 
-The resulting table `x$data$dist_profit` contains:
+The stored table contains:
 
 - `pu`: external planning-unit id,
 
@@ -109,15 +117,18 @@ pairs.
 **Storage behaviour**
 
 This function stores only rows with non-zero profit values. Feasible
-pairs whose final profit is zero are omitted from `x$data$dist_profit`.
-Missing values produced during matching or joins are treated as zero
-before this filtering step.
+pairs whose final profit is zero are omitted from the stored profit
+table. Missing values produced during matching or joins are treated as
+zero before this filtering step. Therefore, the resulting table is a
+sparse representation of economic returns over the feasible decision
+space.
 
 **Data-only behaviour**
 
 This function is purely data-oriented. It does not build or modify the
 optimization model, and it does not change feasibility. It simply
-assigns profit values to rows already present in `x$data$dist_actions`.
+assigns profit values to rows already present in the feasible action
+table.
 
 In particular:
 
@@ -126,7 +137,9 @@ In particular:
 - it does not remove infeasible pairs,
 
 - it does not apply solver-side filtering such as dropping locked-out
-  decisions.
+  decisions,
+
+- it does not modify ecological effect tables.
 
 Any such filtering is expected to occur later when model-ready tables
 are prepared, typically during the build stage invoked by
@@ -143,7 +156,7 @@ in derived budget expressions, or in reporting and summary functions.
 
 For example, if \\x\_{ia} \in \\0,1\\\\ denotes whether action \\a\\ is
 selected in planning unit \\i\\, then a profit-maximization objective
-typically takes the form \$\$ \max \sum\_{(i,a) \in \mathcal{F}}
+typically takes the form \$\$ \max \sum\_{(i,a) \in \mathcal{D}}
 \pi\_{ia} x\_{ia}. \$\$
 
 ## See also

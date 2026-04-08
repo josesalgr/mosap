@@ -83,8 +83,8 @@ actions exist in that unit.</p>
 
 
 <dt id="arg-impact-col">impact_col<a class="anchor" aria-label="anchor" href="#arg-impact-col"></a></dt>
-<dd><p>Character string giving the column in
-<code>x$data$dist_features</code> that contains the per-<code>(pu, feature)</code>
+<dd><p>Character string giving the column in the
+feature-distribution table that contains the per-<code>(pu, feature)</code>
 impact amount. The default is <code>"amount"</code>.</p></dd>
 
 
@@ -110,13 +110,16 @@ multi-objective workflows.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(w_i \in \{0,1\}\) denote whether planning unit \(i\) is selected
+    <p>Use this function when intervention itself has a baseline ecological, social,
+or operational burden that should be minimized independently of the detailed
+effects of particular actions.</p>
+<p>Let \(w_i \in \{0,1\}\) denote whether planning unit \(i\) is selected
 for intervention. Let \(q_{if}\) denote the impact amount associated with
 planning unit \(i\) and feature \(f\), taken from column
-<code>impact_col</code> in <code>x$data$dist_features</code>.</p>
-<p>If all features are included, the objective can be interpreted as:</p>
+<code>impact_col</code> in the feature-distribution table.</p>
+<p>If all selected features are included, the objective can be interpreted as:</p>
 <p>$$
-\min \sum_{i \in \mathcal{P}} \left( \sum_{f \in \mathcal{F}^{\star}} q_{if}
+\min \sum_{i \in \mathcal{I}} \left( \sum_{f \in \mathcal{F}^{\star}} q_{if}
 \right) w_i,
 $$</p>
 <p>where \(\mathcal{F}^{\star}\) denotes the selected subset of features.</p>

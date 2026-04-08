@@ -42,6 +42,9 @@ function stores that configuration in \code{x$data$method} so that it can be
 used later by \code{\link{solve}}.
 }
 \details{
+Use this method when several registered objectives should be combined into a
+single scalar optimization problem through explicit preference weights.
+
 \strong{General idea}
 
 Suppose that a set of atomic objectives has already been registered in the

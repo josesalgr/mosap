@@ -2,15 +2,13 @@
 
 Add feature-level absolute targets to a planning problem.
 
-These targets are stored in `x$data$targets` and later translated into
-linear constraints when the optimization model is built.
-
-Absolute targets are interpreted directly in the same units as the
-feature contributions used by the model.
-
-Each call appends one or more target definitions to the problem. This
-makes it possible to combine multiple target rules, including targets
-associated with different action subsets.
+These targets are stored in the problem object and later translated into
+linear constraints when the optimization model is built. Absolute
+targets are interpreted directly in the same units as the feature
+contributions used by the model. Each call appends one or more target
+definitions to the problem. This makes it possible to combine multiple
+target rules, including targets associated with different action
+subsets.
 
 ## Usage
 
@@ -55,10 +53,14 @@ add_constraint_targets_absolute(
 
 ## Value
 
-An updated `Problem` object with absolute targets appended to
-`x$data$targets`.
+An updated `Problem` object with absolute targets appended to the stored
+target table.
 
 ## Details
+
+Use this function when target requirements are naturally expressed in
+the original units of the modelled feature contributions, rather than as
+proportions of current baseline totals.
 
 Let \\\mathcal{F}\\ denote the set of features. For each targeted
 feature \\f \in \mathcal{F}\\, this function stores an absolute target
@@ -66,15 +68,19 @@ threshold \\T_f \ge 0\\.
 
 When the optimization model is built, each such target is interpreted as
 a lower-bound constraint of the form: \$\$ \sum\_{(i,a) \in
-\mathcal{S}\_f} c\_{iaf} x\_{ia} \ge T_f, \$\$ where:
+\mathcal{D}\_f^{\star}} c\_{iaf} x\_{ia} \ge T_f, \$\$ where:
+
+- \\i \in \mathcal{I}\\ indexes planning units,
+
+- \\a \in \mathcal{A}\\ indexes actions,
 
 - \\x\_{ia}\\ indicates whether action \\a\\ is selected in planning
   unit \\i\\,
 
 - \\c\_{iaf}\\ is the contribution of that action to feature \\f\\,
 
-- \\\mathcal{S}\_f\\ is the set of planning unit–action pairs allowed to
-  count toward the target.
+- \\\mathcal{D}\_f^{\star}\\ is the subset of planning unit–action pairs
+  allowed to count toward the target for feature \\f\\.
 
 In the absolute case, the stored target threshold is simply: \$\$ T_f =
 t_f, \$\$ where \\t_f\\ is the user-supplied target value for feature
@@ -102,17 +108,9 @@ If `targets` does not explicitly identify features:
 - if `features` is supplied, the target values are interpreted with
   respect to that feature set.
 
-Internally, targets added by this function are stored with:
-
-- `type = "actions"`,
-
-- `sense = "ge"`,
-
-- `target_unit = "absolute"`,
-
-- `target_raw = target_value`,
-
-- `basis_total = NA`.
+Repeated calls append new target rules rather than replacing previous
+ones. This allows cumulative target modelling, including multiple rules
+on the same feature with different contributing action subsets.
 
 ## See also
 

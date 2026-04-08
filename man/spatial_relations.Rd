@@ -8,13 +8,13 @@ Define a unified internal representation for spatial relations between
 planning units and provide constructors for building such relations from
 common spatial inputs.
 
-Spatial relations in \code{mulstiscape} are graph-like structures defined over the
-set of planning units. They are used to represent adjacency, shared boundary
-length, proximity, neighbourhood graphs, or other pairwise spatial
+Spatial relations in \code{multiscape} are graph-like structures defined over
+the set of planning units. They are used to represent adjacency, shared
+boundary length, proximity, neighbourhood graphs, or other pairwise spatial
 relationships that may later be used by objectives, constraints, or
 diagnostics.
 
-Relations are stored inside the problem object as
+Relations are stored inside the \code{Problem} object as
 \code{x$data$spatial_relations[[name]]}.
 }
 \details{
@@ -34,9 +34,9 @@ Additional columns may also be present, such as \code{pu1}, \code{pu2},
 columns are preserved when possible.
 
 Thus, a spatial relation can be interpreted as a weighted graph
-\eqn{G = (V, E, \omega)}, where:
+\eqn{G = (\mathcal{I}, E, \omega)}, where:
 \itemize{
-\item \eqn{V} is the set of planning units,
+\item \eqn{\mathcal{I}} is the set of planning units,
 \item \eqn{E} is the set of stored edges,
 \item \eqn{\omega_{ij} \ge 0} is the weight associated with edge
 \eqn{(i,j)}.
@@ -53,31 +53,18 @@ case, each unordered pair is typically stored once, usually with
 The function \code{\link{add_spatial_boundary}} supports boundary-length
 relations derived either from a boundary table or from polygon geometry.
 
-If \code{include_self = TRUE}, diagonal entries \eqn{(i,i)} are added to
+If \code{include_self = TRUE}, diagonal entries \eqn{(i,i)} may be added to
 represent exposed boundary. These diagonal weights are intended for
 boundary-based compactness or fragmentation formulations, where perimeter
 exposed to the outside of the selected solution should contribute to the
 objective.
 
-In that case, the diagonal entry for planning unit \eqn{i} is computed as:
-\deqn{
-\omega_{ii}^{\mathrm{diag}} =
-\mathrm{edge\_factor} \times
-\max\left\{
-p_i - \sum_{j \neq i} \omega_{ij},
-0
-\right\},
-}
-where \eqn{p_i} is the total perimeter of planning unit \eqn{i} and
-\eqn{\sum_{j \neq i} \omega_{ij}} is the total shared boundary length with
-neighbouring planning units.
-
 \strong{Geometry safety}
 
 All \code{sf}-based constructors operate only through spatial predicates,
 topological relations, or boundary-length calculations. They never subdivide,
-cut, or alter planning-unit geometries. Planning units are aligned to
-\code{x$data$pu$id} before spatial relations are computed.
+cut, or alter planning-unit geometries. Planning units are aligned to the
+internal planning-unit order before spatial relations are computed.
 
 \strong{Available constructors}
 

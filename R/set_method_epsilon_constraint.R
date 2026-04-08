@@ -2,38 +2,44 @@
 #'
 #' @description
 #' Configure a \code{Problem} object to be solved with the
-#' \eqn{\epsilon}-constraint multi-objective method.
+#' epsilon-constraint multi-objective method.
 #'
 #' In this method, one objective is designated as the \emph{primary} objective
 #' and is optimized directly, while the remaining objectives are transformed
-#' into \eqn{\epsilon}-constraints.
+#' into \eqn{\varepsilon}-constraints.
 #'
 #' Two operating modes are supported:
 #' \itemize{
-#'   \item \strong{manual mode}: the user supplies the \eqn{\epsilon}-levels
+#'   \item \strong{manual mode}: the user supplies the \eqn{\varepsilon}-levels
 #'   explicitly,
-#'   \item \strong{automatic mode}: the \eqn{\epsilon}-levels are generated
-#'   later during \code{\link{solve}} from extreme or payoff information.
+#'   \item \strong{automatic mode}: the \eqn{\varepsilon}-levels are generated
+#'   later during \code{\link{solve}} from extreme-point or payoff information.
 #' }
 #'
 #' This function does not solve the problem. It stores the method configuration
 #' in \code{x$data$method}, to be used later by \code{\link{solve}}.
 #'
 #' @details
+#' Use this method when one objective should be optimized directly while the
+#' remaining objectives are controlled through explicit performance thresholds.
+#'
 #' \strong{General idea}
 #'
-#' Suppose that \eqn{m \ge 2} objective functions have been registered in the
-#' problem:
+#' Suppose that \eqn{m \ge 2} objective functions have already been registered
+#' in the problem:
 #' \deqn{
 #' f_1(x), f_2(x), \dots, f_m(x).
 #' }
 #'
-#' The \eqn{\epsilon}-constraint method selects one of them as the primary
-#' objective, say \eqn{f_p(x)}, and treats the remaining objectives as
-#' constrained objectives.
+#' The epsilon-constraint method selects one of them as the primary objective,
+#' say \eqn{f_p(x)}, and treats the remaining objectives as constrained
+#' objectives.
 #'
-#' For a fixed vector of \eqn{\epsilon}-levels, the method solves subproblems of
-#' the form:
+#' For a fixed vector of epsilon levels, the method solves subproblems in which
+#' the primary objective is optimized directly and the remaining objectives are
+#' imposed through epsilon constraints.
+#'
+#' A representative formulation is:
 #'
 #' \deqn{
 #' \max \; f_p(x)
@@ -42,7 +48,7 @@
 #' subject to
 #'
 #' \deqn{
-#' f_k(x) \ge \epsilon_k, \qquad k \in \mathcal{C},
+#' f_k(x) \ge \varepsilon_k, \qquad k \in \mathcal{C},
 #' }
 #'
 #' together with all original feasibility constraints of the planning problem,
@@ -54,11 +60,27 @@
 #' \itemize{
 #'   \item one objective is optimized directly,
 #'   \item all remaining objectives are imposed through
-#'   \eqn{\epsilon}-constraints.
+#'   \eqn{\varepsilon}-constraints.
 #' }
 #'
-#' By solving the problem repeatedly for different \eqn{\epsilon}-levels, the
-#' method generates a set of efficient trade-off solutions.
+#' By solving the problem repeatedly for different epsilon levels, the method
+#' generates a set of efficient trade-off solutions.
+#'
+#' \strong{Atomic objectives requirement}
+#'
+#' The epsilon-constraint method can only be used with atomic objectives that
+#' have already been registered under aliases. These aliases are typically
+#' created by calling objective setters with an \code{alias} argument, for
+#' example:
+#' \preformatted{
+#' x <- x |>
+#'   add_objective_max_benefit(alias = "benefit") |>
+#'   add_objective_min_cost(alias = "cost") |>
+#'   add_objective_min_fragmentation(alias = "frag")
+#' }
+#'
+#' The \code{primary} argument selects which registered objective is optimized
+#' directly. The remaining aliases are treated as constrained objectives.
 #'
 #' \strong{Manual mode}
 #'
@@ -75,9 +97,8 @@
 #'
 #' If the constrained objectives are
 #' \eqn{\mathcal{C} = \{c_1, \dots, c_q\}}, then manual mode creates a design
-#' grid containing all combinations of the supplied \eqn{\epsilon}-levels for
-#' the constrained objectives.
-#'
+#' grid containing all combinations of the supplied epsilon levels for the
+#' constrained objectives.
 #'
 #' Each row of this grid defines one subproblem to be solved later.
 #'
@@ -88,11 +109,11 @@
 #'   \item 3 or more objectives: 1 primary + multiple constrained objectives.
 #' }
 #'
-#' Thus, manual mode is the general way to use the
-#' \eqn{\epsilon}-constraint method when more than two objectives are involved.
+#' Thus, manual mode is the general way to use the epsilon-constraint method
+#' when more than two objectives are involved.
 #'
 #' In manual mode, the generated design grid is stored immediately in
-#' \code{x$data$method$runs}. Its \eqn{\epsilon}-columns are named
+#' \code{x$data$method$runs}. Its epsilon columns are named
 #' \code{eps_<alias>}, for example \code{eps_frag}.
 #'
 #' \strong{Automatic mode}
@@ -100,8 +121,8 @@
 #' In \code{mode = "auto"}, the user omits \code{eps} and instead supplies
 #' \code{n_points}.
 #'
-#' In this case, the \eqn{\epsilon}-grid is not built immediately. Instead, it
-#' is constructed later during \code{\link{solve}} using extreme-point or
+#' In this case, the epsilon grid is not built immediately. Instead, it is
+#' constructed later during \code{\link{solve}} using extreme-point or
 #' payoff-table information.
 #'
 #' In the current implementation, automatic mode supports
@@ -138,10 +159,13 @@
 #' }
 #'
 #' In manual mode, \code{x$data$method$runs} contains the explicit design grid.
+#'
 #' In automatic mode, \code{x$data$method$runs} is initially \code{NULL} and is
-#' generated later during \code{\link{solve}}.For more than two objectives, automatic
-#' grid generation is currently unavailable because the number of epsilon combinations
-#' grows rapidly and requires explicit user control.
+#' generated later during \code{\link{solve}}.
+#'
+#' For more than two objectives, automatic grid generation is currently
+#' unavailable because the number of epsilon combinations grows rapidly and
+#' requires explicit user control.
 #'
 #' @param x A \code{Problem} object.
 #' @param primary Character string giving the alias of the primary objective to
@@ -170,12 +194,11 @@
 #' @param lexicographic_tol Numeric scalar \eqn{\ge 0}. Tolerance used in
 #'   lexicographic extreme-point computation.
 #'
-#' @return An updated \code{Problem} object with the
-#'   \eqn{\epsilon}-constraint method configuration stored in
-#'   \code{x$data$method}.
+#' @return An updated \code{Problem} object with the epsilon-constraint method
+#'   configuration stored in \code{x$data$method}.
 #'
 #' In manual mode, \code{x$data$method$runs} contains the explicit
-#' \eqn{\epsilon}-design grid.
+#' epsilon-design grid.
 #'
 #' In automatic mode, \code{x$data$method$runs} is \code{NULL} until the grid is
 #' generated later during \code{\link{solve}}.

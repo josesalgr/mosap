@@ -40,9 +40,13 @@ costs, action costs, or both. Action costs can optionally be restricted to a
 subset of actions.
 }
 \details{
-Let \eqn{\mathcal{P}} be the set of planning units and let
-\eqn{\mathcal{A}_i} be the set of feasible actions in planning unit
-\eqn{i \in \mathcal{P}}.
+Use this function when the planning problem is framed primarily as a
+cost-minimization problem, with costs arising from planning-unit selection,
+action implementation, or both.
+
+Let \eqn{\mathcal{I}} be the set of planning units and let
+\eqn{\mathcal{D} \subseteq \mathcal{I} \times \mathcal{A}} denote the set of
+feasible planning unit--action decisions.
 
 Let:
 \itemize{
@@ -59,14 +63,14 @@ The most general form of this objective is:
 
 \deqn{
 \min \left(
-\sum_{i \in \mathcal{P}} c_i^{PU} w_i
+\sum_{i \in \mathcal{I}} c_i^{PU} w_i
 +
-\sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}_i^\star} c_{ia}^{A} x_{ia}
+\sum_{(i,a) \in \mathcal{D}^{\star}} c_{ia}^{A} x_{ia}
 \right),
 }
 
-where \eqn{\mathcal{A}_i^\star} denotes the subset of feasible actions that
-contribute to the action-cost term.
+where \eqn{\mathcal{D}^{\star}} denotes the subset of feasible decisions
+whose action contributes to the action-cost term.
 
 If \code{include_pu_cost = FALSE}, the planning-unit cost term is omitted.
 
@@ -76,10 +80,6 @@ If \code{actions = NULL}, all feasible actions contribute to the action-cost
 term. If \code{actions} is supplied, only the selected subset contributes to
 that term. Planning-unit costs are never subset by \code{actions}; they are
 always global whenever \code{include_pu_cost = TRUE}.
-
-This objective is useful when the decision problem is framed primarily as a
-cost-minimization problem, optionally combining fixed planning-unit costs
-with action-specific implementation costs.
 }
 \examples{
 \dontrun{

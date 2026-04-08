@@ -6,28 +6,28 @@
     }
   };
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Set the epsilon-constraint multi-objective method — set_method_epsilon_constraint"><meta name="description" content="Configure a Problem object to be solved with the
-\(\epsilon\)-constraint multi-objective method.
+epsilon-constraint multi-objective method.
 In this method, one objective is designated as the primary objective
 and is optimized directly, while the remaining objectives are transformed
-into \(\epsilon\)-constraints.
+into \(\varepsilon\)-constraints.
 Two operating modes are supported:
-manual mode: the user supplies the \(\epsilon\)-levels
+manual mode: the user supplies the \(\varepsilon\)-levels
 explicitly,
-automatic mode: the \(\epsilon\)-levels are generated
-later during solve from extreme or payoff information.
+automatic mode: the \(\varepsilon\)-levels are generated
+later during solve from extreme-point or payoff information.
 
 
 This function does not solve the problem. It stores the method configuration
 in x$data$method, to be used later by solve."><meta property="og:description" content="Configure a Problem object to be solved with the
-\(\epsilon\)-constraint multi-objective method.
+epsilon-constraint multi-objective method.
 In this method, one objective is designated as the primary objective
 and is optimized directly, while the remaining objectives are transformed
-into \(\epsilon\)-constraints.
+into \(\varepsilon\)-constraints.
 Two operating modes are supported:
-manual mode: the user supplies the \(\epsilon\)-levels
+manual mode: the user supplies the \(\varepsilon\)-levels
 explicitly,
-automatic mode: the \(\epsilon\)-levels are generated
-later during solve from extreme or payoff information.
+automatic mode: the \(\varepsilon\)-levels are generated
+later during solve from extreme-point or payoff information.
 
 
 This function does not solve the problem. It stores the method configuration
@@ -72,14 +72,14 @@ in x$data$method, to be used later by solve."><meta property="og:image" content=
 
     <div class="ref-description section level2">
     <p>Configure a <code>Problem</code> object to be solved with the
-\(\epsilon\)-constraint multi-objective method.</p>
+epsilon-constraint multi-objective method.</p>
 <p>In this method, one objective is designated as the <em>primary</em> objective
 and is optimized directly, while the remaining objectives are transformed
-into \(\epsilon\)-constraints.</p>
-<p>Two operating modes are supported:</p><ul><li><p><strong>manual mode</strong>: the user supplies the \(\epsilon\)-levels
+into \(\varepsilon\)-constraints.</p>
+<p>Two operating modes are supported:</p><ul><li><p><strong>manual mode</strong>: the user supplies the \(\varepsilon\)-levels
 explicitly,</p></li>
-<li><p><strong>automatic mode</strong>: the \(\epsilon\)-levels are generated
-later during <code><a href="solve.html">solve</a></code> from extreme or payoff information.</p></li>
+<li><p><strong>automatic mode</strong>: the \(\varepsilon\)-levels are generated
+later during <code><a href="solve.html">solve</a></code> from extreme-point or payoff information.</p></li>
 </ul><p>This function does not solve the problem. It stores the method configuration
 in <code>x$data$method</code>, to be used later by <code><a href="solve.html">solve</a></code>.</p>
     </div>
@@ -155,33 +155,36 @@ lexicographic extreme-point computation.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An updated <code>Problem</code> object with the
-\(\epsilon\)-constraint method configuration stored in
-<code>x$data$method</code>.</p>
+    <p>An updated <code>Problem</code> object with the epsilon-constraint method
+configuration stored in <code>x$data$method</code>.</p>
 <p>In manual mode, <code>x$data$method$runs</code> contains the explicit
-\(\epsilon\)-design grid.</p>
+epsilon-design grid.</p>
 <p>In automatic mode, <code>x$data$method$runs</code> is <code>NULL</code> until the grid is
 generated later during <code><a href="solve.html">solve</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p><strong>General idea</strong></p>
-<p>Suppose that \(m \ge 2\) objective functions have been registered in the
-problem:
+    <p>Use this method when one objective should be optimized directly while the
+remaining objectives are controlled through explicit performance thresholds.</p>
+<p><strong>General idea</strong></p>
+<p>Suppose that \(m \ge 2\) objective functions have already been registered
+in the problem:
 $$
 f_1(x), f_2(x), \dots, f_m(x).
 $$</p>
-<p>The \(\epsilon\)-constraint method selects one of them as the primary
-objective, say \(f_p(x)\), and treats the remaining objectives as
-constrained objectives.</p>
-<p>For a fixed vector of \(\epsilon\)-levels, the method solves subproblems of
-the form:</p>
+<p>The epsilon-constraint method selects one of them as the primary objective,
+say \(f_p(x)\), and treats the remaining objectives as constrained
+objectives.</p>
+<p>For a fixed vector of epsilon levels, the method solves subproblems in which
+the primary objective is optimized directly and the remaining objectives are
+imposed through epsilon constraints.</p>
+<p>A representative formulation is:</p>
 <p>$$
 \max \; f_p(x)
 $$</p>
 <p>subject to</p>
 <p>$$
-f_k(x) \ge \epsilon_k, \qquad k \in \mathcal{C},
+f_k(x) \ge \varepsilon_k, \qquad k \in \mathcal{C},
 $$</p>
 <p>together with all original feasibility constraints of the planning problem,
 where \(\mathcal{C}\) is the set of constrained objectives.</p>
@@ -189,9 +192,21 @@ where \(\mathcal{C}\) is the set of constrained objectives.</p>
 minimization objectives into equivalent constrained forms, but the method
 always follows the same principle:</p><ul><li><p>one objective is optimized directly,</p></li>
 <li><p>all remaining objectives are imposed through
-\(\epsilon\)-constraints.</p></li>
-</ul><p>By solving the problem repeatedly for different \(\epsilon\)-levels, the
-method generates a set of efficient trade-off solutions.</p>
+\(\varepsilon\)-constraints.</p></li>
+</ul><p>By solving the problem repeatedly for different epsilon levels, the method
+generates a set of efficient trade-off solutions.</p>
+<p><strong>Atomic objectives requirement</strong></p>
+<p>The epsilon-constraint method can only be used with atomic objectives that
+have already been registered under aliases. These aliases are typically
+created by calling objective setters with an <code>alias</code> argument, for
+example:</p><div class="sourceCode"><pre><code><span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/add_objective_max_benefit.html">add_objective_max_benefit</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"benefit"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/add_objective_min_cost.html">add_objective_min_cost</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"cost"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/add_objective_min_fragmentation.html">add_objective_min_fragmentation</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"frag"</span><span class="op">)</span></span></code></pre></div>
+
+<p>The <code>primary</code> argument selects which registered objective is optimized
+directly. The remaining aliases are treated as constrained objectives.</p>
 <p><strong>Manual mode</strong></p>
 <p>In <code>mode = "manual"</code>, the user must provide <code>eps</code>.</p>
 <p>The <code>eps</code> argument can be supplied as:</p><ul><li><p>a named numeric vector, defining a single run,</p></li>
@@ -200,22 +215,22 @@ method generates a set of efficient trade-off solutions.</p>
 aliases, that is, to all aliases in <code>aliases</code> except <code>primary</code>.</p>
 <p>If the constrained objectives are
 \(\mathcal{C} = \{c_1, \dots, c_q\}\), then manual mode creates a design
-grid containing all combinations of the supplied \(\epsilon\)-levels for
-the constrained objectives.</p>
+grid containing all combinations of the supplied epsilon levels for the
+constrained objectives.</p>
 <p>Each row of this grid defines one subproblem to be solved later.</p>
 <p><strong>Important:</strong> manual mode supports <strong>two or more objectives</strong>.
 In particular, it can be used with:</p><ul><li><p>2 objectives: 1 primary + 1 constrained objective,</p></li>
 <li><p>3 or more objectives: 1 primary + multiple constrained objectives.</p></li>
-</ul><p>Thus, manual mode is the general way to use the
-\(\epsilon\)-constraint method when more than two objectives are involved.</p>
+</ul><p>Thus, manual mode is the general way to use the epsilon-constraint method
+when more than two objectives are involved.</p>
 <p>In manual mode, the generated design grid is stored immediately in
-<code>x$data$method$runs</code>. Its \(\epsilon\)-columns are named
+<code>x$data$method$runs</code>. Its epsilon columns are named
 <code>eps_&lt;alias&gt;</code>, for example <code>eps_frag</code>.</p>
 <p><strong>Automatic mode</strong></p>
 <p>In <code>mode = "auto"</code>, the user omits <code>eps</code> and instead supplies
 <code>n_points</code>.</p>
-<p>In this case, the \(\epsilon\)-grid is not built immediately. Instead, it
-is constructed later during <code><a href="solve.html">solve</a></code> using extreme-point or
+<p>In this case, the epsilon grid is not built immediately. Instead, it is
+constructed later during <code><a href="solve.html">solve</a></code> using extreme-point or
 payoff-table information.</p>
 <p>In the current implementation, automatic mode supports
 <strong>exactly two objectives only</strong>:</p><ul><li><p>one primary objective,</p></li>
@@ -238,11 +253,12 @@ first to remain within <code>lexicographic_tol</code> of its optimum.</p>
 <li><p><code>constrained</code>,</p></li>
 <li><p>epsilon design information,</p></li>
 <li><p>lexicographic configuration.</p></li>
-</ul><p>In manual mode, <code>x$data$method$runs</code> contains the explicit design grid.
-In automatic mode, <code>x$data$method$runs</code> is initially <code>NULL</code> and is
-generated later during <code><a href="solve.html">solve</a></code>.For more than two objectives, automatic
-grid generation is currently unavailable because the number of epsilon combinations
-grows rapidly and requires explicit user control.</p>
+</ul><p>In manual mode, <code>x$data$method$runs</code> contains the explicit design grid.</p>
+<p>In automatic mode, <code>x$data$method$runs</code> is initially <code>NULL</code> and is
+generated later during <code><a href="solve.html">solve</a></code>.</p>
+<p>For more than two objectives, automatic grid generation is currently
+unavailable because the number of epsilon combinations grows rapidly and
+requires explicit user control.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

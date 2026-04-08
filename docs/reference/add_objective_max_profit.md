@@ -22,7 +22,7 @@ add_objective_max_profit(
 
 - profit_col:
 
-  Character string giving the profit column in `x$data$dist_profit`.
+  Character string giving the profit column in the stored profit table.
 
 - actions:
 
@@ -41,23 +41,26 @@ An updated `Problem` object.
 
 ## Details
 
+Use this function when the objective is to maximize gross economic
+return, without subtracting planning-unit or action costs.
+
 Let \\x\_{ia} \in \\0,1\\\\ denote whether action \\a\\ is selected in
 planning unit \\i\\, and let \\\pi\_{ia}\\ denote the profit associated
-with that decision, as taken from column `profit_col` in
-`x$data$dist_profit`.
+with that decision, as taken from column `profit_col` in the stored
+profit table.
 
 If all actions are included, the objective is:
 
-\$\$ \max \sum\_{(i,a) \in \mathcal{F}} \pi\_{ia} x\_{ia}, \$\$
+\$\$ \max \sum\_{(i,a) \in \mathcal{D}} \pi\_{ia} x\_{ia}, \$\$
 
-where \\\mathcal{F}\\ denotes the set of feasible planning unit–action
-pairs.
+where \\\mathcal{D}\\ denotes the set of feasible planning unit–action
+decisions.
 
 If `actions` is provided, only the selected subset contributes to the
-objective. Letting \\\mathcal{F}^{\star}\\ denote the feasible pairs
+objective. Letting \\\mathcal{D}^{\star}\\ denote the feasible decisions
 whose action belongs to the selected subset, the objective becomes:
 
-\$\$ \max \sum\_{(i,a) \in \mathcal{F}^{\star}} \pi\_{ia} x\_{ia}. \$\$
+\$\$ \max \sum\_{(i,a) \in \mathcal{D}^{\star}} \pi\_{ia} x\_{ia}. \$\$
 
 This objective considers profit only. It does not subtract planning-unit
 costs or action costs. For a net-profit formulation, use

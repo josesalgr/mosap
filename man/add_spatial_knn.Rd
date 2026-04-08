@@ -49,6 +49,10 @@ This constructor does not require polygon geometry. It uses planning-unit
 coordinates supplied explicitly or stored in the \code{Problem} object.
 }
 \details{
+Use this function when neighbourhood should be defined by a fixed number of
+nearby planning units rather than by polygon topology or a fixed distance
+threshold.
+
 Let \eqn{s_i = (x_i, y_i)} denote the coordinates of planning unit
 \eqn{i}. For each planning unit, this function identifies the \code{k}
 nearest distinct planning units under Euclidean distance.
@@ -66,7 +70,7 @@ Edge weights are then assigned according to \code{weight_mode}:
 \item \code{"inverse_sq"}:
 \deqn{\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},}
 }
-where \eqn{\varepsilon = \code{distance_eps}} is a small constant to avoid
+where \eqn{\varepsilon} = \code{distance_eps} is a small constant to avoid
 division by zero.
 
 The raw k-nearest-neighbours structure is directional by construction, but

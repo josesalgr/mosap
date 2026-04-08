@@ -30,11 +30,14 @@ Two planning units are rook-adjacent if they share a boundary segment of
 positive length. Corner-only contact does not count as rook adjacency.
 }
 \details{
+Use this function when neighbourhood should be defined by shared polygon
+edges rather than by point-touching or coordinate-based proximity.
+
 This constructor derives an adjacency graph from polygon geometry using a
 rook criterion. If planning units \eqn{i} and \eqn{j} share a common edge of
 non-zero length, then an edge \eqn{(i,j)} is added to the relation.
 
-Let \eqn{G = (V,E)} denote the resulting graph. Then:
+Let \eqn{G = (\mathcal{I}, E)} denote the resulting graph. Then:
 \deqn{
 (i,j) \in E \quad \Longleftrightarrow \quad
 \mathrm{length}(\partial i \cap \partial j) > 0.

@@ -36,7 +36,7 @@ An updated \code{Problem} object with the relation stored in
 }
 \description{
 Register an externally computed spatial relation inside a \code{Problem}
-object using the unified internal representation adopted by \code{mulstiscape}.
+object using the unified internal representation adopted by \code{multiscape}.
 
 Most users will typically prefer one of the convenience constructors such as
 \code{\link{add_spatial_boundary}}, \code{\link{add_spatial_rook}},
@@ -45,6 +45,9 @@ Most users will typically prefer one of the convenience constructors such as
 entry point for adding an already computed relation.
 }
 \details{
+Use this function when the spatial relation has already been computed
+externally and should be registered directly in the \code{Problem} object.
+
 The input relation may be provided either in terms of external planning-unit
 identifiers or in terms of internal planning-unit indices.
 
@@ -54,10 +57,11 @@ Specifically, the input \code{relations} table must contain either:
 \item \code{internal_pu1}, \code{internal_pu2}, and \code{weight}.
 }
 
-If external ids are supplied, they are mapped to internal indices using
-\code{x$data$pu$id} and \code{x$data$index$pu}.
+If external ids are supplied, they are mapped to internal indices using the
+planning-unit identifiers stored in the problem.
 
-Let \eqn{E} denote the set of rows supplied in \code{relations}. If
+Let \eqn{G = (\mathcal{I}, E, \omega)} denote the supplied relation, where
+\eqn{E} corresponds to the rows of \code{relations}. If
 \code{directed = FALSE}, each edge is treated as undirected, so pairs
 \eqn{(i,j)} and \eqn{(j,i)} are interpreted as the same edge. In that case,
 duplicated undirected edges are collapsed automatically using the maximum
@@ -69,25 +73,27 @@ If \code{directed = TRUE}, edges are preserved as ordered pairs, so
 Self-edges \eqn{(i,i)} are permitted only if \code{allow_self = TRUE}.
 
 The final relation is stored in \code{x$data$spatial_relations[[name]]}.
+
+If a relation with the same \code{name} already exists, it is replaced.
 }
 \examples{
 pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
 
 features <- data.frame(
- id = 1,
- name = "sp1"
+  id = 1,
+  name = "sp1"
 )
 
 dist_features <- data.frame(
- pu = 1:3,
- feature = 1,
- amount = c(1, 1, 1)
+  pu = 1:3,
+  feature = 1,
+  amount = c(1, 1, 1)
 )
 
 p <- create_problem(
- pu = pu,
- features = features,
- dist_features = dist_features
+  pu = pu,
+  features = features,
+  dist_features = dist_features
 )
 
 rel <- data.frame(

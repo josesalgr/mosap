@@ -39,13 +39,16 @@ An updated `Problem` object.
 
 ## Details
 
+Use this function when neighbourhood should be defined by shared polygon
+edges rather than by point-touching or coordinate-based proximity.
+
 This constructor derives an adjacency graph from polygon geometry using
 a rook criterion. If planning units \\i\\ and \\j\\ share a common edge
 of non-zero length, then an edge \\(i,j)\\ is added to the relation.
 
-Let \\G = (V,E)\\ denote the resulting graph. Then: \$\$ (i,j) \in E
-\quad \Longleftrightarrow \quad \mathrm{length}(\partial i \cap \partial
-j) \> 0. \$\$
+Let \\G = (\mathcal{I}, E)\\ denote the resulting graph. Then: \$\$
+(i,j) \in E \quad \Longleftrightarrow \quad \mathrm{length}(\partial i
+\cap \partial j) \> 0. \$\$
 
 All edges receive the same user-supplied weight.
 

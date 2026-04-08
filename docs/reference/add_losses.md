@@ -4,11 +4,13 @@ Convenience wrapper around
 [`add_effects`](https://josesalgr.github.io/multiscape/reference/add_effects.md)
 that keeps only negative effects, represented by rows with `loss > 0`.
 
-This function is useful when the user wants to work only with the
-damaging consequences of actions. Internally, it calls
+This function is useful when the workflow is focused only on damaging
+consequences of actions and a loss-only wrapper is more convenient than
+calling `add_effects(..., component = "loss")` directly. Internally, it
+calls
 [`add_effects()`](https://josesalgr.github.io/multiscape/reference/add_effects.md)
-with `component = "loss"` and stores the resulting canonical effects
-table in `x$data$dist_effects`.
+with `component = "loss"`. The canonical stored result therefore
+contains only rows whose effect satisfies \\\mathrm{loss}\_{iaf} \> 0\\.
 
 In addition, a mirror table containing only the loss component is stored
 in `x$data$dist_loss`.
@@ -30,7 +32,7 @@ add_losses(
 
   A `Problem` object created with
   [`create_problem`](https://josesalgr.github.io/multiscape/reference/create_problem.md).
-  It must already contain `x$data$dist_actions`; run
+  It must already contain feasible actions; run
   [`add_actions`](https://josesalgr.github.io/multiscape/reference/add_actions.md)
   first.
 
@@ -56,25 +58,26 @@ add_losses(
 
 ## Value
 
-An updated `Problem` object with:
+An updated `Problem` object containing:
 
-- `x$data$dist_effects`:
+- `dist_effects`:
 
   The canonical filtered effects table, containing only rows with
   `loss > 0`.
 
-- `x$data$dist_loss`:
+- `dist_loss`:
 
   A convenience table containing only the loss component.
 
-- `x$data$losses_meta`:
+- `losses_meta`:
 
   Metadata for the stored loss table.
 
 ## See also
 
 [`add_effects`](https://josesalgr.github.io/multiscape/reference/add_effects.md),
-[`add_benefits`](https://josesalgr.github.io/multiscape/reference/add_benefits.md)
+[`add_benefits`](https://josesalgr.github.io/multiscape/reference/add_benefits.md),
+[`add_objective_min_loss`](https://josesalgr.github.io/multiscape/reference/add_objective_min_loss.md)
 
 ## Examples
 
@@ -83,8 +86,16 @@ pu <- data.frame(id = 1:2, cost = c(1, 2))
 features <- data.frame(id = 1, name = "sp1")
 dist_features <- data.frame(pu = 1:2, feature = 1, amount = c(5, 10))
 
-p <- create_problem(pu = pu, features = features, dist_features = dist_features)
-p <- add_actions(p, data.frame(id = "harvest"))
+p <- create_problem(
+  pu = pu,
+  features = features,
+  dist_features = dist_features
+)
+
+p <- add_actions(
+  p,
+  data.frame(id = "harvest")
+)
 
 eff <- data.frame(
   pu = c(1, 2),

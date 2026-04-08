@@ -2,12 +2,11 @@
 
 Add feature-level relative targets to a planning problem.
 
-These targets are stored in `x$data$targets` and later translated into
-linear constraints when the optimization model is built.
-
-Relative targets are supplied as proportions in \\\[0,1\]\\ and are
-converted internally into absolute thresholds using the current total
-amount of each feature in the landscape.
+These targets are stored in the problem object and later translated into
+linear constraints when the optimization model is built. Relative
+targets are supplied as proportions in \\\[0,1\]\\ and are converted
+internally into absolute thresholds using the current total amount of
+each feature in the landscape.
 
 Each call appends one or more target definitions to the problem. This
 makes it possible to combine multiple target rules, including targets
@@ -55,10 +54,14 @@ add_constraint_targets_relative(
 
 ## Value
 
-An updated `Problem` object with relative targets appended to
-`x$data$targets`.
+An updated `Problem` object with relative targets appended to the stored
+target table.
 
 ## Details
+
+Use this function when target requirements are naturally expressed as
+proportions of current baseline feature totals rather than in original
+feature units.
 
 Let \\\mathcal{F}\\ denote the set of features. For each targeted
 feature \\f \in \mathcal{F}\\, let \\B_f\\ denote the current baseline
@@ -77,22 +80,28 @@ The absolute threshold \\T_f\\ is stored in `target_value`, while:
 - the baseline total \\B_f\\ is stored in `basis_total`.
 
 When the optimization model is built, the resulting target is
-interpreted as: \$\$ \sum\_{(i,a) \in \mathcal{S}\_f} c\_{iaf} x\_{ia}
-\ge T_f, \$\$ where:
+interpreted as: \$\$ \sum\_{(i,a) \in \mathcal{D}\_f^{\star}} c\_{iaf}
+x\_{ia} \ge T_f, \$\$ where:
+
+- \\i \in \mathcal{I}\\ indexes planning units,
+
+- \\a \in \mathcal{A}\\ indexes actions,
 
 - \\x\_{ia}\\ indicates whether action \\a\\ is selected in planning
   unit \\i\\,
 
 - \\c\_{iaf}\\ is the contribution of that action to feature \\f\\,
 
-- \\\mathcal{S}\_f\\ is the set of planning unit–action pairs allowed to
-  count toward achievement of the target.
+- \\\mathcal{D}\_f^{\star}\\ is the subset of planning unit–action pairs
+  allowed to count toward the target for feature \\f\\.
 
 The `actions` argument restricts which actions may contribute toward
 target achievement, but it does not affect the baseline amount \\B_f\\
 used to compute the threshold. In other words, relative targets are
-always scaled against the current full landscape baseline computed by
-`.pa_feature_totals()`.
+always scaled against the current full landscape baseline.
+
+Therefore, `actions` changes who may satisfy the target, but not how the
+threshold itself is scaled.
 
 The `targets` argument is parsed by `.pa_parse_targets()` and may be
 supplied in several equivalent forms, including:
@@ -114,19 +123,9 @@ If `targets` does not explicitly identify features:
 
 Relative targets must lie in \\\[0,1\]\\.
 
-Internally, targets added by this function are stored with:
-
-- `type = "actions"`,
-
-- `sense = "ge"`,
-
-- `target_unit = "relative_baseline"`,
-
-- `target_raw = r_f`,
-
-- `basis_total = B_f`,
-
-- `target_value`, equal to \\r_f B_f\\.
+Repeated calls append new target rules rather than replacing previous
+ones. This allows cumulative target modelling, including multiple rules
+on the same feature with different contributing action subsets.
 
 ## See also
 

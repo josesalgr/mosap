@@ -70,8 +70,8 @@ unit–action decisions.</p>
 
 
 <dt id="arg-profit-col">profit_col<a class="anchor" aria-label="anchor" href="#arg-profit-col"></a></dt>
-<dd><p>Character string giving the profit column in
-<code>x$data$dist_profit</code>.</p></dd>
+<dd><p>Character string giving the profit column in the stored
+profit table.</p></dd>
 
 
 <dt id="arg-actions">actions<a class="anchor" aria-label="anchor" href="#arg-actions"></a></dt>
@@ -91,21 +91,23 @@ multi-objective workflows.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(x_{ia} \in \{0,1\}\) denote whether action \(a\) is selected in
+    <p>Use this function when the objective is to maximize gross economic return,
+without subtracting planning-unit or action costs.</p>
+<p>Let \(x_{ia} \in \{0,1\}\) denote whether action \(a\) is selected in
 planning unit \(i\), and let \(\pi_{ia}\) denote the profit associated
-with that decision, as taken from column <code>profit_col</code> in
-<code>x$data$dist_profit</code>.</p>
+with that decision, as taken from column <code>profit_col</code> in the stored
+profit table.</p>
 <p>If all actions are included, the objective is:</p>
 <p>$$
-\max \sum_{(i,a) \in \mathcal{F}} \pi_{ia} x_{ia},
+\max \sum_{(i,a) \in \mathcal{D}} \pi_{ia} x_{ia},
 $$</p>
-<p>where \(\mathcal{F}\) denotes the set of feasible planning unit–action
-pairs.</p>
+<p>where \(\mathcal{D}\) denotes the set of feasible planning unit–action
+decisions.</p>
 <p>If <code>actions</code> is provided, only the selected subset contributes to the
-objective. Letting \(\mathcal{F}^{\star}\) denote the feasible pairs whose
-action belongs to the selected subset, the objective becomes:</p>
+objective. Letting \(\mathcal{D}^{\star}\) denote the feasible decisions
+whose action belongs to the selected subset, the objective becomes:</p>
 <p>$$
-\max \sum_{(i,a) \in \mathcal{F}^{\star}} \pi_{ia} x_{ia}.
+\max \sum_{(i,a) \in \mathcal{D}^{\star}} \pi_{ia} x_{ia}.
 $$</p>
 <p>This objective considers profit only. It does not subtract planning-unit
 costs or action costs. For a net-profit formulation, use

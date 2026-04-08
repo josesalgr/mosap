@@ -2,7 +2,7 @@
 
 Register an externally computed spatial relation inside a `Problem`
 object using the unified internal representation adopted by
-`mulstiscape`.
+`multiscape`.
 
 Most users will typically prefer one of the convenience constructors
 such as
@@ -60,6 +60,9 @@ An updated `Problem` object with the relation stored in
 
 ## Details
 
+Use this function when the spatial relation has already been computed
+externally and should be registered directly in the `Problem` object.
+
 The input relation may be provided either in terms of external
 planning-unit identifiers or in terms of internal planning-unit indices.
 
@@ -70,13 +73,14 @@ Specifically, the input `relations` table must contain either:
 - `internal_pu1`, `internal_pu2`, and `weight`.
 
 If external ids are supplied, they are mapped to internal indices using
-`x$data$pu$id` and `x$data$index$pu`.
+the planning-unit identifiers stored in the problem.
 
-Let \\E\\ denote the set of rows supplied in `relations`. If
-`directed = FALSE`, each edge is treated as undirected, so pairs
-\\(i,j)\\ and \\(j,i)\\ are interpreted as the same edge. In that case,
-duplicated undirected edges are collapsed automatically using the
-maximum weight observed for each unordered pair.
+Let \\G = (\mathcal{I}, E, \omega)\\ denote the supplied relation, where
+\\E\\ corresponds to the rows of `relations`. If `directed = FALSE`,
+each edge is treated as undirected, so pairs \\(i,j)\\ and \\(j,i)\\ are
+interpreted as the same edge. In that case, duplicated undirected edges
+are collapsed automatically using the maximum weight observed for each
+unordered pair.
 
 If `directed = TRUE`, edges are preserved as ordered pairs, so \\(i,j)\\
 and \\(j,i)\\ are distinct unless the user provides both.
@@ -84,6 +88,8 @@ and \\(j,i)\\ are distinct unless the user provides both.
 Self-edges \\(i,i)\\ are permitted only if `allow_self = TRUE`.
 
 The final relation is stored in `x$data$spatial_relations[[name]]`.
+
+If a relation with the same `name` already exists, it is replaced.
 
 ## See also
 
@@ -99,20 +105,20 @@ The final relation is stored in `x$data$spatial_relations[[name]]`.
 pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
 
 features <- data.frame(
- id = 1,
- name = "sp1"
+  id = 1,
+  name = "sp1"
 )
 
 dist_features <- data.frame(
- pu = 1:3,
- feature = 1,
- amount = c(1, 1, 1)
+  pu = 1:3,
+  feature = 1,
+  amount = c(1, 1, 1)
 )
 
 p <- create_problem(
- pu = pu,
- features = features,
- dist_features = dist_features
+  pu = pu,
+  features = features,
+  dist_features = dist_features
 )
 
 rel <- data.frame(

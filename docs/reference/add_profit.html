@@ -6,13 +6,13 @@
     }
   };
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Add profit to a planning problem — add_profit"><meta name="description" content="Define economic profit values for feasible planning unit–action pairs and
-store them in x$data$dist_profit.
+store them in a profit table.
 Profit is stored separately from ecological effects. In particular,
 profit is not the same as ecological benefit or
 loss as represented in add_effects. This separation
 allows the package to distinguish economic returns from ecological
 consequences when building objectives, constraints, and reporting summaries."><meta property="og:description" content="Define economic profit values for feasible planning unit–action pairs and
-store them in x$data$dist_profit.
+store them in a profit table.
 Profit is stored separately from ecological effects. In particular,
 profit is not the same as ecological benefit or
 loss as represented in add_effects. This separation
@@ -58,7 +58,7 @@ consequences when building objectives, constraints, and reporting summaries."><m
 
     <div class="ref-description section level2">
     <p>Define economic profit values for feasible planning unit–action pairs and
-store them in <code>x$data$dist_profit</code>.</p>
+store them in a profit table.</p>
 <p>Profit is stored separately from ecological effects. In particular,
 <code>profit</code> is not the same as ecological <code>benefit</code> or
 <code>loss</code> as represented in <code><a href="add_effects.html">add_effects</a></code>. This separation
@@ -77,8 +77,8 @@ consequences when building objectives, constraints, and reporting summaries.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>A <code>Problem</code> object created with <code><a href="create_problem.html">create_problem</a></code>. It
-must already contain <code>x$data$dist_actions</code> and <code>x$data$actions</code>;
-run <code><a href="add_actions.html">add_actions</a></code> first.</p></dd>
+must already contain feasible actions and an action catalogue; run
+<code><a href="add_actions.html">add_actions</a></code> first.</p></dd>
 
 
 <dt id="arg-profit">profit<a class="anchor" aria-label="anchor" href="#arg-profit"></a></dt>
@@ -95,30 +95,35 @@ profit.</p></li>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An updated <code>Problem</code> object with <code>x$data$dist_profit</code>
-created or replaced. The stored table contains columns <code>pu</code>,
-<code>action</code>, <code>profit</code>, <code>internal_pu</code>, and
-<code>internal_action</code>, and includes only rows with non-zero profit.</p>
+    <p>An updated <code>Problem</code> object with a stored profit table created
+or replaced. The stored table contains columns <code>pu</code>, <code>action</code>,
+<code>profit</code>, <code>internal_pu</code>, and <code>internal_action</code>, and
+includes only rows with non-zero profit.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\) denote the set
-of feasible planning unit–action pairs currently stored in
-<code>x$data$dist_actions</code>, where \(\mathcal{P}\) is the set of planning
-units and \(\mathcal{A}\) is the set of actions.</p>
-<p>This function assigns to each feasible pair \((i,a) \in \mathcal{F}\) a
-numeric profit value \(\pi_{ia} \in \mathbb{R}\) and stores the result in
-<code>x$data$dist_profit</code>.</p>
+    <p><strong>When to use <code>add_profit()</code>.</strong></p>
+<p>Use this function when economic returns, penalties, or other action-specific
+financial values are part of the planning problem. Typical downstream uses
+include objectives such as <code><a href="add_objective_max_profit.html">add_objective_max_profit</a></code> and
+<code><a href="add_objective_max_net_profit.html">add_objective_max_net_profit</a></code>.</p>
+<p>Let \(\mathcal{I}\) denote the set of planning units and
+\(\mathcal{A}\) the set of actions. Let
+\(\mathcal{D} \subseteq \mathcal{I} \times \mathcal{A}\) denote the set of
+feasible planning unit–action pairs currently stored in the problem.</p>
+<p>This function assigns to each feasible pair \((i,a) \in \mathcal{D}\) a
+numeric profit value \(\pi_{ia} \in \mathbb{R}\) and stores the result in a
+profit table.</p>
 <p>Thus, the stored table can be interpreted as a mapping
 $$
-\pi : \mathcal{F} \to \mathbb{R},
+\pi : \mathcal{D} \to \mathbb{R},
 $$
 where \(\pi_{ia}\) represents the economic return associated with selecting
 action \(a\) in planning unit \(i\).</p>
 <p>Profit values may be positive, zero, or negative. Positive values represent
 gains or revenues, zero represents no net profit contribution, and negative
 values can be used to encode penalties or net economic losses.</p>
-<p>The resulting table <code>x$data$dist_profit</code> contains:</p><ul><li><p><code>pu</code>: external planning-unit id,</p></li>
+<p>The stored table contains:</p><ul><li><p><code>pu</code>: external planning-unit id,</p></li>
 <li><p><code>action</code>: action id,</p></li>
 <li><p><code>profit</code>: numeric profit value,</p></li>
 <li><p><code>internal_pu</code>: internal planning-unit index,</p></li>
@@ -139,17 +144,19 @@ supplied, only the listed <code>(pu, action)</code> pairs receive explicit value
 unmatched feasible pairs are interpreted as zero-profit pairs.</p>
 <p><strong>Storage behaviour</strong></p>
 <p>This function stores only rows with non-zero profit values. Feasible pairs
-whose final profit is zero are omitted from <code>x$data$dist_profit</code>.
+whose final profit is zero are omitted from the stored profit table.
 Missing values produced during matching or joins are treated as zero before
-this filtering step.</p>
+this filtering step. Therefore, the resulting table is a sparse
+representation of economic returns over the feasible decision space.</p>
 <p><strong>Data-only behaviour</strong></p>
 <p>This function is purely data-oriented. It does not build or modify the
 optimization model, and it does not change feasibility. It simply assigns
-profit values to rows already present in <code>x$data$dist_actions</code>.</p>
+profit values to rows already present in the feasible action table.</p>
 <p>In particular:</p><ul><li><p>it does not add new feasible <code>(pu, action)</code> pairs,</p></li>
 <li><p>it does not remove infeasible pairs,</p></li>
 <li><p>it does not apply solver-side filtering such as dropping locked-out
-decisions.</p></li>
+decisions,</p></li>
+<li><p>it does not modify ecological effect tables.</p></li>
 </ul><p>Any such filtering is expected to occur later when model-ready tables are
 prepared, typically during the build stage invoked by <code><a href="solve.html">solve()</a></code>.</p>
 <p><strong>Use in optimization</strong></p>
@@ -161,7 +168,7 @@ in reporting and summary functions.</p>
 selected in planning unit \(i\), then a profit-maximization objective
 typically takes the form
 $$
-\max \sum_{(i,a) \in \mathcal{F}} \pi_{ia} x_{ia}.
+\max \sum_{(i,a) \in \mathcal{D}} \pi_{ia} x_{ia}.
 $$</p>
     </div>
     <div class="section level2">

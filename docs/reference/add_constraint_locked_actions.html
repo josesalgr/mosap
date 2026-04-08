@@ -7,25 +7,13 @@
   };
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Add locked action decisions to a planning problem — add_constraint_locked_actions"><meta name="description" content="Fix feasible planning unit–action decisions to be selected or excluded.
 This function modifies the status of existing feasible
-(pu, action) pairs stored in x$data$dist_actions. It does not
+(pu, action) pairs stored in the feasible action table. It does not
 create new feasible action pairs and therefore must be used only after
-add_actions has been called.
-Locked decisions are represented through status codes:
-0: free decision,
-2: locked in,
-3: locked out.
-
-"><meta property="og:description" content="Fix feasible planning unit–action decisions to be selected or excluded.
+add_actions has been called."><meta property="og:description" content="Fix feasible planning unit–action decisions to be selected or excluded.
 This function modifies the status of existing feasible
-(pu, action) pairs stored in x$data$dist_actions. It does not
+(pu, action) pairs stored in the feasible action table. It does not
 create new feasible action pairs and therefore must be used only after
-add_actions has been called.
-Locked decisions are represented through status codes:
-0: free decision,
-2: locked in,
-3: locked out.
-
-"><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
+add_actions has been called."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
@@ -67,13 +55,10 @@ Locked decisions are represented through status codes:
     <div class="ref-description section level2">
     <p>Fix feasible planning unit–action decisions to be selected or excluded.</p>
 <p>This function modifies the status of existing feasible
-<code>(pu, action)</code> pairs stored in <code>x$data$dist_actions</code>. It does not
+<code>(pu, action)</code> pairs stored in the feasible action table. It does not
 create new feasible action pairs and therefore must be used only after
 <code><a href="add_actions.html">add_actions</a></code> has been called.</p>
-<p>Locked decisions are represented through status codes:</p><ul><li><p><code>0</code>: free decision,</p></li>
-<li><p><code>2</code>: locked in,</p></li>
-<li><p><code>3</code>: locked out.</p></li>
-</ul></div>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
@@ -103,29 +88,34 @@ pairs that must not be selected. It may be <code>NULL</code>, a
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An updated <code>Problem</code> object in which
-<code>x$data$dist_actions$status</code> has been modified to reflect locked-in and
-locked-out decisions.</p>
+    <p>An updated <code>Problem</code> object in which the status column of the
+feasible action table has been modified to reflect locked-in and locked-out
+decisions.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\) denote the set
-of feasible planning unit–action pairs already defined in
-<code>x$data$dist_actions</code>, where \(\mathcal{P}\) is the set of planning
-units and \(\mathcal{A}\) is the set of actions.</p>
-<p>This function allows the user to define two subsets:</p><ul><li><p>\(\mathcal{L}^{in} \subseteq \mathcal{F}\), the set of feasible
+    <p>Use this function when only specific feasible <code>(pu, action)</code> decisions
+must be forced in or out of the solution, rather than whole planning units.</p>
+<p>Let \(\mathcal{I}\) denote the set of planning units and
+\(\mathcal{A}\) the set of actions. Let
+\(\mathcal{D} \subseteq \mathcal{I} \times \mathcal{A}\) denote the set of
+feasible planning unit–action pairs already defined in the problem.</p>
+<p>This function allows the user to define two subsets:</p><ul><li><p>\(\mathcal{D}^{in} \subseteq \mathcal{D}\), the set of feasible
 pairs that must be selected,</p></li>
-<li><p>\(\mathcal{L}^{out} \subseteq \mathcal{F}\), the set of feasible
+<li><p>\(\mathcal{D}^{out} \subseteq \mathcal{D}\), the set of feasible
 pairs that must not be selected.</p></li>
-</ul><p>These sets are encoded by updating the <code>status</code> column of
-<code>x$data$dist_actions</code>. The function validates that all requested
-locked-in and locked-out pairs are already feasible. Therefore, it cannot be
-used to introduce new planning unit–action combinations into the problem.</p>
+</ul><p>These sets are encoded by updating the <code>status</code> column of the feasible
+action table. The function validates that all requested locked-in and
+locked-out pairs are already feasible. Therefore, it cannot be used to
+introduce new planning unit–action combinations into the problem.</p>
 <p>In optimization terms, if \(x_{ia}\) denotes the decision variable
 associated with planning unit \(i\) and action \(a\), then:</p><ul><li><p>locked-in pairs conceptually impose \(x_{ia} = 1\),</p></li>
 <li><p>locked-out pairs conceptually impose \(x_{ia} = 0\).</p></li>
 </ul><p>The exact translation into solver-side constraints occurs later when the
 model is built.</p>
+<p>In contrast, <code><a href="add_constraint_locked_pu.html">add_constraint_locked_pu</a></code> fixes whole planning
+units through the unit-selection variables, whereas this function fixes only
+specific feasible <code>(pu, action)</code> decisions.</p>
 <p><strong>Accepted formats</strong></p>
 <p>Both <code>locked_in</code> and <code>locked_out</code> accept the same formats:</p><ul><li><p><code>NULL</code>,</p></li>
 <li><p>a <code>data.frame</code> with columns <code>pu</code> and <code>action</code>,
@@ -136,20 +126,20 @@ vectors of planning unit ids or <code>sf</code> objects.</p></li>
 with <code>feasible = TRUE</code> are used. Missing values in <code>feasible</code> are
 treated as <code>FALSE</code>.</p>
 <p>If an <code>sf</code> specification is supplied, the problem object must contain
-<code>x$data$pu_sf</code>, and planning units are matched spatially using
+planning-unit geometry, and planning units are matched spatially using
 <code><a href="https://r-spatial.github.io/sf/reference/geos_binary_pred.html" class="external-link">sf::st_intersects()</a></code>.</p>
 <p><strong>Conflict checking</strong></p>
 <p>A given <code>(pu, action)</code> pair cannot be simultaneously requested in both
 <code>locked_in</code> and <code>locked_out</code>. Such overlaps are rejected.</p>
 <p>In addition, if a planning unit is already marked as locked out at the
-planning-unit level through <code>x$data$pu$locked_out</code>, then all feasible
-actions in that planning unit are forced to <code>status = 3</code>. Any attempt to
-lock in an action within such a planning unit raises an error.</p>
+planning-unit level, then all feasible actions in that planning unit are
+forced to <code>status = 3</code>. Any attempt to lock in an action within such a
+planning unit raises an error.</p>
 <p><strong>Order of precedence</strong></p>
 <p>User-supplied locked-in and locked-out action requests are first applied to
-<code>x$data$dist_actions</code>. Afterwards, any planning-unit-level
-<code>locked_out</code> flag stored in <code>x$data$pu</code> is enforced, overriding
-action-level status and ensuring consistency with planning-unit exclusions.</p>
+the feasible action table. Afterwards, any planning-unit-level
+<code>locked_out</code> flag is enforced, overriding action-level status and
+ensuring consistency with planning-unit exclusions.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

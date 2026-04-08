@@ -6,13 +6,13 @@
     }
   };
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Add spatial relations — add_spatial_relations"><meta name="description" content="Register an externally computed spatial relation inside a Problem
-object using the unified internal representation adopted by mulstiscape.
+object using the unified internal representation adopted by multiscape.
 Most users will typically prefer one of the convenience constructors such as
 add_spatial_boundary, add_spatial_rook,
 add_spatial_queen, add_spatial_knn, or
 add_spatial_distance. This function is the advanced low-level
 entry point for adding an already computed relation."><meta property="og:description" content="Register an externally computed spatial relation inside a Problem
-object using the unified internal representation adopted by mulstiscape.
+object using the unified internal representation adopted by multiscape.
 Most users will typically prefer one of the convenience constructors such as
 add_spatial_boundary, add_spatial_rook,
 add_spatial_queen, add_spatial_knn, or
@@ -58,7 +58,7 @@ entry point for adding an already computed relation."><meta property="og:image" 
 
     <div class="ref-description section level2">
     <p>Register an externally computed spatial relation inside a <code>Problem</code>
-object using the unified internal representation adopted by <code>mulstiscape</code>.</p>
+object using the unified internal representation adopted by <code>multiscape</code>.</p>
 <p>Most users will typically prefer one of the convenience constructors such as
 <code><a href="add_spatial_boundary.html">add_spatial_boundary</a></code>, <code><a href="add_spatial_rook.html">add_spatial_rook</a></code>,
 <code><a href="add_spatial_queen.html">add_spatial_queen</a></code>, <code><a href="add_spatial_knn.html">add_spatial_knn</a></code>, or
@@ -112,13 +112,16 @@ ordered pairs.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The input relation may be provided either in terms of external planning-unit
+    <p>Use this function when the spatial relation has already been computed
+externally and should be registered directly in the <code>Problem</code> object.</p>
+<p>The input relation may be provided either in terms of external planning-unit
 identifiers or in terms of internal planning-unit indices.</p>
 <p>Specifically, the input <code>relations</code> table must contain either:</p><ul><li><p><code>pu1</code>, <code>pu2</code>, and <code>weight</code>, or</p></li>
 <li><p><code>internal_pu1</code>, <code>internal_pu2</code>, and <code>weight</code>.</p></li>
-</ul><p>If external ids are supplied, they are mapped to internal indices using
-<code>x$data$pu$id</code> and <code>x$data$index$pu</code>.</p>
-<p>Let \(E\) denote the set of rows supplied in <code>relations</code>. If
+</ul><p>If external ids are supplied, they are mapped to internal indices using the
+planning-unit identifiers stored in the problem.</p>
+<p>Let \(G = (\mathcal{I}, E, \omega)\) denote the supplied relation, where
+\(E\) corresponds to the rows of <code>relations</code>. If
 <code>directed = FALSE</code>, each edge is treated as undirected, so pairs
 \((i,j)\) and \((j,i)\) are interpreted as the same edge. In that case,
 duplicated undirected edges are collapsed automatically using the maximum
@@ -127,6 +130,7 @@ weight observed for each unordered pair.</p>
 \((i,j)\) and \((j,i)\) are distinct unless the user provides both.</p>
 <p>Self-edges \((i,i)\) are permitted only if <code>allow_self = TRUE</code>.</p>
 <p>The final relation is stored in <code>x$data$spatial_relations[[name]]</code>.</p>
+<p>If a relation with the same <code>name</code> already exists, it is replaced.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -142,20 +146,20 @@ weight observed for each unordered pair.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">features</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span> id <span class="op">=</span> <span class="fl">1</span>,</span></span>
-<span class="r-in"><span> name <span class="op">=</span> <span class="st">"sp1"</span></span></span>
+<span class="r-in"><span>  id <span class="op">=</span> <span class="fl">1</span>,</span></span>
+<span class="r-in"><span>  name <span class="op">=</span> <span class="st">"sp1"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">dist_features</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span> pu <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>,</span></span>
-<span class="r-in"><span> feature <span class="op">=</span> <span class="fl">1</span>,</span></span>
-<span class="r-in"><span> amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  pu <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>,</span></span>
+<span class="r-in"><span>  feature <span class="op">=</span> <span class="fl">1</span>,</span></span>
+<span class="r-in"><span>  amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="create_problem.html">create_problem</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span> pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
-<span class="r-in"><span> features <span class="op">=</span> <span class="va">features</span>,</span></span>
-<span class="r-in"><span> dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>
+<span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
+<span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
+<span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">rel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>

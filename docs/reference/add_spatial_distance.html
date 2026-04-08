@@ -109,7 +109,9 @@ zero in inverse-distance weighting.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(s_i = (x_i, y_i)\) denote the coordinates of planning unit
+    <p>Use this function when neighbourhood should be defined by a fixed distance
+radius rather than by polygon topology or a fixed number of neighbours.</p>
+<p>Let \(s_i = (x_i, y_i)\) denote the coordinates of planning unit
 \(i\). Let \(d_{ij}\) be the Euclidean distance between planning units
 \(i\) and \(j\).</p>
 <p>For a user-supplied threshold \(d_{\max}\), this constructor creates an
@@ -123,7 +125,7 @@ $$\omega_{ij} = 1,$$</p></li>
 $$\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)},$$</p></li>
 <li><p><code>"inverse_sq"</code>:
 $$\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},$$</p></li>
-</ul><p>where \(\varepsilon = \code{distance_eps}\) is a small constant.</p>
+</ul><p>where \(\varepsilon\) = <code>distance_eps</code> is a small constant.</p>
 <p>The implementation computes an \(O(n^2)\) distance matrix and is therefore
 best suited to small or moderate numbers of planning units. For large
 problems, <code><a href="add_spatial_knn.html">add_spatial_knn</a></code> is often more scalable.</p>

@@ -8,13 +8,13 @@
 #' planning units and provide constructors for building such relations from
 #' common spatial inputs.
 #'
-#' Spatial relations in \code{mulstiscape} are graph-like structures defined over the
-#' set of planning units. They are used to represent adjacency, shared boundary
-#' length, proximity, neighbourhood graphs, or other pairwise spatial
+#' Spatial relations in \code{multiscape} are graph-like structures defined over
+#' the set of planning units. They are used to represent adjacency, shared
+#' boundary length, proximity, neighbourhood graphs, or other pairwise spatial
 #' relationships that may later be used by objectives, constraints, or
 #' diagnostics.
 #'
-#' Relations are stored inside the problem object as
+#' Relations are stored inside the \code{Problem} object as
 #' \code{x$data$spatial_relations[[name]]}.
 #'
 #' @details
@@ -34,9 +34,9 @@
 #' columns are preserved when possible.
 #'
 #' Thus, a spatial relation can be interpreted as a weighted graph
-#' \eqn{G = (V, E, \omega)}, where:
+#' \eqn{G = (\mathcal{I}, E, \omega)}, where:
 #' \itemize{
-#'   \item \eqn{V} is the set of planning units,
+#'   \item \eqn{\mathcal{I}} is the set of planning units,
 #'   \item \eqn{E} is the set of stored edges,
 #'   \item \eqn{\omega_{ij} \ge 0} is the weight associated with edge
 #'   \eqn{(i,j)}.
@@ -53,31 +53,18 @@
 #' The function \code{\link{add_spatial_boundary}} supports boundary-length
 #' relations derived either from a boundary table or from polygon geometry.
 #'
-#' If \code{include_self = TRUE}, diagonal entries \eqn{(i,i)} are added to
+#' If \code{include_self = TRUE}, diagonal entries \eqn{(i,i)} may be added to
 #' represent exposed boundary. These diagonal weights are intended for
 #' boundary-based compactness or fragmentation formulations, where perimeter
 #' exposed to the outside of the selected solution should contribute to the
 #' objective.
 #'
-#' In that case, the diagonal entry for planning unit \eqn{i} is computed as:
-#' \deqn{
-#' \omega_{ii}^{\mathrm{diag}} =
-#' \mathrm{edge\_factor} \times
-#' \max\left\{
-#' p_i - \sum_{j \neq i} \omega_{ij},
-#' 0
-#' \right\},
-#' }
-#' where \eqn{p_i} is the total perimeter of planning unit \eqn{i} and
-#' \eqn{\sum_{j \neq i} \omega_{ij}} is the total shared boundary length with
-#' neighbouring planning units.
-#'
 #' \strong{Geometry safety}
 #'
 #' All \code{sf}-based constructors operate only through spatial predicates,
 #' topological relations, or boundary-length calculations. They never subdivide,
-#' cut, or alter planning-unit geometries. Planning units are aligned to
-#' \code{x$data$pu$id} before spatial relations are computed.
+#' cut, or alter planning-unit geometries. Planning units are aligned to the
+#' internal planning-unit order before spatial relations are computed.
 #'
 #' \strong{Available constructors}
 #'
@@ -100,7 +87,7 @@ NULL
 #'
 #' @description
 #' Register an externally computed spatial relation inside a \code{Problem}
-#' object using the unified internal representation adopted by \code{mulstiscape}.
+#' object using the unified internal representation adopted by \code{multiscape}.
 #'
 #' Most users will typically prefer one of the convenience constructors such as
 #' \code{\link{add_spatial_boundary}}, \code{\link{add_spatial_rook}},
@@ -109,6 +96,9 @@ NULL
 #' entry point for adding an already computed relation.
 #'
 #' @details
+#' Use this function when the spatial relation has already been computed
+#' externally and should be registered directly in the \code{Problem} object.
+#'
 #' The input relation may be provided either in terms of external planning-unit
 #' identifiers or in terms of internal planning-unit indices.
 #'
@@ -118,10 +108,11 @@ NULL
 #'   \item \code{internal_pu1}, \code{internal_pu2}, and \code{weight}.
 #' }
 #'
-#' If external ids are supplied, they are mapped to internal indices using
-#' \code{x$data$pu$id} and \code{x$data$index$pu}.
+#' If external ids are supplied, they are mapped to internal indices using the
+#' planning-unit identifiers stored in the problem.
 #'
-#' Let \eqn{E} denote the set of rows supplied in \code{relations}. If
+#' Let \eqn{G = (\mathcal{I}, E, \omega)} denote the supplied relation, where
+#' \eqn{E} corresponds to the rows of \code{relations}. If
 #' \code{directed = FALSE}, each edge is treated as undirected, so pairs
 #' \eqn{(i,j)} and \eqn{(j,i)} are interpreted as the same edge. In that case,
 #' duplicated undirected edges are collapsed automatically using the maximum
@@ -133,6 +124,8 @@ NULL
 #' Self-edges \eqn{(i,i)} are permitted only if \code{allow_self = TRUE}.
 #'
 #' The final relation is stored in \code{x$data$spatial_relations[[name]]}.
+#'
+#' If a relation with the same \code{name} already exists, it is replaced.
 #'
 #' @param x A \code{Problem} object created with \code{\link{create_problem}}.
 #' @param relations A \code{data.frame} describing relation edges. It must
@@ -160,21 +153,21 @@ NULL
 #' pu <- data.frame(id = 1:3, cost = c(1, 2, 3))
 #'
 #' features <- data.frame(
-#'  id = 1,
-#'  name = "sp1"
-#')
+#'   id = 1,
+#'   name = "sp1"
+#' )
 #'
 #' dist_features <- data.frame(
-#'  pu = 1:3,
-#'  feature = 1,
-#'  amount = c(1, 1, 1)
-#')
+#'   pu = 1:3,
+#'   feature = 1,
+#'   amount = c(1, 1, 1)
+#' )
 #'
 #' p <- create_problem(
-#'  pu = pu,
-#'  features = features,
-#'  dist_features = dist_features
-#')
+#'   pu = pu,
+#'   features = features,
+#'   dist_features = dist_features
+#' )
 #'
 #' rel <- data.frame(
 #'   pu1 = c(1, 1, 2),
@@ -348,6 +341,9 @@ add_spatial_relations <- function(x,
 #' positive length and ignore point-only contacts.
 #'
 #' @details
+#' Use this function when spatial structure should be represented through shared
+#' boundary length rather than binary contiguity or coordinate-based proximity.
+#'
 #' Two input modes are supported:
 #' \enumerate{
 #'   \item \strong{Boundary-table mode.} If \code{boundary} is supplied, it is
@@ -365,9 +361,9 @@ add_spatial_relations <- function(x,
 #'
 #' For off-diagonal entries \eqn{i \neq j}, the stored weight is:
 #' \deqn{
-#' \omega_{ij} = \mathrm{BLM} \times b_{ij},
+#' \omega_{ij} = \mathrm{\gamma} \times b_{ij},
 #' }
-#' where \eqn{b_{ij}} is the shared boundary length and \eqn{\mathrm{BLM}} is
+#' where \eqn{b_{ij}} is the shared boundary length and \eqn{\gamma} is
 #' the user-supplied \code{weight_multiplier}.
 #'
 #' If \code{include_self = TRUE}, diagonal entries are also created. These are
@@ -376,15 +372,9 @@ add_spatial_relations <- function(x,
 #'
 #' Let \eqn{p_i} be the total perimeter of planning unit \eqn{i}, and let
 #' \eqn{\sum_{j \neq i} \omega_{ij}} be the total incident shared boundary
-#' recorded for that planning unit. Then the exposed boundary is:
-#' \deqn{
-#' e_i = \max\left\{ p_i \times \mathrm{BLM}
-#' - \sum_{j \neq i} \omega_{ij}, 0 \right\},
-#' }
-#' and the stored diagonal term is:
-#' \deqn{
-#' \omega_{ii} = \mathrm{edge\_factor} \times e_i.
-#' }
+#' recorded for that planning unit. Then the exposed boundary is represented by
+#' a diagonal term derived from the difference between total perimeter and shared
+#' boundary, scaled by \code{edge_factor}.
 #'
 #' These diagonal terms are useful in boundary-based compactness or
 #' fragmentation objectives, because they encode the portion of each planning
@@ -752,11 +742,14 @@ add_spatial_boundary <- function(x,
 #' positive length. Corner-only contact does not count as rook adjacency.
 #'
 #' @details
+#' Use this function when neighbourhood should be defined by shared polygon
+#' edges rather than by point-touching or coordinate-based proximity.
+#'
 #' This constructor derives an adjacency graph from polygon geometry using a
 #' rook criterion. If planning units \eqn{i} and \eqn{j} share a common edge of
 #' non-zero length, then an edge \eqn{(i,j)} is added to the relation.
 #'
-#' Let \eqn{G = (V,E)} denote the resulting graph. Then:
+#' Let \eqn{G = (\mathcal{I}, E)} denote the resulting graph. Then:
 #' \deqn{
 #' (i,j) \in E \quad \Longleftrightarrow \quad
 #' \mathrm{length}(\partial i \cap \partial j) > 0.
@@ -840,11 +833,14 @@ add_spatial_rook <- function(x,
 #' a shared edge or at a shared vertex.
 #'
 #' @details
+#' Use this function when neighbourhood should include both shared edges and
+#' corner-touching polygon contacts.
+#'
 #' This constructor derives an adjacency graph from polygon geometry using a
 #' queen criterion. If planning units \eqn{i} and \eqn{j} touch at any boundary
 #' point, then an edge \eqn{(i,j)} is added to the relation.
 #'
-#' Let \eqn{G = (V,E)} denote the resulting graph. Then:
+#' Let \eqn{G = (\mathcal{I}, E)} denote the resulting graph. Then:
 #' \deqn{
 #' (i,j) \in E \quad \Longleftrightarrow \quad
 #' \partial i \cap \partial j \neq \varnothing.
@@ -933,6 +929,10 @@ add_spatial_queen <- function(x,
 #' coordinates supplied explicitly or stored in the \code{Problem} object.
 #'
 #' @details
+#' Use this function when neighbourhood should be defined by a fixed number of
+#' nearby planning units rather than by polygon topology or a fixed distance
+#' threshold.
+#'
 #' Let \eqn{s_i = (x_i, y_i)} denote the coordinates of planning unit
 #' \eqn{i}. For each planning unit, this function identifies the \code{k}
 #' nearest distinct planning units under Euclidean distance.
@@ -950,7 +950,7 @@ add_spatial_queen <- function(x,
 #'   \item \code{"inverse_sq"}:
 #'   \deqn{\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},}
 #' }
-#' where \eqn{\varepsilon = \code{distance_eps}} is a small constant to avoid
+#' where \eqn{\varepsilon} = \code{distance_eps} is a small constant to avoid
 #' division by zero.
 #'
 #' The raw k-nearest-neighbours structure is directional by construction, but
@@ -1064,6 +1064,9 @@ add_spatial_knn <- function(x,
 #' planning-unit coordinates.
 #'
 #' @details
+#' Use this function when neighbourhood should be defined by a fixed distance
+#' radius rather than by polygon topology or a fixed number of neighbours.
+#'
 #' Let \eqn{s_i = (x_i, y_i)} denote the coordinates of planning unit
 #' \eqn{i}. Let \eqn{d_{ij}} be the Euclidean distance between planning units
 #' \eqn{i} and \eqn{j}.
@@ -1083,7 +1086,7 @@ add_spatial_knn <- function(x,
 #'   \item \code{"inverse_sq"}:
 #'   \deqn{\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},}
 #' }
-#' where \eqn{\varepsilon = \code{distance_eps}} is a small constant.
+#' where \eqn{\varepsilon} = \code{distance_eps} is a small constant.
 #'
 #' The implementation computes an \eqn{O(n^2)} distance matrix and is therefore
 #' best suited to small or moderate numbers of planning units. For large

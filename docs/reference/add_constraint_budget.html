@@ -10,12 +10,12 @@ This function stores one budget-constraint specification in the
 Problem object so that it can later be incorporated when the
 optimization model is assembled. Multiple budget constraints can be added by
 calling this function repeatedly, provided that no duplicated combination of
-actions and sense is introduced."><meta property="og:description" content="Add a budget constraint to a planning problem.
+action subset and constraint sense is introduced."><meta property="og:description" content="Add a budget constraint to a planning problem.
 This function stores one budget-constraint specification in the
 Problem object so that it can later be incorporated when the
 optimization model is assembled. Multiple budget constraints can be added by
 calling this function repeatedly, provided that no duplicated combination of
-actions and sense is introduced."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
+action subset and constraint sense is introduced."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
@@ -60,7 +60,7 @@ actions and sense is introduced."><meta property="og:image" content="https://jos
 <code>Problem</code> object so that it can later be incorporated when the
 optimization model is assembled. Multiple budget constraints can be added by
 calling this function repeatedly, provided that no duplicated combination of
-<code>actions</code> and <code>sense</code> is introduced.</p>
+action subset and constraint sense is introduced.</p>
     </div>
 
     <div class="section level2">
@@ -129,17 +129,20 @@ constraint when it is later added to the optimization model. If
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An updated <code>Problem</code> object with the new budget-constraint
-specification appended to <code>x$data$constraints$budget</code>.</p>
+specification appended to the stored budget-constraint table.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(\mathcal{P}\) denote the set of planning units and let
+    <p>Use this function when spending limits or minimum spending requirements must
+be imposed either on the full problem or on the subset of selected decisions
+associated with specific actions.</p>
+<p>Let \(\mathcal{I}\) denote the set of planning units and let
 \(\mathcal{A}\) denote the set of actions. Let
 \(w_i \in \{0,1\}\) denote the binary variable indicating whether planning
-unit \(i \in \mathcal{P}\) is selected by at least one decision in the
+unit \(i \in \mathcal{I}\) is selected by at least one decision in the
 model, and let \(x_{ia} \in \{0,1\}\) denote the binary variable
 indicating whether action \(a \in \mathcal{A}\) is selected in planning
-unit \(i \in \mathcal{P}\).</p>
+unit \(i \in \mathcal{I}\).</p>
 <p>The total constrained budget can include two cost components:</p>
 <ul><li><p>planning-unit costs, associated with \(w_i\);</p></li>
 <li><p>action costs, associated with \(x_{ia}\).</p></li>
@@ -152,16 +155,16 @@ the whole problem. In that case, depending on the values of
 quantity is one of the following:</p>
 <p>If only planning-unit costs are included:
 $$
-\sum_{i \in \mathcal{P}} c_i^{pu} w_i
+\sum_{i \in \mathcal{I}} c_i^{pu} w_i
 $$</p>
 <p>If only action costs are included:
 $$
-\sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}} c_{ia}^{act} x_{ia}
+\sum_{i \in \mathcal{I}} \sum_{a \in \mathcal{A}} c_{ia}^{act} x_{ia}
 $$</p>
 <p>If both components are included:
 $$
-\sum_{i \in \mathcal{P}} c_i^{pu} w_i +
-\sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}} c_{ia}^{act} x_{ia}
+\sum_{i \in \mathcal{I}} c_i^{pu} w_i +
+\sum_{i \in \mathcal{I}} \sum_{a \in \mathcal{A}} c_{ia}^{act} x_{ia}
 $$</p>
 <p>Depending on <code>sense</code>, this function stores one of the following
 constraints:</p>
@@ -177,25 +180,25 @@ $$</p>
 $$
 C = B
 $$</p>
-<p>If <code>sense = "equal"</code> and <code>tolerance &gt; 0</code>:
+<p>If <code>sense = "equal"</code> and <code>tolerance &gt; 0</code>, the equality is stored as
+a two-sided band:
 $$
 B - \tau \le C \le B + \tau
 $$</p>
 <p>where \(C\) denotes the selected cost expression and \(\tau\) is the
 value supplied through <code>tolerance</code>.</p>
-<p>When <code>actions</code> is not <code>NULL</code>, the constraint is applied only to the
-selected decisions associated with the specified subset of actions. Let
-\(\mathcal{A}^*\) denote that subset. In that case, the constrained
-quantity is
+<p>When <code>actions</code> is not <code>NULL</code>, only action costs can be included.
+In that case, let \(\mathcal{A}^\star \subseteq \mathcal{A}\) denote the
+selected subset of actions, and the constrained quantity is
 $$
-\sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}^*} c_{ia}^{act} x_{ia}.
+\sum_{i \in \mathcal{I}} \sum_{a \in \mathcal{A}^\star} c_{ia}^{act} x_{ia}.
 $$</p>
 <p>Action-specific budget constraints only support action costs. Therefore,
 <code>include_pu_cost = TRUE</code> is only allowed when <code>actions = NULL</code>,
 because planning-unit costs are not action-specific.</p>
-<p>This function only stores the constraint specification in
-<code>x$data$constraints$budget</code>; it does not validate the feasibility of
-the threshold against the available cost data at this stage.</p>
+<p>This function only stores the constraint specification; it does not validate
+the feasibility of the threshold against the available cost data at this
+stage.</p>
 <p>Multiple budget constraints can be stored in a <code>Problem</code> object.
 However, at most one can be stored for the same combination of action subset
 and constraint sense. Attempting to add a duplicated

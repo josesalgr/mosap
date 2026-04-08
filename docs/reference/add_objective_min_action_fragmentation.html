@@ -118,12 +118,13 @@ multi-objective workflows.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(\mathcal{P}\) denote the set of planning units and let
+    <p>Use this function when spatial cohesion should be encouraged separately for
+each selected action pattern.</p>
+<p>Let \(\mathcal{I}\) denote the set of planning units and let
 \(\mathcal{A}\) denote the set of actions.</p>
 <p>Let \(x_{ia} \in \{0,1\}\) indicate whether action \(a \in \mathcal{A}\)
-is selected in planning unit \(i \in \mathcal{P}\).</p>
-<p>Let the chosen spatial relation
-<code>x$data$spatial_relations[[relation_name]]</code> define weighted pairs with
+is selected in planning unit \(i \in \mathcal{I}\).</p>
+<p>Let the chosen spatial relation define weighted pairs with
 weights \(\omega_{ij} \ge 0\), and let
 \(\lambda = \code{weight_multiplier}\) be the global scaling factor applied
 to these weights.</p>
@@ -132,9 +133,8 @@ to these weights.</p>
 objective. If <code>actions = NULL</code>, all actions are included.</p>
 <p>The internal preparation step constructs one auxiliary variable
 \(b_{ija} \in [0,1]\) for each unique non-diagonal undirected edge
-\((i,j)\) with \(i &lt; j\) and for each action \(a\). These variables are
-created globally for all actions.</p>
-<p>For each edge–action combination, the intended semantics is:
+\((i,j)\) with \(i &lt; j\) and for each action \(a\). The intended
+semantics is:
 $$
 b_{ija} = x_{ia} \land x_{ja}.
 $$</p>
@@ -151,10 +151,7 @@ b_{ija} \ge x_{ia} + x_{ja} - 1.
 $$</p>
 <p>If one of the two action variables does not exist because the corresponding
 <code>(pu, action)</code> pair is not feasible, the auxiliary variable is forced to
-zero:
-$$
-b_{ija} = 0.
-$$</p>
+zero.</p>
 <p>Therefore, \(b_{ija}=1\) if and only if action \(a\) is selected in both
 adjacent planning units \(i\) and \(j\); otherwise \(b_{ija}=0\).</p>
 <p>The exact objective coefficients are assembled later by the model builder
@@ -180,11 +177,7 @@ different actions to form different spatial patterns.</p>
 union of selected planning units,</p></li>
 <li><p><code>add_objective_min_action_fragmentation()</code> encourages cohesion of
 each selected action pattern separately.</p></li>
-</ul><p>A key implementation detail is that the auxiliary block is built over the
-global set of unique undirected non-diagonal edges and all actions, even if a
-later subset of actions is used in the objective. Missing edge–action
-combinations induced by infeasible decisions are fixed to zero.</p>
-<p>Setting <code>weight_multiplier = 0</code> removes the contribution of the spatial
+</ul><p>Setting <code>weight_multiplier = 0</code> removes the contribution of the spatial
 relation from the objective after scaling.</p>
     </div>
     <div class="section level2">

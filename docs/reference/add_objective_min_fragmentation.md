@@ -46,24 +46,22 @@ An updated `Problem` object.
 
 ## Details
 
-Let \\\mathcal{P}\\ denote the set of planning units and let \\w_i \in
-\\0,1\\\\ indicate whether planning unit \\i \in \mathcal{P}\\ is
+Use this function when spatial cohesion should be encouraged at the
+level of the selected planning-unit set as a whole.
+
+Let \\\mathcal{I}\\ denote the set of planning units and let \\w_i \in
+\\0,1\\\\ indicate whether planning unit \\i \in \mathcal{I}\\ is
 selected.
 
-Let the chosen spatial relation
-`x$data$spatial_relations[[relation_name]]` define a set of weighted
-pairs with weights \\\omega\_{ij} \ge 0\\. These relation weights are
-interpreted by the model builder after scaling by \\\lambda =
+Let the chosen spatial relation define a set of weighted pairs with
+weights \\\omega\_{ij} \ge 0\\. These relation weights are interpreted
+by the model builder after scaling by \\\lambda =
 \code{weight_multiplier}\\.
 
 The internal preparation step constructs one auxiliary variable
 \\y\_{ij} \in \[0,1\]\\ for each unique non-diagonal undirected edge
-\\(i,j)\\ with \\i \< j\\. Diagonal entries of the relation, if present,
-are not used to create auxiliary variables.
-
-Each auxiliary variable is constrained to represent the logical
-conjunction of the two incident planning-unit selections: \$\$ y\_{ij} =
-w_i \land w_j. \$\$
+\\(i,j)\\ with \\i \< j\\. The intended semantics is: \$\$ y\_{ij} = w_i
+\land w_j. \$\$
 
 This is enforced by the standard linearization: \$\$ y\_{ij} \le w_i,
 \$\$ \$\$ y\_{ij} \le w_j, \$\$ \$\$ y\_{ij} \ge w_i + w_j - 1. \$\$
@@ -91,19 +89,7 @@ In the common case where `relation_name = "boundary"` and the relation
 was built with
 [`add_spatial_boundary`](https://josesalgr.github.io/multiscape/reference/add_spatial_boundary.md),
 the objective corresponds to a boundary-length-style fragmentation
-penalty. In that setting:
-
-- off-diagonal relation rows encode shared boundary,
-
-- diagonal relation rows may encode exposed boundary,
-
-- the objective is evaluated from the combination of selected planning
-  units and selected adjacent pairs.
-
-A key implementation detail is that symmetric duplicates in the relation
-are canonicalized internally before the auxiliary block is created. For
-each unordered non-diagonal pair \\\\i,j\\\\, only one edge is retained,
-using the maximum weight among duplicates.
+penalty.
 
 Setting `weight_multiplier = 0` removes the contribution of the spatial
 relation from the objective after scaling.

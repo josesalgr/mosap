@@ -14,8 +14,8 @@ add_objective_max_profit(
 \arguments{
 \item{x}{A \code{Problem} object.}
 
-\item{profit_col}{Character string giving the profit column in
-\code{x$data$dist_profit}.}
+\item{profit_col}{Character string giving the profit column in the stored
+profit table.}
 
 \item{actions}{Optional subset of actions to include. Values may match
 \code{x$data$actions$id} and, if present,
@@ -32,26 +32,29 @@ Define an objective that maximizes total profit from selected planning
 unit--action decisions.
 }
 \details{
+Use this function when the objective is to maximize gross economic return,
+without subtracting planning-unit or action costs.
+
 Let \eqn{x_{ia} \in \{0,1\}} denote whether action \eqn{a} is selected in
 planning unit \eqn{i}, and let \eqn{\pi_{ia}} denote the profit associated
-with that decision, as taken from column \code{profit_col} in
-\code{x$data$dist_profit}.
+with that decision, as taken from column \code{profit_col} in the stored
+profit table.
 
 If all actions are included, the objective is:
 
 \deqn{
-\max \sum_{(i,a) \in \mathcal{F}} \pi_{ia} x_{ia},
+\max \sum_{(i,a) \in \mathcal{D}} \pi_{ia} x_{ia},
 }
 
-where \eqn{\mathcal{F}} denotes the set of feasible planning unit--action
-pairs.
+where \eqn{\mathcal{D}} denotes the set of feasible planning unit--action
+decisions.
 
 If \code{actions} is provided, only the selected subset contributes to the
-objective. Letting \eqn{\mathcal{F}^{\star}} denote the feasible pairs whose
-action belongs to the selected subset, the objective becomes:
+objective. Letting \eqn{\mathcal{D}^{\star}} denote the feasible decisions
+whose action belongs to the selected subset, the objective becomes:
 
 \deqn{
-\max \sum_{(i,a) \in \mathcal{F}^{\star}} \pi_{ia} x_{ia}.
+\max \sum_{(i,a) \in \mathcal{D}^{\star}} \pi_{ia} x_{ia}.
 }
 
 This objective considers profit only. It does not subtract planning-unit

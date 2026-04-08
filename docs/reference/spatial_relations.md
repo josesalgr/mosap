@@ -4,13 +4,13 @@ Define a unified internal representation for spatial relations between
 planning units and provide constructors for building such relations from
 common spatial inputs.
 
-Spatial relations in `mulstiscape` are graph-like structures defined
-over the set of planning units. They are used to represent adjacency,
-shared boundary length, proximity, neighbourhood graphs, or other
-pairwise spatial relationships that may later be used by objectives,
-constraints, or diagnostics.
+Spatial relations in `multiscape` are graph-like structures defined over
+the set of planning units. They are used to represent adjacency, shared
+boundary length, proximity, neighbourhood graphs, or other pairwise
+spatial relationships that may later be used by objectives, constraints,
+or diagnostics.
 
-Relations are stored inside the problem object as
+Relations are stored inside the `Problem` object as
 `x$data$spatial_relations[[name]]`.
 
 ## Details
@@ -38,9 +38,9 @@ Additional columns may also be present, such as `pu1`, `pu2`,
 are preserved when possible.
 
 Thus, a spatial relation can be interpreted as a weighted graph \\G =
-(V, E, \omega)\\, where:
+(\mathcal{I}, E, \omega)\\, where:
 
-- \\V\\ is the set of planning units,
+- \\\mathcal{I}\\ is the set of planning units,
 
 - \\E\\ is the set of stored edges,
 
@@ -59,25 +59,19 @@ The function
 supports boundary-length relations derived either from a boundary table
 or from polygon geometry.
 
-If `include_self = TRUE`, diagonal entries \\(i,i)\\ are added to
+If `include_self = TRUE`, diagonal entries \\(i,i)\\ may be added to
 represent exposed boundary. These diagonal weights are intended for
 boundary-based compactness or fragmentation formulations, where
 perimeter exposed to the outside of the selected solution should
 contribute to the objective.
-
-In that case, the diagonal entry for planning unit \\i\\ is computed as:
-\$\$ \omega\_{ii}^{\mathrm{diag}} = \mathrm{edge\\factor} \times
-\max\left\\ p_i - \sum\_{j \neq i} \omega\_{ij}, 0 \right\\, \$\$ where
-\\p_i\\ is the total perimeter of planning unit \\i\\ and \\\sum\_{j
-\neq i} \omega\_{ij}\\ is the total shared boundary length with
-neighbouring planning units.
 
 **Geometry safety**
 
 All `sf`-based constructors operate only through spatial predicates,
 topological relations, or boundary-length calculations. They never
 subdivide, cut, or alter planning-unit geometries. Planning units are
-aligned to `x$data$pu$id` before spatial relations are computed.
+aligned to the internal planning-unit order before spatial relations are
+computed.
 
 **Available constructors**
 

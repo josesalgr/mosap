@@ -90,10 +90,12 @@ adjacency.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>This constructor derives an adjacency graph from polygon geometry using a
+    <p>Use this function when neighbourhood should include both shared edges and
+corner-touching polygon contacts.</p>
+<p>This constructor derives an adjacency graph from polygon geometry using a
 queen criterion. If planning units \(i\) and \(j\) touch at any boundary
 point, then an edge \((i,j)\) is added to the relation.</p>
-<p>Let \(G = (V,E)\) denote the resulting graph. Then:
+<p>Let \(G = (\mathcal{I}, E)\) denote the resulting graph. Then:
 $$
 (i,j) \in E \quad \Longleftrightarrow \quad
 \partial i \cap \partial j \neq \varnothing.

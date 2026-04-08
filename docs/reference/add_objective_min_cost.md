@@ -50,9 +50,13 @@ An updated `Problem` object.
 
 ## Details
 
-Let \\\mathcal{P}\\ be the set of planning units and let
-\\\mathcal{A}\_i\\ be the set of feasible actions in planning unit \\i
-\in \mathcal{P}\\.
+Use this function when the planning problem is framed primarily as a
+cost-minimization problem, with costs arising from planning-unit
+selection, action implementation, or both.
+
+Let \\\mathcal{I}\\ be the set of planning units and let \\\mathcal{D}
+\subseteq \mathcal{I} \times \mathcal{A}\\ denote the set of feasible
+planning unit–action decisions.
 
 Let:
 
@@ -68,12 +72,11 @@ Let:
 
 The most general form of this objective is:
 
-\$\$ \min \left( \sum\_{i \in \mathcal{P}} c_i^{PU} w_i + \sum\_{i \in
-\mathcal{P}} \sum\_{a \in \mathcal{A}\_i^\star} c\_{ia}^{A} x\_{ia}
-\right), \$\$
+\$\$ \min \left( \sum\_{i \in \mathcal{I}} c_i^{PU} w_i + \sum\_{(i,a)
+\in \mathcal{D}^{\star}} c\_{ia}^{A} x\_{ia} \right), \$\$
 
-where \\\mathcal{A}\_i^\star\\ denotes the subset of feasible actions
-that contribute to the action-cost term.
+where \\\mathcal{D}^{\star}\\ denotes the subset of feasible decisions
+whose action contributes to the action-cost term.
 
 If `include_pu_cost = FALSE`, the planning-unit cost term is omitted.
 
@@ -83,10 +86,6 @@ If `actions = NULL`, all feasible actions contribute to the action-cost
 term. If `actions` is supplied, only the selected subset contributes to
 that term. Planning-unit costs are never subset by `actions`; they are
 always global whenever `include_pu_cost = TRUE`.
-
-This objective is useful when the decision problem is framed primarily
-as a cost-minimization problem, optionally combining fixed planning-unit
-costs with action-specific implementation costs.
 
 ## See also
 

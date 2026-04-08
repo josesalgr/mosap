@@ -14,8 +14,7 @@ add_effects(
 }
 \arguments{
 \item{x}{A \code{Problem} object created with \code{\link{create_problem}}. It
-must already contain \code{x$data$dist_actions}; run
-\code{\link{add_actions}} first.}
+must already contain feasible actions; run \code{\link{add_actions}} first.}
 
 \item{effects}{Effect specification. One of:
 \itemize{
@@ -46,22 +45,21 @@ canonical effects table is retained. Must be one of:
 }}
 }
 \value{
-An updated \code{Problem} object with:
+An updated \code{Problem} object containing:
 \describe{
-\item{\code{x$data$dist_effects}}{A canonical effects table with columns
+\item{\code{dist_effects}}{A canonical effects table with columns
 \code{pu}, \code{action}, \code{feature}, \code{benefit}, \code{loss},
 \code{internal_pu}, \code{internal_action}, \code{internal_feature}, and
 optional labels such as \code{feature_name} and \code{action_name}.}
-\item{\code{x$data$effects_meta}}{Metadata describing how effects were
+\item{\code{effects_meta}}{Metadata describing how effects were
 interpreted and stored.}
 }
 }
 \description{
 Define the effects of management actions on features across planning units.
 
-Effects are stored in a canonical representation in
-\code{x$data$dist_effects}, with one row per
-\code{(pu, action, feature)} triple and two non-negative columns:
+Effects are stored in a canonical representation in a effects table, with one
+row per \code{(pu, action, feature)} triple and two non-negative columns:
 \itemize{
 \item \code{benefit}: the positive component of the effect,
 \item \code{loss}: the magnitude of the negative component of the effect.
@@ -69,7 +67,7 @@ Effects are stored in a canonical representation in
 
 The net effect is therefore interpreted as
 \deqn{
-\Delta_{i a f} = \mathrm{benefit}_{i a f} - \mathrm{loss}_{i a f},
+\Delta_{iaf} = \mathrm{benefit}_{iaf} - \mathrm{loss}_{iaf},
 }
 where \eqn{i} indexes planning units, \eqn{a} indexes actions, and
 \eqn{f} indexes features.
@@ -80,31 +78,40 @@ Consequently, after validation and aggregation, a stored row cannot have both
 \code{benefit > 0} and \code{loss > 0} at the same time.
 }
 \details{
+\strong{When to use \code{add_effects()}.}
+
+Use this function when you want to specify what feasible actions do to
+features. It is the stage at which an action-based decision space is linked
+to feature-level ecological or functional consequences.
+
 This function provides a unified interface for specifying action effects from
 several input formats while enforcing a single internal representation.
 Regardless of how the user supplies the effects, the stored output always
 follows the same canonical structure based on non-negative
 \code{benefit}/\code{loss} components.
 
+Let \eqn{i \in \mathcal{I}} index planning units,
+\eqn{a \in \mathcal{A}} index actions, and
+\eqn{f \in \mathcal{F}} index features.
 Let \eqn{b_{if}} denote the baseline amount of feature \eqn{f} in planning
-unit \eqn{i}, taken from \code{x$data$dist_features$amount}. Let
-\eqn{\Delta_{i a f}} denote the net change caused by applying action
+unit \eqn{i}, as given by the feature-distribution table. Let
+\eqn{\Delta_{iaf}} denote the net change caused by applying action
 \eqn{a} in planning unit \eqn{i} to feature \eqn{f}. The canonical stored
 representation is:
 
 \deqn{
-\mathrm{benefit}_{i a f} = \max(\Delta_{i a f}, 0),
+\mathrm{benefit}_{iaf} = \max(\Delta_{iaf}, 0),
 }
 
 \deqn{
-\mathrm{loss}_{i a f} = \max(-\Delta_{i a f}, 0).
+\mathrm{loss}_{iaf} = \max(-\Delta_{iaf}, 0).
 }
 
 Hence:
 \itemize{
-\item if \eqn{\Delta_{i a f} > 0}, then \code{benefit > 0} and \code{loss = 0},
-\item if \eqn{\Delta_{i a f} < 0}, then \code{benefit = 0} and \code{loss > 0},
-\item if \eqn{\Delta_{i a f} = 0}, then both are zero.
+\item if \eqn{\Delta_{iaf} > 0}, then \code{benefit > 0} and \code{loss = 0},
+\item if \eqn{\Delta_{iaf} < 0}, then \code{benefit = 0} and \code{loss > 0},
+\item if \eqn{\Delta_{iaf} = 0}, then both are zero.
 }
 
 \strong{Why split effects into benefit and loss?}
@@ -125,9 +132,9 @@ The \code{effects} argument may be provided in one of the following forms:
 effects are constructed by multiplying baseline feature amounts by the
 supplied multiplier:
 \deqn{
-  \Delta_{i a f} = b_{if} \times m_{a f},
+  \Delta_{iaf} = b_{if} \times m_{af},
   }
-where \eqn{m_{a f}} is the multiplier associated with action \eqn{a} and
+where \eqn{m_{af}} is the multiplier associated with action \eqn{a} and
 feature \eqn{f}. This specification is expanded over all feasible
 \code{(pu, action)} pairs.
 
@@ -158,17 +165,19 @@ If \code{effect_type = "after"}, supplied values are interpreted as
 after-action amounts and converted internally to net effects using:
 
 \deqn{
-\Delta_{i a f} = \mathrm{after}_{i a f} - b_{if}.
+\Delta_{iaf} = \mathrm{after}_{iaf} - b_{if}.
 }
 
 Missing baseline values are treated as zero.
 
 \strong{Feasibility and locked-out decisions}
 
-Effects are only retained for feasible \code{(pu, action)} pairs listed in
-\code{x$data$dist_actions}. Thus, \code{add_actions()} must be called first.
-Pairs marked as locked out (\code{status == 3}) are removed before storing
-the final effects table.
+Effects are only retained for feasible \code{(pu, action)} pairs. Thus,
+\code{add_actions()} must be called first. Pairs marked as locked out
+(\code{status == 3}) are removed before storing the final effects table.
+
+This function does not define the action-decision layer itself; it builds on
+the feasible \code{(pu, action)} pairs already stored in the problem.
 
 \strong{Duplicate rows and semantic validation}
 
@@ -178,7 +187,7 @@ separately. The resulting triple must still respect the package semantics,
 namely that both components cannot be strictly positive simultaneously.
 Inputs violating this rule are rejected.
 
-\strong{Component selection}
+\strong{Component filtering}
 
 After canonicalization and validation, rows can be restricted to:
 \itemize{
@@ -197,10 +206,13 @@ aggregation.
 
 \strong{Stored output}
 
-The resulting table \code{x$data$dist_effects} contains user-facing ids,
-internal integer ids, and optional labels for actions and features. Metadata
-describing the stored representation and input interpretation are written to
-\code{x$data$effects_meta}.
+The resulting effects table contains user-facing ids, internal integer ids,
+and optional labels for actions and features. Metadata describing the stored
+representation and input interpretation are written to an effects metadata
+field.
+
+After defining effects, typical next steps include adding objectives that use
+beneficial or harmful effects, and then solving the configured problem.
 }
 \examples{
 # ------------------------------------------------------

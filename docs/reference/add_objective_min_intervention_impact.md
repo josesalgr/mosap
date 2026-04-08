@@ -28,8 +28,8 @@ add_objective_min_intervention_impact(
 
 - impact_col:
 
-  Character string giving the column in `x$data$dist_features` that
-  contains the per-`(pu, feature)` impact amount. The default is
+  Character string giving the column in the feature-distribution table
+  that contains the per-`(pu, feature)` impact amount. The default is
   `"amount"`.
 
 - features:
@@ -54,14 +54,19 @@ An updated `Problem` object.
 
 ## Details
 
+Use this function when intervention itself has a baseline ecological,
+social, or operational burden that should be minimized independently of
+the detailed effects of particular actions.
+
 Let \\w_i \in \\0,1\\\\ denote whether planning unit \\i\\ is selected
 for intervention. Let \\q\_{if}\\ denote the impact amount associated
 with planning unit \\i\\ and feature \\f\\, taken from column
-`impact_col` in `x$data$dist_features`.
+`impact_col` in the feature-distribution table.
 
-If all features are included, the objective can be interpreted as:
+If all selected features are included, the objective can be interpreted
+as:
 
-\$\$ \min \sum\_{i \in \mathcal{P}} \left( \sum\_{f \in
+\$\$ \min \sum\_{i \in \mathcal{I}} \left( \sum\_{f \in
 \mathcal{F}^{\star}} q\_{if} \right) w_i, \$\$
 
 where \\\mathcal{F}^{\star}\\ denotes the selected subset of features.

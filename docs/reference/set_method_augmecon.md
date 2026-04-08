@@ -1,18 +1,15 @@
 # Set the AUGMECON multi-objective method
 
 Configure a `Problem` object to be solved with the augmented
-\\\epsilon\\-constraint method (AUGMECON).
+epsilon-constraint method (AUGMECON).
 
 AUGMECON is an exact multi-objective optimization method in which one
 objective is treated as the primary objective and the remaining
-objectives are converted into \\\epsilon\\-constraints. In the augmented
-formulation, each secondary objective is associated with a non-negative
-slack variable, and the primary objective is augmented with a small
-reward term based on the normalized slacks. This augmentation is used to
-avoid weakly efficient solutions, following Mavrotas (2009). AUGMECON is
-generally preferable to the standard epsilon-constraint method when the
-goal is to generate a well-distributed set of efficient solutions while
-reducing weakly efficient points.
+objectives are converted into \\\varepsilon\\-constraints. In the
+augmented formulation, each secondary objective is associated with a
+non-negative slack variable, and the primary objective is augmented with
+a small reward term based on the normalized slacks. This augmentation is
+used to avoid weakly efficient solutions, following Mavrotas (2009).
 
 This function does not solve the problem directly. It stores the
 AUGMECON configuration in `x$data$method`, to be used later by
@@ -54,14 +51,14 @@ set_method_augmecon(
 
 - grid:
 
-  Optional named list defining manual \\\epsilon\\-levels for the
-  secondary objectives. Each name must correspond to a secondary
-  objective alias, and each element must be a non-empty numeric vector
-  of finite values. If `NULL`, the grid is generated automatically.
+  Optional named list defining manual epsilon levels for the secondary
+  objectives. Each name must correspond to a secondary objective alias,
+  and each element must be a non-empty numeric vector of finite values.
+  If `NULL`, the grid is generated automatically.
 
 - n_points:
 
-  Number of automatically generated \\\epsilon\\-levels per secondary
+  Number of automatically generated epsilon levels per secondary
   objective when `grid = NULL`. Must be at least 2. Ignored when `grid`
   is supplied.
 
@@ -98,22 +95,28 @@ stored in `x$data$method`.
 
 ## Details
 
+Use this method when one objective should be optimized directly, the
+remaining objectives should be controlled through epsilon levels, and
+weakly efficient solutions should be reduced through the augmented
+formulation.
+
 **General idea**
 
-Suppose that \\m \ge 2\\ objective functions have been registered in the
-problem: \$\$ f_1(x), f_2(x), \dots, f_m(x). \$\$
+Suppose that \\m \ge 2\\ objective functions have already been
+registered in the problem: \$\$ f_1(x), f_2(x), \dots, f_m(x). \$\$
 
 AUGMECON selects one of them as the primary objective, say \\f_p(x)\\,
 and treats the remaining \\m - 1\\ objectives as secondary objectives.
-For a fixed combination of \\\epsilon\\-levels, the method solves a
-sequence of single-objective subproblems of the form:
+
+For a fixed combination of epsilon levels, the method solves a sequence
+of single-objective subproblems of the form:
 
 \$\$ \max \\ f_p(x) + \rho \sum\_{k \in \mathcal{S}} \frac{s_k}{R_k}
 \$\$
 
 subject to
 
-\$\$ f_k(x) - s_k = \epsilon_k, \qquad k \in \mathcal{S}, \$\$
+\$\$ f_k(x) - s_k = \varepsilon_k, \qquad k \in \mathcal{S}, \$\$
 
 \$\$ s_k \ge 0, \qquad k \in \mathcal{S}, \$\$
 
@@ -126,7 +129,7 @@ Here:
 
 - \\\mathcal{S}\\ is the set of secondary objectives,
 
-- \\\epsilon_k\\ is the imposed level for secondary objective \\k\\,
+- \\\varepsilon_k\\ is the imposed level for secondary objective \\k\\,
 
 - \\s_k\\ is a non-negative slack variable,
 
@@ -136,23 +139,24 @@ Here:
 
 In the original AUGMECON formulation of Mavrotas (2009), the
 augmentation term ensures that, among solutions with the same primary
-objective value, the solver prefers those with larger slack, thereby
-avoiding weakly efficient points and improving Pareto-front generation.
+objective value, the solver prefers those with larger normalized slack,
+thereby avoiding weakly efficient points and improving Pareto-front
+generation.
 
 **Secondary-objective equalities and slacks**
 
-The key difference between standard \\\epsilon\\-constraint and AUGMECON
-is that the secondary objectives are written as equalities with slacks
+The key difference between standard epsilon-constraint and AUGMECON is
+that the secondary objectives are written as equalities with slacks
 rather than as simple inequalities. For a maximization-type secondary
 objective, this takes the form:
 
-\$\$ f_k(x) - s_k = \epsilon_k, \qquad s_k \ge 0. \$\$
+\$\$ f_k(x) - s_k = \varepsilon_k, \qquad s_k \ge 0. \$\$
 
-This implies: \$\$ f_k(x) \ge \epsilon_k, \$\$
+This implies: \$\$ f_k(x) \ge \varepsilon_k, \$\$
 
-while explicitly measuring the excess above the imposed
-\\\epsilon\\-level through \\s_k\\. The augmentation term then rewards
-such excess in normalized form.
+while explicitly measuring the excess above the imposed epsilon level
+through \\s_k\\. The augmentation term then rewards such excess in
+normalized form.
 
 In implementation terms, the exact sign convention for each objective
 depends on whether it is internally treated as a minimization or
@@ -164,18 +168,17 @@ AUGMECON principle:
 - all others are turned into constrained objectives,
 
 - non-negative slacks measure controlled deviation from the imposed
-  \\\epsilon\\-levels,
+  epsilon levels,
 
 - the primary objective is augmented with a small slack-based reward.
 
-**Automatic and manual grids**
+**Manual and automatic epsilon grids**
 
-AUGMECON requires a grid of \\\epsilon\\-levels for each secondary
-objective.
+AUGMECON requires a grid of epsilon levels for each secondary objective.
 
 If `grid` is supplied, it must be a named list with one numeric vector
-per secondary objective. Each vector defines the exact
-\\\epsilon\\-levels to be explored for that objective.
+per secondary objective. Each vector defines the exact epsilon levels to
+be explored for that objective.
 
 If `grid = NULL`, the grid is generated automatically later during
 [`solve`](https://josesalgr.github.io/multiscape/reference/solve.md). In
@@ -187,10 +190,9 @@ If `include_extremes = TRUE`, the automatic grid includes the extreme
 values of each secondary objective.
 
 If `lexicographic = TRUE`, extreme points are computed using
-lexicographic anchoring, which can improve numerical stability and
-payoff table quality when objectives are tightly competing. The
-tolerance used for lexicographic anchoring is controlled by
-`lexicographic_tol`.
+lexicographic anchoring, which can improve payoff-table quality when
+objectives are tightly competing. The tolerance used for lexicographic
+anchoring is controlled by `lexicographic_tol`.
 
 **Normalization and augmentation**
 
@@ -236,7 +238,7 @@ are performed later by
 ## References
 
 Mavrotas, G. (2009). Effective implementation of the
-\\\epsilon\\-constraint method in multi-objective mathematical
+\\\varepsilon\\-constraint method in multi-objective mathematical
 programming problems. *Applied Mathematics and Computation*, 213(2),
 455–465.
 

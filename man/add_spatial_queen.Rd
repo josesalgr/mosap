@@ -30,11 +30,14 @@ Two planning units are queen-adjacent if their boundaries touch, either along
 a shared edge or at a shared vertex.
 }
 \details{
+Use this function when neighbourhood should include both shared edges and
+corner-touching polygon contacts.
+
 This constructor derives an adjacency graph from polygon geometry using a
 queen criterion. If planning units \eqn{i} and \eqn{j} touch at any boundary
 point, then an edge \eqn{(i,j)} is added to the relation.
 
-Let \eqn{G = (V,E)} denote the resulting graph. Then:
+Let \eqn{G = (\mathcal{I}, E)} denote the resulting graph. Then:
 \deqn{
 (i,j) \in E \quad \Longleftrightarrow \quad
 \partial i \cap \partial j \neq \varnothing.

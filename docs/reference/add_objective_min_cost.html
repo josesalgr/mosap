@@ -104,9 +104,12 @@ multi-objective workflows.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(\mathcal{P}\) be the set of planning units and let
-\(\mathcal{A}_i\) be the set of feasible actions in planning unit
-\(i \in \mathcal{P}\).</p>
+    <p>Use this function when the planning problem is framed primarily as a
+cost-minimization problem, with costs arising from planning-unit selection,
+action implementation, or both.</p>
+<p>Let \(\mathcal{I}\) be the set of planning units and let
+\(\mathcal{D} \subseteq \mathcal{I} \times \mathcal{A}\) denote the set of
+feasible planning unit–action decisions.</p>
 <p>Let:</p><ul><li><p>\(w_i \in \{0,1\}\) denote whether planning unit \(i\) is
 selected,</p></li>
 <li><p>\(x_{ia} \in \{0,1\}\) denote whether action \(a\) is selected
@@ -117,22 +120,19 @@ in planning unit \(i\),</p></li>
 </ul><p>The most general form of this objective is:</p>
 <p>$$
 \min \left(
-\sum_{i \in \mathcal{P}} c_i^{PU} w_i
+\sum_{i \in \mathcal{I}} c_i^{PU} w_i
 +
-\sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}_i^\star} c_{ia}^{A} x_{ia}
+\sum_{(i,a) \in \mathcal{D}^{\star}} c_{ia}^{A} x_{ia}
 \right),
 $$</p>
-<p>where \(\mathcal{A}_i^\star\) denotes the subset of feasible actions that
-contribute to the action-cost term.</p>
+<p>where \(\mathcal{D}^{\star}\) denotes the subset of feasible decisions
+whose action contributes to the action-cost term.</p>
 <p>If <code>include_pu_cost = FALSE</code>, the planning-unit cost term is omitted.</p>
 <p>If <code>include_action_cost = FALSE</code>, the action-cost term is omitted.</p>
 <p>If <code>actions = NULL</code>, all feasible actions contribute to the action-cost
 term. If <code>actions</code> is supplied, only the selected subset contributes to
 that term. Planning-unit costs are never subset by <code>actions</code>; they are
 always global whenever <code>include_pu_cost = TRUE</code>.</p>
-<p>This objective is useful when the decision problem is framed primarily as a
-cost-minimization problem, optionally combining fixed planning-unit costs
-with action-specific implementation costs.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -3,18 +3,10 @@
 Fix feasible planning unit–action decisions to be selected or excluded.
 
 This function modifies the status of existing feasible `(pu, action)`
-pairs stored in `x$data$dist_actions`. It does not create new feasible
-action pairs and therefore must be used only after
+pairs stored in the feasible action table. It does not create new
+feasible action pairs and therefore must be used only after
 [`add_actions`](https://josesalgr.github.io/multiscape/reference/add_actions.md)
 has been called.
-
-Locked decisions are represented through status codes:
-
-- `0`: free decision,
-
-- `2`: locked in,
-
-- `3`: locked out.
 
 ## Usage
 
@@ -41,29 +33,33 @@ add_constraint_locked_actions(x, locked_in = NULL, locked_out = NULL)
 
 ## Value
 
-An updated `Problem` object in which `x$data$dist_actions$status` has
-been modified to reflect locked-in and locked-out decisions.
+An updated `Problem` object in which the status column of the feasible
+action table has been modified to reflect locked-in and locked-out
+decisions.
 
 ## Details
 
-Let \\\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\\ denote the
-set of feasible planning unit–action pairs already defined in
-`x$data$dist_actions`, where \\\mathcal{P}\\ is the set of planning
-units and \\\mathcal{A}\\ is the set of actions.
+Use this function when only specific feasible `(pu, action)` decisions
+must be forced in or out of the solution, rather than whole planning
+units.
+
+Let \\\mathcal{I}\\ denote the set of planning units and \\\mathcal{A}\\
+the set of actions. Let \\\mathcal{D} \subseteq \mathcal{I} \times
+\mathcal{A}\\ denote the set of feasible planning unit–action pairs
+already defined in the problem.
 
 This function allows the user to define two subsets:
 
-- \\\mathcal{L}^{in} \subseteq \mathcal{F}\\, the set of feasible pairs
+- \\\mathcal{D}^{in} \subseteq \mathcal{D}\\, the set of feasible pairs
   that must be selected,
 
-- \\\mathcal{L}^{out} \subseteq \mathcal{F}\\, the set of feasible pairs
+- \\\mathcal{D}^{out} \subseteq \mathcal{D}\\, the set of feasible pairs
   that must not be selected.
 
-These sets are encoded by updating the `status` column of
-`x$data$dist_actions`. The function validates that all requested
-locked-in and locked-out pairs are already feasible. Therefore, it
-cannot be used to introduce new planning unit–action combinations into
-the problem.
+These sets are encoded by updating the `status` column of the feasible
+action table. The function validates that all requested locked-in and
+locked-out pairs are already feasible. Therefore, it cannot be used to
+introduce new planning unit–action combinations into the problem.
 
 In optimization terms, if \\x\_{ia}\\ denotes the decision variable
 associated with planning unit \\i\\ and action \\a\\, then:
@@ -74,6 +70,11 @@ associated with planning unit \\i\\ and action \\a\\, then:
 
 The exact translation into solver-side constraints occurs later when the
 model is built.
+
+In contrast,
+[`add_constraint_locked_pu`](https://josesalgr.github.io/multiscape/reference/add_constraint_locked_pu.md)
+fixes whole planning units through the unit-selection variables, whereas
+this function fixes only specific feasible `(pu, action)` decisions.
 
 **Accepted formats**
 
@@ -92,7 +93,7 @@ If a `feasible` column is supplied in a `data.frame`, only rows with
 `FALSE`.
 
 If an `sf` specification is supplied, the problem object must contain
-`x$data$pu_sf`, and planning units are matched spatially using
+planning-unit geometry, and planning units are matched spatially using
 [`sf::st_intersects()`](https://r-spatial.github.io/sf/reference/geos_binary_pred.html).
 
 **Conflict checking**
@@ -101,17 +102,16 @@ A given `(pu, action)` pair cannot be simultaneously requested in both
 `locked_in` and `locked_out`. Such overlaps are rejected.
 
 In addition, if a planning unit is already marked as locked out at the
-planning-unit level through `x$data$pu$locked_out`, then all feasible
-actions in that planning unit are forced to `status = 3`. Any attempt to
-lock in an action within such a planning unit raises an error.
+planning-unit level, then all feasible actions in that planning unit are
+forced to `status = 3`. Any attempt to lock in an action within such a
+planning unit raises an error.
 
 **Order of precedence**
 
 User-supplied locked-in and locked-out action requests are first applied
-to `x$data$dist_actions`. Afterwards, any planning-unit-level
-`locked_out` flag stored in `x$data$pu` is enforced, overriding
-action-level status and ensuring consistency with planning-unit
-exclusions.
+to the feasible action table. Afterwards, any planning-unit-level
+`locked_out` flag is enforced, overriding action-level status and
+ensuring consistency with planning-unit exclusions.
 
 ## See also
 

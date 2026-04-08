@@ -16,8 +16,8 @@ add_objective_max_net_profit(
 \arguments{
 \item{x}{A \code{Problem} object.}
 
-\item{profit_col}{Character string giving the profit column in
-\code{x$data$dist_profit}.}
+\item{profit_col}{Character string giving the profit column in the stored
+profit table.}
 
 \item{include_pu_cost}{Logical. If \code{TRUE}, subtract planning-unit costs.}
 
@@ -38,6 +38,10 @@ Define an objective that maximizes net profit by combining profits with
 optional planning-unit and action-cost penalties.
 }
 \details{
+Use this function when decisions generate returns and the objective should
+optimize the resulting net balance after subtracting selected cost
+components.
+
 Let:
 \itemize{
 \item \eqn{x_{ia} \in \{0,1\}} denote whether action \eqn{a} is selected
@@ -54,16 +58,16 @@ In its most general form, the objective is:
 
 \deqn{
 \max \left(
-\sum_{(i,a) \in \mathcal{F}^{\star}} \pi_{ia} x_{ia}
+\sum_{(i,a) \in \mathcal{D}^{\star}} \pi_{ia} x_{ia}
 -
-\sum_{i \in \mathcal{P}} c_i^{PU} w_i
+\sum_{i \in \mathcal{I}} c_i^{PU} w_i
 -
-\sum_{(i,a) \in \mathcal{F}^{\star}} c_{ia}^{A} x_{ia}
+\sum_{(i,a) \in \mathcal{D}^{\star}} c_{ia}^{A} x_{ia}
 \right),
 }
 
-where \eqn{\mathcal{F}^{\star}} denotes the subset of feasible
-planning unit--action pairs included in the objective.
+where \eqn{\mathcal{D}^{\star}} denotes the subset of feasible
+planning unit--action decisions included in the objective.
 
 If \code{actions = NULL}, all feasible actions contribute to both the profit
 term and the action-cost term.
@@ -75,10 +79,6 @@ global.
 If \code{include_pu_cost = FALSE}, the planning-unit cost term is omitted.
 
 If \code{include_action_cost = FALSE}, the action-cost term is omitted.
-
-This objective is appropriate when decisions generate revenues or returns and
-the analyst wishes to optimize the resulting net balance after accounting for
-selected cost components.
 }
 \seealso{
 \code{\link{add_objective_max_profit}},

@@ -31,16 +31,15 @@ and bookkeeping.}
 }
 \value{
 An updated \code{Problem} object with relative targets appended to
-\code{x$data$targets}.
+the stored target table.
 }
 \description{
 Add feature-level relative targets to a planning problem.
 
-These targets are stored in \code{x$data$targets} and later translated into
-linear constraints when the optimization model is built.
-
-Relative targets are supplied as proportions in \eqn{[0,1]} and are converted
-internally into absolute thresholds using the current total amount of each
+These targets are stored in the problem object and later translated into
+linear constraints when the optimization model is built. Relative targets are
+supplied as proportions in \eqn{[0,1]} and are converted internally into
+absolute thresholds using the current total amount of each
 feature in the landscape.
 
 Each call appends one or more target definitions to the problem. This makes
@@ -48,6 +47,10 @@ it possible to combine multiple target rules, including targets associated
 with different action subsets.
 }
 \details{
+Use this function when target requirements are naturally expressed as
+proportions of current baseline feature totals rather than in original
+feature units.
+
 Let \eqn{\mathcal{F}} denote the set of features. For each targeted feature
 \eqn{f \in \mathcal{F}}, let \eqn{B_f} denote the current baseline total
 amount of that feature in the landscape, as computed by
@@ -68,23 +71,27 @@ The absolute threshold \eqn{T_f} is stored in \code{target_value}, while:
 
 When the optimization model is built, the resulting target is interpreted as:
 \deqn{
-\sum_{(i,a) \in \mathcal{S}_f} c_{iaf} x_{ia} \ge T_f,
+\sum_{(i,a) \in \mathcal{D}_f^{\star}} c_{iaf} x_{ia} \ge T_f,
 }
 where:
 \itemize{
+\item \eqn{i \in \mathcal{I}} indexes planning units,
+\item \eqn{a \in \mathcal{A}} indexes actions,
 \item \eqn{x_{ia}} indicates whether action \eqn{a} is selected in planning
 unit \eqn{i},
 \item \eqn{c_{iaf}} is the contribution of that action to feature
 \eqn{f},
-\item \eqn{\mathcal{S}_f} is the set of planning unit--action pairs allowed
-to count toward achievement of the target.
+\item \eqn{\mathcal{D}_f^{\star}} is the subset of planning unit--action
+pairs allowed to count toward the target for feature \eqn{f}.
 }
 
 The \code{actions} argument restricts which actions may contribute toward
 target achievement, but it does not affect the baseline amount \eqn{B_f} used
 to compute the threshold. In other words, relative targets are always scaled
-against the current full landscape baseline computed by
-\code{.pa_feature_totals()}.
+against the current full landscape baseline.
+
+Therefore, \code{actions} changes who may satisfy the target, but not how the
+threshold itself is scaled.
 
 The \code{targets} argument is parsed by \code{.pa_parse_targets()} and may be
 supplied in several equivalent forms, including:
@@ -104,15 +111,9 @@ respect to that feature set.
 
 Relative targets must lie in \eqn{[0,1]}.
 
-Internally, targets added by this function are stored with:
-\itemize{
-\item \code{type = "actions"},
-\item \code{sense = "ge"},
-\item \code{target_unit = "relative_baseline"},
-\item \code{target_raw = r_f},
-\item \code{basis_total = B_f},
-\item \code{target_value}, equal to \eqn{r_f B_f}.
-}
+Repeated calls append new target rules rather than replacing previous ones.
+This allows cumulative target modelling, including multiple rules on the same
+feature with different contributing action subsets.
 }
 \examples{
 \dontrun{

@@ -6,16 +6,16 @@
     }
   };
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Solve a planning problem — solve"><meta name="description" content="Solve a planning problem stored in a Problem object.
-This is the main execution step of the multiscape workflow. It reads the
-problem specification stored in x$data, builds the corresponding
-optimization model when needed, applies the configured solver settings, and
-returns either a solution-class or a
+This is the main execution step of the multiscape workflow. It reads
+the problem specification stored in a Problem object, builds the
+corresponding optimization model when needed, applies the configured solver
+settings, and returns either a solution-class or a
 solutionset-class depending on whether the workflow is
 single-objective or multi-objective."><meta property="og:description" content="Solve a planning problem stored in a Problem object.
-This is the main execution step of the multiscape workflow. It reads the
-problem specification stored in x$data, builds the corresponding
-optimization model when needed, applies the configured solver settings, and
-returns either a solution-class or a
+This is the main execution step of the multiscape workflow. It reads
+the problem specification stored in a Problem object, builds the
+corresponding optimization model when needed, applies the configured solver
+settings, and returns either a solution-class or a
 solutionset-class depending on whether the workflow is
 single-objective or multi-objective."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
@@ -58,10 +58,10 @@ single-objective or multi-objective."><meta property="og:image" content="https:/
 
     <div class="ref-description section level2">
     <p>Solve a planning problem stored in a <code>Problem</code> object.</p>
-<p>This is the main execution step of the <span class="pkg">multiscape</span> workflow. It reads the
-problem specification stored in <code>x$data</code>, builds the corresponding
-optimization model when needed, applies the configured solver settings, and
-returns either a <code><a href="solution-class.html">solution-class</a></code> or a
+<p>This is the main execution step of the <span class="pkg">multiscape</span> workflow. It reads
+the problem specification stored in a <code>Problem</code> object, builds the
+corresponding optimization model when needed, applies the configured solver
+settings, and returns either a <code><a href="solution-class.html">solution-class</a></code> or a
 <code><a href="solutionset-class.html">solutionset-class</a></code> depending on whether the workflow is
 single-objective or multi-objective.</p>
     </div>
@@ -95,7 +95,13 @@ handling. These are not part of the main recommended user interface.</p></dd>
 problem, or</p></li>
 <li><p>a <code><a href="solutionset-class.html">solutionset-class</a></code> object when solving a configured
 multi-objective problem.</p></li>
-</ul></div>
+</ul><p>A <code>Solution</code> represents one optimization run. A <code>SolutionSet</code>
+represents multiple runs together with their run table, design information,
+and individual <code>Solution</code> objects.</p>
+<p>After solving, users will typically inspect or visualize the returned results
+through methods associated with <code>Solution</code> and
+<code>SolutionSet</code> objects.</p>
+    </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><strong>Role of <code>solve()</code></strong></p>
@@ -105,68 +111,65 @@ multi-objective problem.</p></li>
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu">set_...</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/solve.html">solve</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 
-<p>Thus, <code>solve()</code> is the stage at which the stored problem specification is
-turned into one or more optimization runs.</p>
-<p><strong>What <code>solve()</code> reads from the problem object</strong></p>
-<p>The function uses the information stored in <code>x$data</code>, including:</p><ul><li><p>baseline planning data,</p></li>
+<p>Thus, <code>solve()</code> is the stage at which the stored problem specification
+is turned into one or more optimization runs.</p>
+<p>For most users, <code>solve()</code> is the standard execution entry point.
+Explicit compilation with <code><a href="compile_model.html">compile_model()</a></code> is optional and is mainly
+useful for advanced inspection or debugging workflows.</p>
+<p><strong>What <code>solve()</code> uses from the problem object</strong></p>
+<p>The function uses the information already stored in the <code>Problem</code>
+object, including:</p><ul><li><p>baseline planning data,</p></li>
 <li><p>actions, effects, profit, and spatial relations,</p></li>
 <li><p>targets and constraints,</p></li>
 <li><p>registered objectives,</p></li>
-<li><p>an optional multi-objective method configuration in
-<code>x$data$method</code>,</p></li>
-<li><p>solver settings in <code>x$data$solve_args</code>.</p></li>
+<li><p>an optional multi-objective method configuration,</p></li>
+<li><p>solver settings.</p></li>
 </ul><p>If a model has not yet been built, it is built internally during the solve
 process. If a model snapshot or pointer already exists, the solving layer may
 reuse or refresh it depending on the internal model state.</p>
 <p><strong>Single-objective vs multi-objective behaviour</strong></p>
 <p>The behaviour of <code>solve()</code> depends on the problem configuration.</p>
-<p><strong>Single-objective case</strong></p>
-<p>If exactly one objective is registered and no multi-objective method is
-configured, <code>solve()</code> runs a single optimization problem and returns a
-<code><a href="solution-class.html">solution-class</a></code> object.</p>
-<p><strong>Multi-objective case</strong></p>
-<p>If a multi-objective method is configured in <code>x$data$method</code>,
-<code>solve()</code> dispatches internally according to the stored method name.</p>
-<p>Currently supported method names are:</p><ul><li><p><code>"weighted"</code>,</p></li>
+<ul><li><p><strong>Single-objective case.</strong> If exactly one objective is active
+and no multi-objective method is configured, <code>solve()</code> runs a single
+optimization problem and returns a <code><a href="solution-class.html">solution-class</a></code> object.</p></li>
+<li><p><strong>Multi-objective case.</strong> If a multi-objective method is
+configured, <code>solve()</code> dispatches internally according to the stored
+method name and returns a <code><a href="solutionset-class.html">solutionset-class</a></code> object.</p></li>
+</ul><p>Currently supported multi-objective method names are:</p><ul><li><p><code>"weighted"</code>,</p></li>
 <li><p><code>"epsilon_constraint"</code>,</p></li>
 <li><p><code>"augmecon"</code>.</p></li>
-</ul><p>In these cases, <code>solve()</code> runs the corresponding multi-objective solving
-workflow and returns a <code><a href="solutionset-class.html">solutionset-class</a></code> object.</p>
-<p><strong>Consistency check</strong></p>
+</ul><p><strong>Consistency rule</strong></p>
 <p>If multiple objectives are registered but no multi-objective method has been
-selected, <code>solve()</code> stops with an error. In other words:</p>
-<ul><li><p>one objective and no MO method \(\Rightarrow\) single-objective
-solve,</p></li>
-<li><p>multiple objectives and a valid MO method \(\Rightarrow\)
-multi-objective solve,</p></li>
-<li><p>multiple objectives and no MO method \(\Rightarrow\) error.</p></li>
+selected, <code>solve()</code> stops with an error. In practical terms:</p>
+<ul><li><p>one objective and no multi-objective method
+\(\Rightarrow\) single-objective solve,</p></li>
+<li><p>multiple objectives and a valid multi-objective method
+\(\Rightarrow\) multi-objective solve,</p></li>
+<li><p>multiple objectives and no multi-objective method
+\(\Rightarrow\) error.</p></li>
 </ul><p><strong>Solver settings</strong></p>
-<p>Solver configuration is read from <code>x$data$solve_args</code>, typically created
-with <code><a href="set_solver.html">set_solver</a></code> or one of its convenience wrappers such as
-<code><a href="set_solver_gurobi.html">set_solver_gurobi</a></code>.</p>
+<p>Solver configuration is read from the <code>Problem</code> object, typically after
+calling <code><a href="set_solver.html">set_solver</a></code> or one of its convenience wrappers such as
+<code><a href="set_solver_gurobi.html">set_solver_gurobi</a></code> or <code><a href="set_solver_cbc.html">set_solver_cbc</a></code>.</p>
 <p>These settings may include:</p><ul><li><p>the selected backend,</p></li>
 <li><p>time limits,</p></li>
 <li><p>optimality-gap settings,</p></li>
 <li><p>CPU cores,</p></li>
 <li><p>verbosity options,</p></li>
 <li><p>backend-specific solver parameters.</p></li>
-</ul><p><strong>Return value</strong></p>
-<p>The return type depends on the configured workflow:</p><ul><li><p><code>Solution</code>: for single-objective optimization,</p></li>
-<li><p><code>SolutionSet</code>: for multi-objective optimization.</p></li>
-</ul><p>A <code>Solution</code> represents one optimization run. A <code>SolutionSet</code>
-represents multiple runs together with their run table, design information,
-and individual <code>Solution</code> objects.</p>
-<p><strong>Method dispatch</strong></p>
+</ul><p><strong>Method dispatch</strong></p>
 <p><code>solve()</code> is an S3 generic. The public method documented here is
-<code>solve.Problem()</code>, which operates on <code>Problem</code> objects. solve() is
-the only function that should normally materialize the optimization model.</p>
+<code>solve.Problem()</code>, which operates on <code>Problem</code> objects.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="problem-class.html">problem-class</a></code>,
 <code><a href="solution-class.html">solution-class</a></code>,
 <code><a href="solutionset-class.html">solutionset-class</a></code>,
+<code><a href="compile_model.html">compile_model</a></code>,
 <code><a href="set_solver.html">set_solver</a></code>,
+<code><a href="set_solver_cbc.html">set_solver_cbc</a></code>,
+<code><a href="set_solver_gurobi.html">set_solver_gurobi</a></code>,
 <code><a href="set_method_weighted_sum.html">set_method_weighted_sum</a></code>,
 <code><a href="set_method_epsilon_constraint.html">set_method_epsilon_constraint</a></code>,
 <code><a href="set_method_augmecon.html">set_method_augmecon</a></code></p></div>
@@ -174,36 +177,120 @@ the only function that should normally materialize the optimization model.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># ------------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="co"># Minimal single-objective example</span></span></span>
 <span class="r-in"><span><span class="co"># ------------------------------------------------------------</span></span></span>
-<span class="r-in"><span><span class="co"># Single-objective solve</span></span></span>
-<span class="r-in"><span><span class="co"># ------------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="va">pu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>,</span></span>
+<span class="r-in"><span>  cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">features</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span>,</span></span>
+<span class="r-in"><span>  name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sp1"</span>, <span class="st">"sp2"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">dist_features</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  pu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  feature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">actions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">effects</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conservation"</span>, <span class="st">"restoration"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  feature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">features</span><span class="op">$</span><span class="va">id</span>, times <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  multiplier <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.10</span>, <span class="fl">0.50</span>, <span class="fl">0.50</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="create_problem.html">create_problem</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
 <span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
 <span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="add_actions.html">add_actions</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    actions <span class="op">=</span> <span class="va">actions</span>,</span></span>
+<span class="r-in"><span>    cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>conservation <span class="op">=</span> <span class="fl">1</span>, restoration <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="add_effects.html">add_effects</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    effects <span class="op">=</span> <span class="va">effects</span>,</span></span>
+<span class="r-in"><span>    effect_type <span class="op">=</span> <span class="st">"after"</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="add_constraint_targets_relative.html">add_constraint_targets_relative</a></span><span class="op">(</span><span class="fl">0.05</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="add_objective_min_cost.html">add_objective_min_cost</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"cost"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="add_constraint_targets_relative.html">add_constraint_targets_relative</a></span><span class="op">(</span><span class="fl">0.3</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"rcbc"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="set_solver_cbc.html">set_solver_cbc</a></span><span class="op">(</span><span class="va">x</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu">solve</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="print.html">print</a></span><span class="op">(</span><span class="va">sol</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> A multiscape solution (<span style="color: #5F87AF; font-weight: bold;">&lt;Solution&gt;</span>)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ├─<span style="color: #87AF5F; font-weight: bold;">result</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─status: .pa_solution_status_inline(st)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─objective value: <span style="color: #0000BB; font-weight: bold;">"3"</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─gap: 0%</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─runtime: 0.02 sec</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">selection</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─planning units: 1 of 4 selected</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─actions: 1 of 8 selected</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─targets met: 2 of 2</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">objective values</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─cost: 3</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">solver</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─name: <span style="color: #5F875F;">`cbc`</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─cores: 2</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─time limit: 2147483647</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #555555;"># ℹ Use </span><span style="color: #5F875F;">`x$summary`</span> to inspect user-facing solution summaries.</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="co"># Minimal multi-objective example</span></span></span>
+<span class="r-in"><span><span class="co"># ------------------------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="va">x_mo</span> <span class="op">&lt;-</span> <span class="fu"><a href="create_problem.html">create_problem</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  pu <span class="op">=</span> <span class="va">pu</span>,</span></span>
+<span class="r-in"><span>  features <span class="op">=</span> <span class="va">features</span>,</span></span>
+<span class="r-in"><span>  dist_features <span class="op">=</span> <span class="va">dist_features</span></span></span>
+<span class="r-in"><span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="add_actions.html">add_actions</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    actions <span class="op">=</span> <span class="va">actions</span>,</span></span>
+<span class="r-in"><span>    cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>conservation <span class="op">=</span> <span class="fl">1</span>, restoration <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="add_effects.html">add_effects</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    effects <span class="op">=</span> <span class="va">effects</span>,</span></span>
+<span class="r-in"><span>    effect_type <span class="op">=</span> <span class="st">"after"</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="add_constraint_targets_relative.html">add_constraint_targets_relative</a></span><span class="op">(</span><span class="fl">0.05</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="add_objective_min_cost.html">add_objective_min_cost</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"cost"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="set_solver_gurobi.html">set_solver_gurobi</a></span><span class="op">(</span>time_limit <span class="op">=</span> <span class="fl">300</span>, gap_limit <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu">solve</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># ------------------------------------------------------------</span></span></span>
-<span class="r-in"><span><span class="co"># Multi-objective solve</span></span></span>
-<span class="r-in"><span><span class="co"># ------------------------------------------------------------</span></span></span>
-<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="add_objective_min_fragmentation.html">add_objective_min_fragmentation</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"frag"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="add_objective_max_benefit.html">add_objective_max_benefit</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"benefit"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="set_method_weighted_sum.html">set_method_weighted_sum</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>    aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cost"</span>, <span class="st">"frag"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cost"</span>, <span class="st">"benefit"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.5</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    normalize_weights <span class="op">=</span> <span class="cn">TRUE</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">solset</span> <span class="op">&lt;-</span> <span class="fu">solve</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"rcbc"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">x_mo</span> <span class="op">&lt;-</span> <span class="fu"><a href="set_solver_cbc.html">set_solver_cbc</a></span><span class="op">(</span><span class="va">x_mo</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">solset</span> <span class="op">&lt;-</span> <span class="fu">solve</span><span class="op">(</span><span class="va">x_mo</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="print.html">print</a></span><span class="op">(</span><span class="va">solset</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> A multiscape solution set (<span style="color: #5F87AF; font-weight: bold;">&lt;SolutionSet&gt;</span>)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ├─<span style="color: #87AF5F; font-weight: bold;">method</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─name: <span style="color: #5F875F;">`weighted`</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─objectives: 2 (cost, benefit)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">content</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─design rows: 1</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─runs: 1</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─solutions: 1</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> └─<span style="color: #87AF5F; font-weight: bold;">run summary</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─statuses: optimal: 1</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─runtime: 0</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─gap: 0</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │├─design cols: none</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> │└─value cols: value_cost, value_benefit</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #555555;"># ℹ Use </span><span style="color: #5F875F;">`x$solution$runs`</span>, <span style="color: #5F875F;">`x$solution$design`</span>, and <span style="color: #5F875F;">`x$solution$solutions[[i]]`</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> to inspect details.</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

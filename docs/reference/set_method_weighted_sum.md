@@ -55,6 +55,10 @@ stored in `x$data$method`.
 
 ## Details
 
+Use this method when several registered objectives should be combined
+into a single scalar optimization problem through explicit preference
+weights.
+
 **General idea**
 
 Suppose that a set of atomic objectives has already been registered in

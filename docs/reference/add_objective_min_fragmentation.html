@@ -103,20 +103,17 @@ multi-objective workflows.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(\mathcal{P}\) denote the set of planning units and let
-\(w_i \in \{0,1\}\) indicate whether planning unit \(i \in \mathcal{P}\)
+    <p>Use this function when spatial cohesion should be encouraged at the level of
+the selected planning-unit set as a whole.</p>
+<p>Let \(\mathcal{I}\) denote the set of planning units and let
+\(w_i \in \{0,1\}\) indicate whether planning unit \(i \in \mathcal{I}\)
 is selected.</p>
-<p>Let the chosen spatial relation
-<code>x$data$spatial_relations[[relation_name]]</code> define a set of weighted
-pairs with weights \(\omega_{ij} \ge 0\). These relation weights are
-interpreted by the model builder after scaling by
-\(\lambda = \code{weight_multiplier}\).</p>
+<p>Let the chosen spatial relation define a set of weighted pairs with weights
+\(\omega_{ij} \ge 0\). These relation weights are interpreted by the model
+builder after scaling by \(\lambda = \code{weight_multiplier}\).</p>
 <p>The internal preparation step constructs one auxiliary variable
 \(y_{ij} \in [0,1]\) for each unique non-diagonal undirected edge
-\((i,j)\) with \(i &lt; j\). Diagonal entries of the relation, if present,
-are not used to create auxiliary variables.</p>
-<p>Each auxiliary variable is constrained to represent the logical conjunction of
-the two incident planning-unit selections:
+\((i,j)\) with \(i &lt; j\). The intended semantics is:
 $$
 y_{ij} = w_i \land w_j.
 $$</p>
@@ -142,14 +139,7 @@ compactness functional that penalizes exposed or weakly connected selected
 patterns while rewarding adjacency among selected planning units.</p>
 <p>In the common case where <code>relation_name = "boundary"</code> and the relation
 was built with <code><a href="add_spatial_boundary.html">add_spatial_boundary</a></code>, the objective corresponds
-to a boundary-length-style fragmentation penalty. In that setting:</p><ul><li><p>off-diagonal relation rows encode shared boundary,</p></li>
-<li><p>diagonal relation rows may encode exposed boundary,</p></li>
-<li><p>the objective is evaluated from the combination of selected planning
-units and selected adjacent pairs.</p></li>
-</ul><p>A key implementation detail is that symmetric duplicates in the relation are
-canonicalized internally before the auxiliary block is created. For each
-unordered non-diagonal pair \(\{i,j\}\), only one edge is retained, using
-the maximum weight among duplicates.</p>
+to a boundary-length-style fragmentation penalty.</p>
 <p>Setting <code>weight_multiplier = 0</code> removes the contribution of the spatial
 relation from the objective after scaling.</p>
 <p>This objective does not distinguish between different actions within the same

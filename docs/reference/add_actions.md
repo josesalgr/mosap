@@ -4,16 +4,15 @@ Define the action catalogue, the set of feasible planning unit–action
 pairs, and their implementation costs.
 
 This function adds two core components to a `Problem` object. First, it
-stores the action catalogue in `x$data$actions`. Second, it creates the
-feasible planning unit–action table in `x$data$dist_actions`, including
-implementation costs, status codes, and internal indices used by the
-optimization backend.
+stores the action catalogue. Second, it creates the feasible planning
+unit–action table, including implementation costs, status codes, and
+internal indices used by the optimization backend.
 
-Conceptually, if \\\mathcal{P}\\ is the set of planning units and
-\\\mathcal{A}\\ is the set of actions, this function defines a feasible
-set \\\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\\ together
-with a non-negative cost function \\c : \mathcal{F} \to \mathbb{R}\_{\ge
-0}\\.
+Conceptually, if \\\mathcal{I}\\ is the set of planning units and
+\\\mathcal{A}\\ is the set of actions, this function determines which
+pairs \\(i,a) \in \mathcal{I} \times \mathcal{A}\\ are feasible
+decisions and assigns a non-negative implementation cost to each
+feasible pair.
 
 ## Usage
 
@@ -63,26 +62,32 @@ add_actions(
 
 An updated `Problem` object with:
 
-- `x$data$actions`:
+- `actions`:
 
   The action catalogue, including a unique integer `internal_id` for
   each action.
 
-- `x$data$dist_actions`:
+- `dist_actions`:
 
   The feasible planning unit–action table with columns `pu`, `action`,
   `cost`, `status`, `internal_pu`, and `internal_action`.
 
-- `x$data$index$pu`:
+- `pu index`:
 
   A mapping from user-supplied planning-unit ids to internal integer
   ids.
 
-- `x$data$index$action`:
+- `action index`:
 
   A mapping from action ids to internal integer ids.
 
 ## Details
+
+**When to use `add_actions()`.**
+
+Use this function when you want to move from a planning problem defined
+only by planning units and features to a problem in which decisions are
+explicitly represented as actions applied in planning units.
 
 **Action catalogue.**
 
@@ -101,15 +106,22 @@ indexing.
 Feasibility is controlled through `include_pairs` and `exclude_pairs`.
 
 If `include_pairs = NULL`, all possible `(pu, action)` pairs are
-initially considered feasible: \$\$ \mathcal{F} = \mathcal{P} \times
-\mathcal{A}. \$\$
+initially considered feasible, that is, all pairs \\(i,a) \in
+\mathcal{I} \times \mathcal{A}\\.
 
-If `include_pairs` is supplied, only those pairs are retained in the
-feasible set. If `exclude_pairs` is also supplied, matching pairs are
-removed after applying `include_pairs`. Thus, in general: \$\$
-\mathcal{F} = \left(\mathcal{F}\_{\mathrm{include}} \text{ or }
-\mathcal{P}\times\mathcal{A}\right) \setminus
-\mathcal{F}\_{\mathrm{exclude}}. \$\$
+If `include_pairs` is supplied, only those pairs are retained. If
+`exclude_pairs` is also supplied, matching pairs are removed afterwards.
+
+More precisely, let \\\mathcal{D}^{\mathrm{inc}}\\ denote the set of
+included planning unit–action pairs and let
+\\\mathcal{D}^{\mathrm{exc}}\\ denote the set of excluded pairs.
+
+If `include_pairs = NULL`, the feasible decision set is: \$\$ \\(i,a) :
+i \in \mathcal{I},\\ a \in \mathcal{A}\\ \setminus
+\mathcal{D}^{\mathrm{exc}}. \$\$
+
+If `include_pairs` is supplied, the feasible decision set is: \$\$
+\mathcal{D}^{\mathrm{inc}} \setminus \mathcal{D}^{\mathrm{exc}}. \$\$
 
 Both `include_pairs` and `exclude_pairs` can be specified as:
 
@@ -133,14 +145,14 @@ may contain either:
 
 In the spatial case, feasible planning units are identified using
 [`sf::st_intersects()`](https://r-spatial.github.io/sf/reference/geos_binary_pred.html)
-against `x$data$pu_sf`.
+against the stored planning-unit geometry.
 
 **Feasibility versus decision fixing.**
 
-This function only determines whether a `(pu, action)` pair exists in
-the model. It does not force a feasible action to be selected or
-forbidden beyond structural infeasibility. Fixed decisions should
-instead be imposed later with
+This function only determines whether a pair \\(i,a)\\ exists in the
+model. It does not force a feasible action to be selected or forbidden
+beyond structural infeasibility. Fixed decisions should instead be
+imposed later with
 [`add_constraint_locked_actions`](https://josesalgr.github.io/multiscape/reference/add_constraint_locked_actions.md).
 
 **Costs.**
@@ -162,18 +174,28 @@ Costs can be supplied in several ways:
 
 In all cases, costs must be finite and non-negative.
 
+In practice, a scalar cost is useful when all actions cost the same
+everywhere, a named vector is useful when cost depends only on action
+type, and a `(pu, action, cost)` table is useful when cost varies by
+both planning unit and action.
+
 **Status values.**
 
 Internally, all feasible pairs are initialized with `status = 0`,
-meaning that the decision is free. If `x$data$pu$locked_out` exists and
-a planning unit is marked as locked out, then all feasible actions in
-that planning unit are assigned `status = 3`. This preserves consistency
-with planning-unit exclusions already stored in the problem.
+meaning that the decision is free. If planning units have already been
+marked as locked out, then all feasible actions in those planning units
+are assigned `status = 3`. This preserves consistency with planning-unit
+exclusions already stored in the problem.
 
 **Replacement behaviour.**
 
 Calling `add_actions()` replaces any previous action catalogue and
 feasible action table stored in the problem object.
+
+After defining actions, typical next steps include adding effects,
+optional decision-fixing constraints, objectives, and solver settings
+before calling
+[`solve()`](https://josesalgr.github.io/multiscape/reference/solve.md).
 
 ## See also
 
@@ -249,7 +271,6 @@ print(p1)
 #> │├─solver: not set (auto)
 #> │└─checks: incomplete (no objective registered)
 #> # ℹ Use `x$data` to inspect stored tables and model snapshots.
-
 utils::head(p1$data$dist_actions)
 #>   pu       action cost status internal_pu internal_action
 #> 1  1 conservation    5      0           1               1

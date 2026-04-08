@@ -8,24 +8,22 @@
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet"><meta property="og:title" content="Add management actions to a planning problem — add_actions"><meta name="description" content="Define the action catalogue, the set of feasible planning unit–action pairs,
 and their implementation costs.
 This function adds two core components to a Problem object. First, it
-stores the action catalogue in x$data$actions. Second, it creates the
-feasible planning unit–action table in x$data$dist_actions, including
-implementation costs, status codes, and internal indices used by the
-optimization backend.
-Conceptually, if \(\mathcal{P}\) is the set of planning units and
-\(\mathcal{A}\) is the set of actions, this function defines a feasible set
-\(\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\) together with a
-non-negative cost function \(c : \mathcal{F} \to \mathbb{R}_{\ge 0}\)."><meta property="og:description" content="Define the action catalogue, the set of feasible planning unit–action pairs,
+stores the action catalogue. Second, it creates the feasible planning
+unit–action table, including implementation costs, status codes, and
+internal indices used by the optimization backend.
+Conceptually, if \(\mathcal{I}\) is the set of planning units and
+\(\mathcal{A}\) is the set of actions, this function determines which
+pairs \((i,a) \in \mathcal{I} \times \mathcal{A}\) are feasible decisions
+and assigns a non-negative implementation cost to each feasible pair."><meta property="og:description" content="Define the action catalogue, the set of feasible planning unit–action pairs,
 and their implementation costs.
 This function adds two core components to a Problem object. First, it
-stores the action catalogue in x$data$actions. Second, it creates the
-feasible planning unit–action table in x$data$dist_actions, including
-implementation costs, status codes, and internal indices used by the
-optimization backend.
-Conceptually, if \(\mathcal{P}\) is the set of planning units and
-\(\mathcal{A}\) is the set of actions, this function defines a feasible set
-\(\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\) together with a
-non-negative cost function \(c : \mathcal{F} \to \mathbb{R}_{\ge 0}\)."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
+stores the action catalogue. Second, it creates the feasible planning
+unit–action table, including implementation costs, status codes, and
+internal indices used by the optimization backend.
+Conceptually, if \(\mathcal{I}\) is the set of planning units and
+\(\mathcal{A}\) is the set of actions, this function determines which
+pairs \((i,a) \in \mathcal{I} \times \mathcal{A}\) are feasible decisions
+and assigns a non-negative implementation cost to each feasible pair."><meta property="og:image" content="https://josesalgr.github.io/multiscape/logo.png"><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-6YB8F3838H"></script><script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
@@ -68,14 +66,13 @@ non-negative cost function \(c : \mathcal{F} \to \mathbb{R}_{\ge 0}\)."><meta pr
     <p>Define the action catalogue, the set of feasible planning unit–action pairs,
 and their implementation costs.</p>
 <p>This function adds two core components to a <code>Problem</code> object. First, it
-stores the action catalogue in <code>x$data$actions</code>. Second, it creates the
-feasible planning unit–action table in <code>x$data$dist_actions</code>, including
-implementation costs, status codes, and internal indices used by the
-optimization backend.</p>
-<p>Conceptually, if \(\mathcal{P}\) is the set of planning units and
-\(\mathcal{A}\) is the set of actions, this function defines a feasible set
-\(\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}\) together with a
-non-negative cost function \(c : \mathcal{F} \to \mathbb{R}_{\ge 0}\).</p>
+stores the action catalogue. Second, it creates the feasible planning
+unit–action table, including implementation costs, status codes, and
+internal indices used by the optimization backend.</p>
+<p>Conceptually, if \(\mathcal{I}\) is the set of planning units and
+\(\mathcal{A}\) is the set of actions, this function determines which
+pairs \((i,a) \in \mathcal{I} \times \mathcal{A}\) are feasible decisions
+and assigns a non-negative implementation cost to each feasible pair.</p>
     </div>
 
     <div class="section level2">
@@ -126,28 +123,32 @@ action id, or a <code>data.frame</code> with columns <code>action, cost</code> o
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An updated <code>Problem</code> object with:</p><dl><dt><code>x$data$actions</code></dt>
-<dd><p>The action catalogue, including a unique
-integer <code>internal_id</code> for each action.</p></dd>
+    <p>An updated <code>Problem</code> object with:</p><dl><dt><code>actions</code></dt>
+<dd><p>The action catalogue, including a unique integer
+<code>internal_id</code> for each action.</p></dd>
 
-<dt><code>x$data$dist_actions</code></dt>
-<dd><p>The feasible planning unit–action table
-with columns <code>pu</code>, <code>action</code>, <code>cost</code>, <code>status</code>,
+<dt><code>dist_actions</code></dt>
+<dd><p>The feasible planning unit–action table with
+columns <code>pu</code>, <code>action</code>, <code>cost</code>, <code>status</code>,
 <code>internal_pu</code>, and <code>internal_action</code>.</p></dd>
 
-<dt><code>x$data$index$pu</code></dt>
-<dd><p>A mapping from user-supplied planning-unit ids
-to internal integer ids.</p></dd>
+<dt><code>pu index</code></dt>
+<dd><p>A mapping from user-supplied planning-unit ids to
+internal integer ids.</p></dd>
 
-<dt><code>x$data$index$action</code></dt>
-<dd><p>A mapping from action ids to internal
-integer ids.</p></dd>
+<dt><code>action index</code></dt>
+<dd><p>A mapping from action ids to internal integer
+ids.</p></dd>
 
 
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p><strong>Action catalogue.</strong></p>
+    <p><strong>When to use <code>add_actions()</code>.</strong></p>
+<p>Use this function when you want to move from a planning problem defined only
+by planning units and features to a problem in which decisions are explicitly
+represented as actions applied in planning units.</p>
+<p><strong>Action catalogue.</strong></p>
 <p>The <code>actions</code> argument must be a <code>data.frame</code> with a unique
 <code>id</code> column identifying each action. If a column named <code>action</code> is
 supplied instead, it is renamed internally to <code>id</code>. Additional columns
@@ -160,18 +161,21 @@ indexing.</p>
 <p>Feasibility is controlled through <code>include_pairs</code> and
 <code>exclude_pairs</code>.</p>
 <p>If <code>include_pairs = NULL</code>, all possible <code>(pu, action)</code> pairs are
-initially considered feasible:
+initially considered feasible, that is, all pairs
+\((i,a) \in \mathcal{I} \times \mathcal{A}\).</p>
+<p>If <code>include_pairs</code> is supplied, only those pairs are retained. If
+<code>exclude_pairs</code> is also supplied, matching pairs are removed
+afterwards.</p>
+<p>More precisely, let \(\mathcal{D}^{\mathrm{inc}}\) denote the set of
+included planning unit–action pairs and let
+\(\mathcal{D}^{\mathrm{exc}}\) denote the set of excluded pairs.</p>
+<p>If <code>include_pairs = NULL</code>, the feasible decision set is:
 $$
-\mathcal{F} = \mathcal{P} \times \mathcal{A}.
+\{(i,a) : i \in \mathcal{I},\ a \in \mathcal{A}\} \setminus \mathcal{D}^{\mathrm{exc}}.
 $$</p>
-<p>If <code>include_pairs</code> is supplied, only those pairs are retained in the
-feasible set. If <code>exclude_pairs</code> is also supplied, matching pairs are
-removed after applying <code>include_pairs</code>. Thus, in general:
+<p>If <code>include_pairs</code> is supplied, the feasible decision set is:
 $$
-\mathcal{F} =
-\left(\mathcal{F}_{\mathrm{include}} \text{ or } \mathcal{P}\times\mathcal{A}\right)
-\setminus
-\mathcal{F}_{\mathrm{exclude}}.
+\mathcal{D}^{\mathrm{inc}} \setminus \mathcal{D}^{\mathrm{exc}}.
 $$</p>
 <p>Both <code>include_pairs</code> and <code>exclude_pairs</code> can be specified as:</p><ul><li><p><code>NULL</code>,</p></li>
 <li><p>a <code>data.frame</code> with columns <code>pu</code> and <code>action</code>,</p></li>
@@ -186,12 +190,12 @@ contain either:</p><ul><li><p>a vector of planning-unit ids, or</p></li>
 <li><p>an <code>sf</code> object defining the spatial zone where the action is
 feasible.</p></li>
 </ul><p>In the spatial case, feasible planning units are identified using
-<code><a href="https://r-spatial.github.io/sf/reference/geos_binary_pred.html" class="external-link">sf::st_intersects()</a></code> against <code>x$data$pu_sf</code>.</p>
+<code><a href="https://r-spatial.github.io/sf/reference/geos_binary_pred.html" class="external-link">sf::st_intersects()</a></code> against the stored planning-unit geometry.</p>
 <p><strong>Feasibility versus decision fixing.</strong></p>
-<p>This function only determines whether a <code>(pu, action)</code> pair exists in
-the model. It does not force a feasible action to be selected or forbidden
-beyond structural infeasibility. Fixed decisions should instead be imposed
-later with <code><a href="add_constraint_locked_actions.html">add_constraint_locked_actions</a></code>.</p>
+<p>This function only determines whether a pair \((i,a)\) exists in the model.
+It does not force a feasible action to be selected or forbidden beyond
+structural infeasibility. Fixed decisions should instead be imposed later
+with <code><a href="add_constraint_locked_actions.html">add_constraint_locked_actions</a></code>.</p>
 <p><strong>Costs.</strong></p>
 <p>Costs can be supplied in several ways:</p><ul><li><p>If <code>cost = NULL</code>, all feasible pairs receive a default cost of
 <code>1</code>.</p></li>
@@ -204,15 +208,22 @@ and costs are assigned by action.</p></li>
 <code>cost</code>.</p></li>
 </ul></li>
 </ul><p>In all cases, costs must be finite and non-negative.</p>
+<p>In practice, a scalar cost is useful when all actions cost the same
+everywhere, a named vector is useful when cost depends only on action type,
+and a <code>(pu, action, cost)</code> table is useful when cost varies by both
+planning unit and action.</p>
 <p><strong>Status values.</strong></p>
 <p>Internally, all feasible pairs are initialized with <code>status = 0</code>,
-meaning that the decision is free. If <code>x$data$pu$locked_out</code> exists and
-a planning unit is marked as locked out, then all feasible actions in that
-planning unit are assigned <code>status = 3</code>. This preserves consistency with
-planning-unit exclusions already stored in the problem.</p>
+meaning that the decision is free. If planning units have already been marked
+as locked out, then all feasible actions in those planning units are assigned
+<code>status = 3</code>. This preserves consistency with planning-unit exclusions
+already stored in the problem.</p>
 <p><strong>Replacement behaviour.</strong></p>
 <p>Calling <code>add_actions()</code> replaces any previous action catalogue and
 feasible action table stored in the problem object.</p>
+<p>After defining actions, typical next steps include adding effects, optional
+decision-fixing constraints, objectives, and solver settings before calling
+<code><a href="solve.html">solve()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -288,7 +299,6 @@ feasible action table stored in the problem object.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> │├─solver: <span style="color: #949494;">not set (auto)</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> │└─checks: <span style="color: #D7AF00; font-weight: bold;">incomplete (no objective registered)</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #555555;"># ℹ Use </span><span style="color: #5F875F;">`x$data`</span> to inspect stored tables and model snapshots.</span>
-<span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">p1</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">dist_actions</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   pu       action cost status internal_pu internal_action</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1  1 conservation    5      0           1               1</span>

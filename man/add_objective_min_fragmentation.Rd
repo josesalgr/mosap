@@ -37,23 +37,20 @@ cohesion is to be encouraged at the level of the selected planning-unit set
 as a whole.
 }
 \details{
-Let \eqn{\mathcal{P}} denote the set of planning units and let
-\eqn{w_i \in \{0,1\}} indicate whether planning unit \eqn{i \in \mathcal{P}}
+Use this function when spatial cohesion should be encouraged at the level of
+the selected planning-unit set as a whole.
+
+Let \eqn{\mathcal{I}} denote the set of planning units and let
+\eqn{w_i \in \{0,1\}} indicate whether planning unit \eqn{i \in \mathcal{I}}
 is selected.
 
-Let the chosen spatial relation
-\code{x$data$spatial_relations[[relation_name]]} define a set of weighted
-pairs with weights \eqn{\omega_{ij} \ge 0}. These relation weights are
-interpreted by the model builder after scaling by
-\eqn{\lambda = \code{weight_multiplier}}.
+Let the chosen spatial relation define a set of weighted pairs with weights
+\eqn{\omega_{ij} \ge 0}. These relation weights are interpreted by the model
+builder after scaling by \eqn{\lambda = \code{weight_multiplier}}.
 
 The internal preparation step constructs one auxiliary variable
 \eqn{y_{ij} \in [0,1]} for each unique non-diagonal undirected edge
-\eqn{(i,j)} with \eqn{i < j}. Diagonal entries of the relation, if present,
-are not used to create auxiliary variables.
-
-Each auxiliary variable is constrained to represent the logical conjunction of
-the two incident planning-unit selections:
+\eqn{(i,j)} with \eqn{i < j}. The intended semantics is:
 \deqn{
 y_{ij} = w_i \land w_j.
 }
@@ -87,18 +84,7 @@ patterns while rewarding adjacency among selected planning units.
 
 In the common case where \code{relation_name = "boundary"} and the relation
 was built with \code{\link{add_spatial_boundary}}, the objective corresponds
-to a boundary-length-style fragmentation penalty. In that setting:
-\itemize{
-\item off-diagonal relation rows encode shared boundary,
-\item diagonal relation rows may encode exposed boundary,
-\item the objective is evaluated from the combination of selected planning
-units and selected adjacent pairs.
-}
-
-A key implementation detail is that symmetric duplicates in the relation are
-canonicalized internally before the auxiliary block is created. For each
-unordered non-diagonal pair \eqn{\{i,j\}}, only one edge is retained, using
-the maximum weight among duplicates.
+to a boundary-length-style fragmentation penalty.
 
 Setting \code{weight_multiplier = 0} removes the contribution of the spatial
 relation from the objective after scaling.

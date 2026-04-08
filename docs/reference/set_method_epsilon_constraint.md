@@ -1,19 +1,21 @@
 # Set the epsilon-constraint multi-objective method
 
-Configure a `Problem` object to be solved with the
-\\\epsilon\\-constraint multi-objective method.
+Configure a `Problem` object to be solved with the epsilon-constraint
+multi-objective method.
 
 In this method, one objective is designated as the *primary* objective
 and is optimized directly, while the remaining objectives are
-transformed into \\\epsilon\\-constraints.
+transformed into \\\varepsilon\\-constraints.
 
 Two operating modes are supported:
 
-- **manual mode**: the user supplies the \\\epsilon\\-levels explicitly,
+- **manual mode**: the user supplies the \\\varepsilon\\-levels
+  explicitly,
 
-- **automatic mode**: the \\\epsilon\\-levels are generated later during
+- **automatic mode**: the \\\varepsilon\\-levels are generated later
+  during
   [`solve`](https://josesalgr.github.io/multiscape/reference/solve.md)
-  from extreme or payoff information.
+  from extreme-point or payoff information.
 
 This function does not solve the problem. It stores the method
 configuration in `x$data$method`, to be used later by
@@ -91,11 +93,11 @@ set_method_epsilon_constraint(
 
 ## Value
 
-An updated `Problem` object with the \\\epsilon\\-constraint method
+An updated `Problem` object with the epsilon-constraint method
 configuration stored in `x$data$method`.
 
 In manual mode, `x$data$method$runs` contains the explicit
-\\\epsilon\\-design grid.
+epsilon-design grid.
 
 In automatic mode, `x$data$method$runs` is `NULL` until the grid is
 generated later during
@@ -103,23 +105,30 @@ generated later during
 
 ## Details
 
+Use this method when one objective should be optimized directly while
+the remaining objectives are controlled through explicit performance
+thresholds.
+
 **General idea**
 
-Suppose that \\m \ge 2\\ objective functions have been registered in the
-problem: \$\$ f_1(x), f_2(x), \dots, f_m(x). \$\$
+Suppose that \\m \ge 2\\ objective functions have already been
+registered in the problem: \$\$ f_1(x), f_2(x), \dots, f_m(x). \$\$
 
-The \\\epsilon\\-constraint method selects one of them as the primary
+The epsilon-constraint method selects one of them as the primary
 objective, say \\f_p(x)\\, and treats the remaining objectives as
 constrained objectives.
 
-For a fixed vector of \\\epsilon\\-levels, the method solves subproblems
-of the form:
+For a fixed vector of epsilon levels, the method solves subproblems in
+which the primary objective is optimized directly and the remaining
+objectives are imposed through epsilon constraints.
+
+A representative formulation is:
 
 \$\$ \max \\ f_p(x) \$\$
 
 subject to
 
-\$\$ f_k(x) \ge \epsilon_k, \qquad k \in \mathcal{C}, \$\$
+\$\$ f_k(x) \ge \varepsilon_k, \qquad k \in \mathcal{C}, \$\$
 
 together with all original feasibility constraints of the planning
 problem, where \\\mathcal{C}\\ is the set of constrained objectives.
@@ -130,10 +139,26 @@ method always follows the same principle:
 
 - one objective is optimized directly,
 
-- all remaining objectives are imposed through \\\epsilon\\-constraints.
+- all remaining objectives are imposed through
+  \\\varepsilon\\-constraints.
 
-By solving the problem repeatedly for different \\\epsilon\\-levels, the
+By solving the problem repeatedly for different epsilon levels, the
 method generates a set of efficient trade-off solutions.
+
+**Atomic objectives requirement**
+
+The epsilon-constraint method can only be used with atomic objectives
+that have already been registered under aliases. These aliases are
+typically created by calling objective setters with an `alias` argument,
+for example:
+
+    x <- x |>
+      add_objective_max_benefit(alias = "benefit") |>
+      add_objective_min_cost(alias = "cost") |>
+      add_objective_min_fragmentation(alias = "frag")
+
+The `primary` argument selects which registered objective is optimized
+directly. The remaining aliases are treated as constrained objectives.
 
 **Manual mode**
 
@@ -150,7 +175,7 @@ aliases, that is, to all aliases in `aliases` except `primary`.
 
 If the constrained objectives are \\\mathcal{C} = \\c_1, \dots, c_q\\\\,
 then manual mode creates a design grid containing all combinations of
-the supplied \\\epsilon\\-levels for the constrained objectives.
+the supplied epsilon levels for the constrained objectives.
 
 Each row of this grid defines one subproblem to be solved later.
 
@@ -161,20 +186,20 @@ particular, it can be used with:
 
 - 3 or more objectives: 1 primary + multiple constrained objectives.
 
-Thus, manual mode is the general way to use the \\\epsilon\\-constraint
+Thus, manual mode is the general way to use the epsilon-constraint
 method when more than two objectives are involved.
 
 In manual mode, the generated design grid is stored immediately in
-`x$data$method$runs`. Its \\\epsilon\\-columns are named `eps_<alias>`,
-for example `eps_frag`.
+`x$data$method$runs`. Its epsilon columns are named `eps_<alias>`, for
+example `eps_frag`.
 
 **Automatic mode**
 
 In `mode = "auto"`, the user omits `eps` and instead supplies
 `n_points`.
 
-In this case, the \\\epsilon\\-grid is not built immediately. Instead,
-it is constructed later during
+In this case, the epsilon grid is not built immediately. Instead, it is
+constructed later during
 [`solve`](https://josesalgr.github.io/multiscape/reference/solve.md)
 using extreme-point or payoff-table information.
 
@@ -217,10 +242,12 @@ The configured method stores:
 - lexicographic configuration.
 
 In manual mode, `x$data$method$runs` contains the explicit design grid.
+
 In automatic mode, `x$data$method$runs` is initially `NULL` and is
 generated later during
-[`solve`](https://josesalgr.github.io/multiscape/reference/solve.md).For
-more than two objectives, automatic grid generation is currently
+[`solve`](https://josesalgr.github.io/multiscape/reference/solve.md).
+
+For more than two objectives, automatic grid generation is currently
 unavailable because the number of epsilon combinations grows rapidly and
 requires explicit user control.
 

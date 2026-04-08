@@ -48,14 +48,16 @@ spatial arrangement of individual action decisions through the action
 variables \eqn{x_{ia}}.
 }
 \details{
-Let \eqn{\mathcal{P}} denote the set of planning units and let
+Use this function when spatial cohesion should be encouraged separately for
+each selected action pattern.
+
+Let \eqn{\mathcal{I}} denote the set of planning units and let
 \eqn{\mathcal{A}} denote the set of actions.
 
 Let \eqn{x_{ia} \in \{0,1\}} indicate whether action \eqn{a \in \mathcal{A}}
-is selected in planning unit \eqn{i \in \mathcal{P}}.
+is selected in planning unit \eqn{i \in \mathcal{I}}.
 
-Let the chosen spatial relation
-\code{x$data$spatial_relations[[relation_name]]} define weighted pairs with
+Let the chosen spatial relation define weighted pairs with
 weights \eqn{\omega_{ij} \ge 0}, and let
 \eqn{\lambda = \code{weight_multiplier}} be the global scaling factor applied
 to these weights.
@@ -66,10 +68,8 @@ objective. If \code{actions = NULL}, all actions are included.
 
 The internal preparation step constructs one auxiliary variable
 \eqn{b_{ija} \in [0,1]} for each unique non-diagonal undirected edge
-\eqn{(i,j)} with \eqn{i < j} and for each action \eqn{a}. These variables are
-created globally for all actions.
-
-For each edge--action combination, the intended semantics is:
+\eqn{(i,j)} with \eqn{i < j} and for each action \eqn{a}. The intended
+semantics is:
 \deqn{
 b_{ija} = x_{ia} \land x_{ja}.
 }
@@ -88,10 +88,7 @@ b_{ija} \ge x_{ia} + x_{ja} - 1.
 
 If one of the two action variables does not exist because the corresponding
 \code{(pu, action)} pair is not feasible, the auxiliary variable is forced to
-zero:
-\deqn{
-b_{ija} = 0.
-}
+zero.
 
 Therefore, \eqn{b_{ija}=1} if and only if action \eqn{a} is selected in both
 adjacent planning units \eqn{i} and \eqn{j}; otherwise \eqn{b_{ija}=0}.
@@ -128,11 +125,6 @@ union of selected planning units,
 \item \code{add_objective_min_action_fragmentation()} encourages cohesion of
 each selected action pattern separately.
 }
-
-A key implementation detail is that the auxiliary block is built over the
-global set of unique undirected non-diagonal edges and all actions, even if a
-later subset of actions is used in the objective. Missing edge--action
-combinations induced by infeasible decisions are fixed to zero.
 
 Setting \code{weight_multiplier = 0} removes the contribution of the spatial
 relation from the objective after scaling.

@@ -15,8 +15,8 @@ add_objective_min_intervention_impact(
 \arguments{
 \item{x}{A \code{Problem} object.}
 
-\item{impact_col}{Character string giving the column in
-\code{x$data$dist_features} that contains the per-\code{(pu, feature)}
+\item{impact_col}{Character string giving the column in the
+feature-distribution table that contains the per-\code{(pu, feature)}
 impact amount. The default is \code{"amount"}.}
 
 \item{features}{Optional subset of features to include. Values may match
@@ -42,15 +42,19 @@ contributes at most once to the objective, regardless of how many feasible
 actions exist in that unit.
 }
 \details{
+Use this function when intervention itself has a baseline ecological, social,
+or operational burden that should be minimized independently of the detailed
+effects of particular actions.
+
 Let \eqn{w_i \in \{0,1\}} denote whether planning unit \eqn{i} is selected
 for intervention. Let \eqn{q_{if}} denote the impact amount associated with
 planning unit \eqn{i} and feature \eqn{f}, taken from column
-\code{impact_col} in \code{x$data$dist_features}.
+\code{impact_col} in the feature-distribution table.
 
-If all features are included, the objective can be interpreted as:
+If all selected features are included, the objective can be interpreted as:
 
 \deqn{
-\min \sum_{i \in \mathcal{P}} \left( \sum_{f \in \mathcal{F}^{\star}} q_{if}
+\min \sum_{i \in \mathcal{I}} \left( \sum_{f \in \mathcal{F}^{\star}} q_{if}
 \right) w_i,
 }
 

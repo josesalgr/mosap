@@ -37,15 +37,15 @@ action id, or a \code{data.frame} with columns \code{action, cost} or
 \value{
 An updated \code{Problem} object with:
 \describe{
-\item{\code{x$data$actions}}{The action catalogue, including a unique
-integer \code{internal_id} for each action.}
-\item{\code{x$data$dist_actions}}{The feasible planning unit--action table
-with columns \code{pu}, \code{action}, \code{cost}, \code{status},
+\item{\code{actions}}{The action catalogue, including a unique integer
+\code{internal_id} for each action.}
+\item{\code{dist_actions}}{The feasible planning unit--action table with
+columns \code{pu}, \code{action}, \code{cost}, \code{status},
 \code{internal_pu}, and \code{internal_action}.}
-\item{\code{x$data$index$pu}}{A mapping from user-supplied planning-unit ids
-to internal integer ids.}
-\item{\code{x$data$index$action}}{A mapping from action ids to internal
-integer ids.}
+\item{\code{pu index}}{A mapping from user-supplied planning-unit ids to
+internal integer ids.}
+\item{\code{action index}}{A mapping from action ids to internal integer
+ids.}
 }
 }
 \description{
@@ -53,17 +53,22 @@ Define the action catalogue, the set of feasible planning unit--action pairs,
 and their implementation costs.
 
 This function adds two core components to a \code{Problem} object. First, it
-stores the action catalogue in \code{x$data$actions}. Second, it creates the
-feasible planning unit--action table in \code{x$data$dist_actions}, including
-implementation costs, status codes, and internal indices used by the
-optimization backend.
+stores the action catalogue. Second, it creates the feasible planning
+unit--action table, including implementation costs, status codes, and
+internal indices used by the optimization backend.
 
-Conceptually, if \eqn{\mathcal{P}} is the set of planning units and
-\eqn{\mathcal{A}} is the set of actions, this function defines a feasible set
-\eqn{\mathcal{F} \subseteq \mathcal{P} \times \mathcal{A}} together with a
-non-negative cost function \eqn{c : \mathcal{F} \to \mathbb{R}_{\ge 0}}.
+Conceptually, if \eqn{\mathcal{I}} is the set of planning units and
+\eqn{\mathcal{A}} is the set of actions, this function determines which
+pairs \eqn{(i,a) \in \mathcal{I} \times \mathcal{A}} are feasible decisions
+and assigns a non-negative implementation cost to each feasible pair.
 }
 \details{
+\strong{When to use \code{add_actions()}.}
+
+Use this function when you want to move from a planning problem defined only
+by planning units and features to a problem in which decisions are explicitly
+represented as actions applied in planning units.
+
 \strong{Action catalogue.}
 
 The \code{actions} argument must be a \code{data.frame} with a unique
@@ -82,19 +87,25 @@ Feasibility is controlled through \code{include_pairs} and
 \code{exclude_pairs}.
 
 If \code{include_pairs = NULL}, all possible \code{(pu, action)} pairs are
-initially considered feasible:
+initially considered feasible, that is, all pairs
+\eqn{(i,a) \in \mathcal{I} \times \mathcal{A}}.
+
+If \code{include_pairs} is supplied, only those pairs are retained. If
+\code{exclude_pairs} is also supplied, matching pairs are removed
+afterwards.
+
+More precisely, let \eqn{\mathcal{D}^{\mathrm{inc}}} denote the set of
+included planning unit--action pairs and let
+\eqn{\mathcal{D}^{\mathrm{exc}}} denote the set of excluded pairs.
+
+If \code{include_pairs = NULL}, the feasible decision set is:
 \deqn{
-\mathcal{F} = \mathcal{P} \times \mathcal{A}.
+\{(i,a) : i \in \mathcal{I},\ a \in \mathcal{A}\} \setminus \mathcal{D}^{\mathrm{exc}}.
 }
 
-If \code{include_pairs} is supplied, only those pairs are retained in the
-feasible set. If \code{exclude_pairs} is also supplied, matching pairs are
-removed after applying \code{include_pairs}. Thus, in general:
+If \code{include_pairs} is supplied, the feasible decision set is:
 \deqn{
-\mathcal{F} =
-\left(\mathcal{F}_{\mathrm{include}} \text{ or } \mathcal{P}\times\mathcal{A}\right)
-\setminus
-\mathcal{F}_{\mathrm{exclude}}.
+\mathcal{D}^{\mathrm{inc}} \setminus \mathcal{D}^{\mathrm{exc}}.
 }
 
 Both \code{include_pairs} and \code{exclude_pairs} can be specified as:
@@ -119,14 +130,14 @@ feasible.
 }
 
 In the spatial case, feasible planning units are identified using
-\code{sf::st_intersects()} against \code{x$data$pu_sf}.
+\code{sf::st_intersects()} against the stored planning-unit geometry.
 
 \strong{Feasibility versus decision fixing.}
 
-This function only determines whether a \code{(pu, action)} pair exists in
-the model. It does not force a feasible action to be selected or forbidden
-beyond structural infeasibility. Fixed decisions should instead be imposed
-later with \code{\link{add_constraint_locked_actions}}.
+This function only determines whether a pair \eqn{(i,a)} exists in the model.
+It does not force a feasible action to be selected or forbidden beyond
+structural infeasibility. Fixed decisions should instead be imposed later
+with \code{\link{add_constraint_locked_actions}}.
 
 \strong{Costs.}
 
@@ -148,18 +159,27 @@ and costs are assigned by action.
 
 In all cases, costs must be finite and non-negative.
 
+In practice, a scalar cost is useful when all actions cost the same
+everywhere, a named vector is useful when cost depends only on action type,
+and a \code{(pu, action, cost)} table is useful when cost varies by both
+planning unit and action.
+
 \strong{Status values.}
 
 Internally, all feasible pairs are initialized with \code{status = 0},
-meaning that the decision is free. If \code{x$data$pu$locked_out} exists and
-a planning unit is marked as locked out, then all feasible actions in that
-planning unit are assigned \code{status = 3}. This preserves consistency with
-planning-unit exclusions already stored in the problem.
+meaning that the decision is free. If planning units have already been marked
+as locked out, then all feasible actions in those planning units are assigned
+\code{status = 3}. This preserves consistency with planning-unit exclusions
+already stored in the problem.
 
 \strong{Replacement behaviour.}
 
 Calling \code{add_actions()} replaces any previous action catalogue and
 feasible action table stored in the problem object.
+
+After defining actions, typical next steps include adding effects, optional
+decision-fixing constraints, objectives, and solver settings before calling
+\code{solve()}.
 }
 \examples{
 # ------------------------------------------------------
@@ -200,7 +220,6 @@ p1 <- add_actions(
 )
 
 print(p1)
-
 utils::head(p1$data$dist_actions)
 
 # Example 2: specify feasible pairs explicitly

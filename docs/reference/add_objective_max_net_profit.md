@@ -24,7 +24,7 @@ add_objective_max_net_profit(
 
 - profit_col:
 
-  Character string giving the profit column in `x$data$dist_profit`.
+  Character string giving the profit column in the stored profit table.
 
 - include_pu_cost:
 
@@ -51,6 +51,10 @@ An updated `Problem` object.
 
 ## Details
 
+Use this function when decisions generate returns and the objective
+should optimize the resulting net balance after subtracting selected
+cost components.
+
 Let:
 
 - \\x\_{ia} \in \\0,1\\\\ denote whether action \\a\\ is selected in
@@ -66,12 +70,12 @@ Let:
 
 In its most general form, the objective is:
 
-\$\$ \max \left( \sum\_{(i,a) \in \mathcal{F}^{\star}} \pi\_{ia}
-x\_{ia} - \sum\_{i \in \mathcal{P}} c_i^{PU} w_i - \sum\_{(i,a) \in
-\mathcal{F}^{\star}} c\_{ia}^{A} x\_{ia} \right), \$\$
+\$\$ \max \left( \sum\_{(i,a) \in \mathcal{D}^{\star}} \pi\_{ia}
+x\_{ia} - \sum\_{i \in \mathcal{I}} c_i^{PU} w_i - \sum\_{(i,a) \in
+\mathcal{D}^{\star}} c\_{ia}^{A} x\_{ia} \right), \$\$
 
-where \\\mathcal{F}^{\star}\\ denotes the subset of feasible planning
-unit–action pairs included in the objective.
+where \\\mathcal{D}^{\star}\\ denotes the subset of feasible planning
+unit–action decisions included in the objective.
 
 If `actions = NULL`, all feasible actions contribute to both the profit
 term and the action-cost term.
@@ -83,10 +87,6 @@ remains global.
 If `include_pu_cost = FALSE`, the planning-unit cost term is omitted.
 
 If `include_action_cost = FALSE`, the action-cost term is omitted.
-
-This objective is appropriate when decisions generate revenues or
-returns and the analyst wishes to optimize the resulting net balance
-after accounting for selected cost components.
 
 ## See also
 

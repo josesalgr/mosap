@@ -56,6 +56,9 @@ contrast to queen adjacency, they only account for boundary segments of
 positive length and ignore point-only contacts.
 }
 \details{
+Use this function when spatial structure should be represented through shared
+boundary length rather than binary contiguity or coordinate-based proximity.
+
 Two input modes are supported:
 \enumerate{
 \item \strong{Boundary-table mode.} If \code{boundary} is supplied, it is
@@ -73,9 +76,9 @@ planning units \eqn{i} and \eqn{j}, multiplied by
 
 For off-diagonal entries \eqn{i \neq j}, the stored weight is:
 \deqn{
-\omega_{ij} = \mathrm{BLM} \times b_{ij},
+\omega_{ij} = \mathrm{\gamma} \times b_{ij},
 }
-where \eqn{b_{ij}} is the shared boundary length and \eqn{\mathrm{BLM}} is
+where \eqn{b_{ij}} is the shared boundary length and \eqn{\gamma} is
 the user-supplied \code{weight_multiplier}.
 
 If \code{include_self = TRUE}, diagonal entries are also created. These are
@@ -84,15 +87,9 @@ effective boundary exposed to the outside of the solution.
 
 Let \eqn{p_i} be the total perimeter of planning unit \eqn{i}, and let
 \eqn{\sum_{j \neq i} \omega_{ij}} be the total incident shared boundary
-recorded for that planning unit. Then the exposed boundary is:
-\deqn{
-e_i = \max\left\{ p_i \times \mathrm{BLM}
-- \sum_{j \neq i} \omega_{ij}, 0 \right\},
-}
-and the stored diagonal term is:
-\deqn{
-\omega_{ii} = \mathrm{edge\_factor} \times e_i.
-}
+recorded for that planning unit. Then the exposed boundary is represented by
+a diagonal term derived from the difference between total perimeter and shared
+boundary, scaled by \code{edge_factor}.
 
 These diagonal terms are useful in boundary-based compactness or
 fragmentation objectives, because they encode the portion of each planning

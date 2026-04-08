@@ -58,11 +58,16 @@ This function stores one area-constraint specification in the
 \code{Problem} object so that it can later be incorporated when the
 optimization model is assembled. Multiple area constraints can be added by
 calling this function repeatedly, provided that no duplicated combination of
-\code{actions} and \code{sense} is introduced.
+action subset and constraint sense is introduced.
 }
 \details{
-Let \eqn{\mathcal{P}} denote the set of planning units and let
-\eqn{a_i \ge 0} be the area associated with planning unit \eqn{i \in \mathcal{P}}.
+Use this function when area requirements must be imposed either on the total
+selected landscape or on the subset of selected decisions associated with
+specific actions.
+
+Let \eqn{\mathcal{I}} denote the set of planning units and let
+\eqn{a_i \ge 0} be the area associated with planning unit
+\eqn{i \in \mathcal{I}}
 
 When \code{actions = NULL}, the constraint refers to the total selected area
 in the problem. In that case, let \eqn{w_i \in \{0,1\}} denote the binary
@@ -74,48 +79,49 @@ constraints:
 
 If \code{sense = "min"}:
 \deqn{
-\sum_{i \in \mathcal{P}} a_i w_i \ge A
+\sum_{i \in \mathcal{I}} a_i w_i \ge A
 }
 
 If \code{sense = "max"}:
 \deqn{
-\sum_{i \in \mathcal{P}} a_i w_i \le A
+\sum_{i \in \mathcal{I}} a_i w_i \le A
 }
 
 If \code{sense = "equal"} and \code{tolerance = 0}:
 \deqn{
-\sum_{i \in \mathcal{P}} a_i w_i = A
+\sum_{i \in \mathcal{I}} a_i w_i = A
 }
 
-If \code{sense = "equal"} and \code{tolerance > 0}:
+If \code{sense = "equal"} and \code{tolerance > 0}, the equality is stored as
+a two-sided band:
 \deqn{
-A - \tau \le \sum_{i \in \mathcal{P}} a_i w_i \le A + \tau
+A - \tau \le \sum_{i \in \mathcal{I}} a_i w_i \le A + \tau
 }
 where \eqn{\tau} is the value supplied through \code{tolerance}.
 
 When \code{actions} is not \code{NULL}, the constraint is applied only to the
 selected decisions associated with the specified subset of actions. Let
-\eqn{\mathcal{A}^*} denote that subset and let
+\eqn{\mathcal{A}^\star \subseteq \mathcal{A}} denote that subset and let
 \eqn{x_{ia} \in \{0,1\}} denote the binary variable indicating whether action
-\eqn{a \in \mathcal{A}^*} is selected in planning unit
-\eqn{i \in \mathcal{P}}. In that case, the constrained quantity is
+\eqn{a \in \mathcal{A}^\star} is selected in planning unit
+\eqn{i \in \mathcal{I}}. In that case, the constrained quantity is
 \deqn{
-\sum_{i \in \mathcal{P}} \sum_{a \in \mathcal{A}^*} a_i x_{ia}.
+\sum_{i \in \mathcal{I}} \sum_{a \in \mathcal{A}^\star} a_i x_{ia}.
 }
 
 Under formulations where at most one action can be selected per planning
 unit, this coincides with the area allocated to that subset of actions.
 
-Areas are obtained from \code{x$data$pu}. If \code{area_col} is provided, that
-column is used. Otherwise, the model builder later determines the default
-area source according to the internal rules of the package. The value of
-\code{area_unit} indicates the unit in which \code{area} and
+Areas are obtained from the planning-unit table. If \code{area_col} is
+provided, that column is used. Otherwise, the model builder later determines
+the default area source according to the internal rules of the package. The
+value of \code{area_unit} indicates the unit in which \code{area} and
 \code{tolerance} are expressed and therefore how the stored threshold should
 be interpreted.
 
-This function only stores the constraint specification in
-\code{x$data$constraints$area}; it does not validate the feasibility of the
-threshold against the available planning units at this stage.
+This function only stores the constraint specification; it does not validate
+the feasibility of the threshold against the available planning units at this
+stage.
 
 Multiple area constraints can be stored in a \code{Problem} object. However,
 at most one can be stored for the same combination of action subset and

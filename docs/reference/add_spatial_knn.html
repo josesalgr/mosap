@@ -112,7 +112,10 @@ zero in inverse-distance weighting.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Let \(s_i = (x_i, y_i)\) denote the coordinates of planning unit
+    <p>Use this function when neighbourhood should be defined by a fixed number of
+nearby planning units rather than by polygon topology or a fixed distance
+threshold.</p>
+<p>Let \(s_i = (x_i, y_i)\) denote the coordinates of planning unit
 \(i\). For each planning unit, this function identifies the <code>k</code>
 nearest distinct planning units under Euclidean distance.</p>
 <p>If \(d_{ij}\) denotes the Euclidean distance between units \(i\) and
@@ -124,7 +127,7 @@ $$\omega_{ij} = 1,$$</p></li>
 $$\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)},$$</p></li>
 <li><p><code>"inverse_sq"</code>:
 $$\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},$$</p></li>
-</ul><p>where \(\varepsilon = \code{distance_eps}\) is a small constant to avoid
+</ul><p>where \(\varepsilon\) = <code>distance_eps</code> is a small constant to avoid
 division by zero.</p>
 <p>The raw k-nearest-neighbours structure is directional by construction, but
 the stored relation is registered as undirected by default through

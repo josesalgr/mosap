@@ -64,6 +64,10 @@ An updated `Problem` object.
 
 ## Details
 
+Use this function when neighbourhood should be defined by a fixed number
+of nearby planning units rather than by polygon topology or a fixed
+distance threshold.
+
 Let \\s_i = (x_i, y_i)\\ denote the coordinates of planning unit \\i\\.
 For each planning unit, this function identifies the `k` nearest
 distinct planning units under Euclidean distance.
@@ -82,7 +86,7 @@ Edge weights are then assigned according to `weight_mode`:
 - `"inverse_sq"`: \$\$\omega\_{ij} = \frac{1}{\max(d\_{ij},
   \varepsilon)^2},\$\$
 
-where \\\varepsilon = \code{distance_eps}\\ is a small constant to avoid
+where \\\varepsilon\\ = `distance_eps` is a small constant to avoid
 division by zero.
 
 The raw k-nearest-neighbours structure is directional by construction,

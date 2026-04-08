@@ -5,8 +5,8 @@ Add an area constraint to a planning problem.
 This function stores one area-constraint specification in the `Problem`
 object so that it can later be incorporated when the optimization model
 is assembled. Multiple area constraints can be added by calling this
-function repeatedly, provided that no duplicated combination of
-`actions` and `sense` is introduced.
+function repeatedly, provided that no duplicated combination of action
+subset and constraint sense is introduced.
 
 ## Usage
 
@@ -78,8 +78,12 @@ appended to `x$data$constraints$area`.
 
 ## Details
 
-Let \\\mathcal{P}\\ denote the set of planning units and let \\a_i \ge
-0\\ be the area associated with planning unit \\i \in \mathcal{P}\\.
+Use this function when area requirements must be imposed either on the
+total selected landscape or on the subset of selected decisions
+associated with specific actions.
+
+Let \\\mathcal{I}\\ denote the set of planning units and let \\a_i \ge
+0\\ be the area associated with planning unit \\i \in \mathcal{I}\\
 
 When `actions = NULL`, the constraint refers to the total selected area
 in the problem. In that case, let \\w_i \in \\0,1\\\\ denote the binary
@@ -89,38 +93,38 @@ one decision in the model.
 Depending on `sense`, this function stores one of the following
 constraints:
 
-If `sense = "min"`: \$\$ \sum\_{i \in \mathcal{P}} a_i w_i \ge A \$\$
+If `sense = "min"`: \$\$ \sum\_{i \in \mathcal{I}} a_i w_i \ge A \$\$
 
-If `sense = "max"`: \$\$ \sum\_{i \in \mathcal{P}} a_i w_i \le A \$\$
+If `sense = "max"`: \$\$ \sum\_{i \in \mathcal{I}} a_i w_i \le A \$\$
 
-If `sense = "equal"` and `tolerance = 0`: \$\$ \sum\_{i \in \mathcal{P}}
+If `sense = "equal"` and `tolerance = 0`: \$\$ \sum\_{i \in \mathcal{I}}
 a_i w_i = A \$\$
 
-If `sense = "equal"` and `tolerance > 0`: \$\$ A - \tau \le \sum\_{i \in
-\mathcal{P}} a_i w_i \le A + \tau \$\$ where \\\tau\\ is the value
-supplied through `tolerance`.
+If `sense = "equal"` and `tolerance > 0`, the equality is stored as a
+two-sided band: \$\$ A - \tau \le \sum\_{i \in \mathcal{I}} a_i w_i \le
+A + \tau \$\$ where \\\tau\\ is the value supplied through `tolerance`.
 
 When `actions` is not `NULL`, the constraint is applied only to the
 selected decisions associated with the specified subset of actions. Let
-\\\mathcal{A}^\*\\ denote that subset and let \\x\_{ia} \in \\0,1\\\\
-denote the binary variable indicating whether action \\a \in
-\mathcal{A}^\*\\ is selected in planning unit \\i \in \mathcal{P}\\. In
-that case, the constrained quantity is \$\$ \sum\_{i \in \mathcal{P}}
-\sum\_{a \in \mathcal{A}^\*} a_i x\_{ia}. \$\$
+\\\mathcal{A}^\star \subseteq \mathcal{A}\\ denote that subset and let
+\\x\_{ia} \in \\0,1\\\\ denote the binary variable indicating whether
+action \\a \in \mathcal{A}^\star\\ is selected in planning unit \\i \in
+\mathcal{I}\\. In that case, the constrained quantity is \$\$ \sum\_{i
+\in \mathcal{I}} \sum\_{a \in \mathcal{A}^\star} a_i x\_{ia}. \$\$
 
 Under formulations where at most one action can be selected per planning
 unit, this coincides with the area allocated to that subset of actions.
 
-Areas are obtained from `x$data$pu`. If `area_col` is provided, that
-column is used. Otherwise, the model builder later determines the
-default area source according to the internal rules of the package. The
-value of `area_unit` indicates the unit in which `area` and `tolerance`
-are expressed and therefore how the stored threshold should be
-interpreted.
+Areas are obtained from the planning-unit table. If `area_col` is
+provided, that column is used. Otherwise, the model builder later
+determines the default area source according to the internal rules of
+the package. The value of `area_unit` indicates the unit in which `area`
+and `tolerance` are expressed and therefore how the stored threshold
+should be interpreted.
 
-This function only stores the constraint specification in
-`x$data$constraints$area`; it does not validate the feasibility of the
-threshold against the available planning units at this stage.
+This function only stores the constraint specification; it does not
+validate the feasibility of the threshold against the available planning
+units at this stage.
 
 Multiple area constraints can be stored in a `Problem` object. However,
 at most one can be stored for the same combination of action subset and

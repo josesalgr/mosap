@@ -10,52 +10,55 @@ add_constraint_locked_pu(x, locked_in = NULL, locked_out = NULL)
 \item{x}{A \code{Problem} object created with \code{\link{create_problem}}.}
 
 \item{locked_in}{Optional locked-in specification. It may be \code{NULL}, a
-column name in \code{x$data$pu_data_raw}, a logical vector, or a vector of
+column name in the raw planning-unit data, a logical vector, or a vector of
 planning-unit ids.}
 
 \item{locked_out}{Optional locked-out specification. It may be \code{NULL}, a
-column name in \code{x$data$pu_data_raw}, a logical vector, or a vector of
+column name in the raw planning-unit data, a logical vector, or a vector of
 planning-unit ids.}
 }
 \value{
-An updated \code{Problem} object in which \code{x$data$pu} contains
-logical columns \code{locked_in} and \code{locked_out}.
+An updated \code{Problem} object in which the planning-unit table
+contains logical columns \code{locked_in} and \code{locked_out}.
 }
 \description{
 Define planning units that must be included in, or excluded from, the
 optimization problem.
 
-This function updates the planning-unit table stored in \code{x$data$pu} by
-creating or replacing the logical columns \code{locked_in} and
+This function updates the planning-unit table stored in the \code{Problem}
+object by creating or replacing the logical columns \code{locked_in} and
 \code{locked_out}. These columns are later used by the model builder when
-translating the \code{Problem} object into optimization constraints.
+translating the problem into optimization constraints.
 
 Lock information may be supplied either directly as logical vectors, as
 vectors of planning-unit ids, or by referencing columns in the raw
 planning-unit data originally passed to \code{\link{create_problem}}.
 }
 \details{
-Let \eqn{\mathcal{P}} denote the set of planning units and let
+Use this function when whole planning units must be forced into or out of
+the solution, regardless of which action may later be selected in them.
+
+Let \eqn{\mathcal{I}} denote the set of planning units and let
 \eqn{w_i \in \{0,1\}} denote the binary variable indicating whether planning
-unit \eqn{i \in \mathcal{P}} is selected by the model.
+unit \eqn{i \in \mathcal{I}} is selected by the model.
 
 This function defines two subsets:
 \itemize{
-\item \eqn{\mathcal{P}^{in} \subseteq \mathcal{P}}, the planning units that
+\item \eqn{\mathcal{I}^{in} \subseteq \mathcal{I}}, the planning units that
 must be included,
-\item \eqn{\mathcal{P}^{out} \subseteq \mathcal{P}}, the planning units
+\item \eqn{\mathcal{I}^{out} \subseteq \mathcal{I}}, the planning units
 that must be excluded.
 }
 
 Conceptually, these sets correspond to the following conditions:
 \itemize{
-\item if \eqn{i \in \mathcal{P}^{in}}, then \eqn{w_i = 1},
-\item if \eqn{i \in \mathcal{P}^{out}}, then \eqn{w_i = 0}.
+\item if \eqn{i \in \mathcal{I}^{in}}, then \eqn{w_i = 1},
+\item if \eqn{i \in \mathcal{I}^{out}}, then \eqn{w_i = 0}.
 }
 
 These constraints are not imposed immediately by this function; instead, they
-are stored in \code{x$data$pu$locked_in} and \code{x$data$pu$locked_out} and
-enforced later when building the optimization model.
+are stored in the planning-unit table and enforced later when building the
+optimization model.
 
 \strong{Philosophy}
 
@@ -64,14 +67,18 @@ inputs of the planning problem. Locking planning units is treated as a
 separate modelling step so that users can define or revise selection
 restrictions after the \code{Problem} object has already been created.
 
+In contrast, \code{\link{add_constraint_locked_actions}} is used to fix
+specific feasible \code{(pu, action)} decisions rather than whole planning
+units.
+
 \strong{Supported input formats}
 
 For both \code{locked_in} and \code{locked_out}, the function accepts:
 \itemize{
 \item \code{NULL}, meaning that no planning units are locked on that side,
-\item a single character string, interpreted as a column name in
-\code{x$data$pu_data_raw},
-\item a logical vector of length \code{nrow(x$data$pu)},
+\item a single character string, interpreted as a column name in the raw
+planning-unit data,
+\item a logical vector of length \code{nrow(pu)},
 \item a vector of planning-unit ids.
 }
 
@@ -84,8 +91,8 @@ Missing values are treated as \code{FALSE}.
 \strong{Replacement behaviour}
 
 Each call to \code{add_constraint_locked_pu()} replaces any existing
-\code{locked_in} and \code{locked_out} columns in \code{x$data$pu}. In other
-words, the function defines the complete current set of locked planning
+\code{locked_in} and \code{locked_out} columns in the planning-unit table. In
+other words, the function defines the complete current set of locked planning
 units; it does not merge new values with previous ones.
 
 \strong{Consistency checks}

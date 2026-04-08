@@ -43,6 +43,9 @@ This constructor does not require polygon geometry and instead uses
 planning-unit coordinates.
 }
 \details{
+Use this function when neighbourhood should be defined by a fixed distance
+radius rather than by polygon topology or a fixed number of neighbours.
+
 Let \eqn{s_i = (x_i, y_i)} denote the coordinates of planning unit
 \eqn{i}. Let \eqn{d_{ij}} be the Euclidean distance between planning units
 \eqn{i} and \eqn{j}.
@@ -62,7 +65,7 @@ Edge weights are assigned according to \code{weight_mode}:
 \item \code{"inverse_sq"}:
 \deqn{\omega_{ij} = \frac{1}{\max(d_{ij}, \varepsilon)^2},}
 }
-where \eqn{\varepsilon = \code{distance_eps}} is a small constant.
+where \eqn{\varepsilon} = \code{distance_eps} is a small constant.
 
 The implementation computes an \eqn{O(n^2)} distance matrix and is therefore
 best suited to small or moderate numbers of planning units. For large

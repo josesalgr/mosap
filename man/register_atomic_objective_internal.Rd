@@ -30,10 +30,10 @@ single-objective configuration of a \code{Problem} object and, optionally,
 register that objective as an atomic objective for multi-objective workflows.
 }
 \details{
-In \code{multiscape}, an \emph{atomic objective} is a fully specified objective
-definition that can later be reused by a multi-objective method such as a
-weighted-sum formulation, an \eqn{\epsilon}-constraint method, AUGMECON, or
-other objective-orchestration procedures.
+In \code{multiscape}, an \emph{atomic objective} is a fully specified
+objective definition that can later be reused by a multi-objective method
+such as a weighted-sum formulation, an \eqn{\epsilon}-constraint method,
+AUGMECON, or other objective-orchestration procedures.
 
 Each atomic objective is identified by:
 \itemize{

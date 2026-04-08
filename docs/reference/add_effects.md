@@ -3,18 +3,17 @@
 Define the effects of management actions on features across planning
 units.
 
-Effects are stored in a canonical representation in
-`x$data$dist_effects`, with one row per `(pu, action, feature)` triple
-and two non-negative columns:
+Effects are stored in a canonical representation in a effects table,
+with one row per `(pu, action, feature)` triple and two non-negative
+columns:
 
 - `benefit`: the positive component of the effect,
 
 - `loss`: the magnitude of the negative component of the effect.
 
-The net effect is therefore interpreted as \$\$ \Delta\_{i a f} =
-\mathrm{benefit}\_{i a f} - \mathrm{loss}\_{i a f}, \$\$ where \\i\\
-indexes planning units, \\a\\ indexes actions, and \\f\\ indexes
-features.
+The net effect is therefore interpreted as \$\$ \Delta\_{iaf} =
+\mathrm{benefit}\_{iaf} - \mathrm{loss}\_{iaf}, \$\$ where \\i\\ indexes
+planning units, \\a\\ indexes actions, and \\f\\ indexes features.
 
 Under the semantics adopted by this package, each
 `(pu, action, feature)` triple represents a single net effect.
@@ -39,7 +38,7 @@ add_effects(
 
   A `Problem` object created with
   [`create_problem`](https://josesalgr.github.io/multiscape/reference/create_problem.md).
-  It must already contain `x$data$dist_actions`; run
+  It must already contain feasible actions; run
   [`add_actions`](https://josesalgr.github.io/multiscape/reference/add_actions.md)
   first.
 
@@ -85,20 +84,26 @@ add_effects(
 
 ## Value
 
-An updated `Problem` object with:
+An updated `Problem` object containing:
 
-- `x$data$dist_effects`:
+- `dist_effects`:
 
   A canonical effects table with columns `pu`, `action`, `feature`,
   `benefit`, `loss`, `internal_pu`, `internal_action`,
   `internal_feature`, and optional labels such as `feature_name` and
   `action_name`.
 
-- `x$data$effects_meta`:
+- `effects_meta`:
 
   Metadata describing how effects were interpreted and stored.
 
 ## Details
+
+**When to use `add_effects()`.**
+
+Use this function when you want to specify what feasible actions do to
+features. It is the stage at which an action-based decision space is
+linked to feature-level ecological or functional consequences.
 
 This function provides a unified interface for specifying action effects
 from several input formats while enforcing a single internal
@@ -106,22 +111,24 @@ representation. Regardless of how the user supplies the effects, the
 stored output always follows the same canonical structure based on
 non-negative `benefit`/`loss` components.
 
-Let \\b\_{if}\\ denote the baseline amount of feature \\f\\ in planning
-unit \\i\\, taken from `x$data$dist_features$amount`. Let \\\Delta\_{i a
-f}\\ denote the net change caused by applying action \\a\\ in planning
-unit \\i\\ to feature \\f\\. The canonical stored representation is:
+Let \\i \in \mathcal{I}\\ index planning units, \\a \in \mathcal{A}\\
+index actions, and \\f \in \mathcal{F}\\ index features. Let \\b\_{if}\\
+denote the baseline amount of feature \\f\\ in planning unit \\i\\, as
+given by the feature-distribution table. Let \\\Delta\_{iaf}\\ denote
+the net change caused by applying action \\a\\ in planning unit \\i\\ to
+feature \\f\\. The canonical stored representation is:
 
-\$\$ \mathrm{benefit}\_{i a f} = \max(\Delta\_{i a f}, 0), \$\$
+\$\$ \mathrm{benefit}\_{iaf} = \max(\Delta\_{iaf}, 0), \$\$
 
-\$\$ \mathrm{loss}\_{i a f} = \max(-\Delta\_{i a f}, 0). \$\$
+\$\$ \mathrm{loss}\_{iaf} = \max(-\Delta\_{iaf}, 0). \$\$
 
 Hence:
 
-- if \\\Delta\_{i a f} \> 0\\, then `benefit > 0` and `loss = 0`,
+- if \\\Delta\_{iaf} \> 0\\, then `benefit > 0` and `loss = 0`,
 
-- if \\\Delta\_{i a f} \< 0\\, then `benefit = 0` and `loss > 0`,
+- if \\\Delta\_{iaf} \< 0\\, then `benefit = 0` and `loss > 0`,
 
-- if \\\Delta\_{i a f} = 0\\, then both are zero.
+- if \\\Delta\_{iaf} = 0\\, then both are zero.
 
 **Why split effects into benefit and loss?**
 
@@ -138,8 +145,8 @@ The `effects` argument may be provided in one of the following forms:
 
 2.  A `data.frame(action, feature, multiplier)`. In this case, effects
     are constructed by multiplying baseline feature amounts by the
-    supplied multiplier: \$\$ \Delta\_{i a f} = b\_{if} \times m\_{a f},
-    \$\$ where \\m\_{a f}\\ is the multiplier associated with action
+    supplied multiplier: \$\$ \Delta\_{iaf} = b\_{if} \times m\_{af},
+    \$\$ where \\m\_{af}\\ is the multiplier associated with action
     \\a\\ and feature \\f\\. This specification is expanded over all
     feasible `(pu, action)` pairs.
 
@@ -170,17 +177,20 @@ changes directly.
 If `effect_type = "after"`, supplied values are interpreted as
 after-action amounts and converted internally to net effects using:
 
-\$\$ \Delta\_{i a f} = \mathrm{after}\_{i a f} - b\_{if}. \$\$
+\$\$ \Delta\_{iaf} = \mathrm{after}\_{iaf} - b\_{if}. \$\$
 
 Missing baseline values are treated as zero.
 
 **Feasibility and locked-out decisions**
 
-Effects are only retained for feasible `(pu, action)` pairs listed in
-`x$data$dist_actions`. Thus,
+Effects are only retained for feasible `(pu, action)` pairs. Thus,
 [`add_actions()`](https://josesalgr.github.io/multiscape/reference/add_actions.md)
 must be called first. Pairs marked as locked out (`status == 3`) are
 removed before storing the final effects table.
+
+This function does not define the action-decision layer itself; it
+builds on the feasible `(pu, action)` pairs already stored in the
+problem.
 
 **Duplicate rows and semantic validation**
 
@@ -190,7 +200,7 @@ The resulting triple must still respect the package semantics, namely
 that both components cannot be strictly positive simultaneously. Inputs
 violating this rule are rejected.
 
-**Component selection**
+**Component filtering**
 
 After canonicalization and validation, rows can be restricted to:
 
@@ -210,10 +220,14 @@ zonal aggregation.
 
 **Stored output**
 
-The resulting table `x$data$dist_effects` contains user-facing ids,
-internal integer ids, and optional labels for actions and features.
-Metadata describing the stored representation and input interpretation
-are written to `x$data$effects_meta`.
+The resulting effects table contains user-facing ids, internal integer
+ids, and optional labels for actions and features. Metadata describing
+the stored representation and input interpretation are written to an
+effects metadata field.
+
+After defining effects, typical next steps include adding objectives
+that use beneficial or harmful effects, and then solving the configured
+problem.
 
 ## See also
 

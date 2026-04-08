@@ -124,7 +124,9 @@ applied to exposed boundary when constructing diagonal entries.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Two input modes are supported:</p><ol><li><p><strong>Boundary-table mode.</strong> If <code>boundary</code> is supplied, it is
+    <p>Use this function when spatial structure should be represented through shared
+boundary length rather than binary contiguity or coordinate-based proximity.</p>
+<p>Two input modes are supported:</p><ol><li><p><strong>Boundary-table mode.</strong> If <code>boundary</code> is supplied, it is
 interpreted as a boundary table, for example a Marxan-style
 <code>bound.dat</code>.</p></li>
 <li><p><strong>Geometry mode.</strong> If <code>boundary = NULL</code>, boundary lengths
@@ -135,24 +137,18 @@ planning units \(i\) and \(j\), multiplied by
 <code>weight_multiplier</code>.</p>
 <p>For off-diagonal entries \(i \neq j\), the stored weight is:
 $$
-\omega_{ij} = \mathrm{BLM} \times b_{ij},
+\omega_{ij} = \mathrm{\gamma} \times b_{ij},
 $$
-where \(b_{ij}\) is the shared boundary length and \(\mathrm{BLM}\) is
+where \(b_{ij}\) is the shared boundary length and \(\gamma\) is
 the user-supplied <code>weight_multiplier</code>.</p>
 <p>If <code>include_self = TRUE</code>, diagonal entries are also created. These are
 not geometric self-neighbours in the graph sense; instead, they represent the
 effective boundary exposed to the outside of the solution.</p>
 <p>Let \(p_i\) be the total perimeter of planning unit \(i\), and let
 \(\sum_{j \neq i} \omega_{ij}\) be the total incident shared boundary
-recorded for that planning unit. Then the exposed boundary is:
-$$
-e_i = \max\left\{ p_i \times \mathrm{BLM}
-- \sum_{j \neq i} \omega_{ij}, 0 \right\},
-$$
-and the stored diagonal term is:
-$$
-\omega_{ii} = \mathrm{edge\_factor} \times e_i.
-$$</p>
+recorded for that planning unit. Then the exposed boundary is represented by
+a diagonal term derived from the difference between total perimeter and shared
+boundary, scaled by <code>edge_factor</code>.</p>
 <p>These diagonal terms are useful in boundary-based compactness or
 fragmentation objectives, because they encode the portion of each planning
 unit's perimeter that would remain exposed if the unit were selected.</p>

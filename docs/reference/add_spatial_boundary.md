@@ -73,6 +73,10 @@ An updated `Problem` object with the stored relation in
 
 ## Details
 
+Use this function when spatial structure should be represented through
+shared boundary length rather than binary contiguity or coordinate-based
+proximity.
+
 Two input modes are supported:
 
 1.  **Boundary-table mode.** If `boundary` is supplied, it is
@@ -86,8 +90,8 @@ Let \\\omega\_{ij} \ge 0\\ denote the shared boundary length between
 planning units \\i\\ and \\j\\, multiplied by `weight_multiplier`.
 
 For off-diagonal entries \\i \neq j\\, the stored weight is: \$\$
-\omega\_{ij} = \mathrm{BLM} \times b\_{ij}, \$\$ where \\b\_{ij}\\ is
-the shared boundary length and \\\mathrm{BLM}\\ is the user-supplied
+\omega\_{ij} = \mathrm{\gamma} \times b\_{ij}, \$\$ where \\b\_{ij}\\ is
+the shared boundary length and \\\gamma\\ is the user-supplied
 `weight_multiplier`.
 
 If `include_self = TRUE`, diagonal entries are also created. These are
@@ -96,10 +100,9 @@ represent the effective boundary exposed to the outside of the solution.
 
 Let \\p_i\\ be the total perimeter of planning unit \\i\\, and let
 \\\sum\_{j \neq i} \omega\_{ij}\\ be the total incident shared boundary
-recorded for that planning unit. Then the exposed boundary is: \$\$ e_i
-= \max\left\\ p_i \times \mathrm{BLM} - \sum\_{j \neq i} \omega\_{ij}, 0
-\right\\, \$\$ and the stored diagonal term is: \$\$ \omega\_{ii} =
-\mathrm{edge\\factor} \times e_i. \$\$
+recorded for that planning unit. Then the exposed boundary is
+represented by a diagonal term derived from the difference between total
+perimeter and shared boundary, scaled by `edge_factor`.
 
 These diagonal terms are useful in boundary-based compactness or
 fragmentation objectives, because they encode the portion of each

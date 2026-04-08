@@ -3,8 +3,8 @@
 Define an objective that minimizes the total negative effects generated
 by selected actions on selected features.
 
-This objective is based on the canonical effects table stored in
-`x$data$dist_effects` and uses only the non-negative `loss` component.
+This objective is based on the canonical effects table and uses only the
+non-negative `loss` component.
 
 ## Usage
 
@@ -41,14 +41,19 @@ An updated `Problem` object.
 
 ## Details
 
-Let \\\mathcal{E}\\ denote the set of rows in `x$data$dist_effects`. For
-each row associated with planning unit \\i\\, action \\a\\, and feature
-\\f\\, let \\\ell\_{iaf} \ge 0\\ denote the stored value in the `loss`
-column.
+Use this function when harmful ecological effects should be minimized
+explicitly, without offsetting them against beneficial effects.
+
+Let \\\ell\_{iaf} \ge 0\\ denote the stored loss associated with
+planning unit \\i\\, action \\a\\, and feature \\f\\.
 
 If no subsets are supplied, the objective can be written as:
 
-\$\$ \min \sum\_{(i,a,f) \in \mathcal{E}} \ell\_{iaf} \\ x\_{ia}. \$\$
+\$\$ \min \sum\_{(i,a,f) \in \mathcal{R}} \ell\_{iaf} \\ x\_{ia}. \$\$
+
+where \\\mathcal{R}\\ denotes the set of stored loss rows and \\x\_{ia}
+\in \\0,1\\\\ indicates whether action \\a\\ is selected in planning
+unit \\i\\.
 
 If `actions` is provided, only rows whose action belongs to the selected
 subset contribute to the objective.
@@ -56,10 +61,10 @@ subset contribute to the objective.
 If `features` is provided, only rows whose feature belongs to the
 selected subset contribute to the objective.
 
-More generally, letting \\\mathcal{E}^{\star}\\ be the subset induced by
+More generally, letting \\\mathcal{R}^{\star}\\ be the subset induced by
 the selected actions and features, the objective is:
 
-\$\$ \min \sum\_{(i,a,f) \in \mathcal{E}^{\star}} \ell\_{iaf} \\
+\$\$ \min \sum\_{(i,a,f) \in \mathcal{R}^{\star}} \ell\_{iaf} \\
 x\_{ia}. \$\$
 
 This objective minimizes harmful effects only. It does not offset losses
