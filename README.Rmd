@@ -53,6 +53,8 @@ remotes::install_github("josesalgr/multiscape")
 
 A typical `multiscape` workflow has five steps.
 
+![Conceptual overview of the multiscape workflow, from problem definition and actions to constraints, objectives, optimization, and outputs.](man/figures/overview_multiscape.png)
+
 First, the user creates a `Problem` object from planning units, features, and baseline feature amounts. Second, the user adds feasible actions and, when relevant, defines how those actions affect the features of interest. Third, the user adds targets, constraints, and spatial relations. Fourth, the user registers one or more atomic objectives. Finally, the user solves the problem in single-objective or multi-objective mode.
 
 In other words, `multiscape` separates problem definition from optimization. The `Problem` object stores the planning specification, and the solving stage later translates that specification into one or more exact optimization runs.
@@ -100,7 +102,7 @@ terra::plot(
     "Rodent and lagomorph control",
     "Carbon stock",
     "Seasonal water yield",
-    "Sediment delivery ratio",
+    "Sediment delivery ratio"
   )
 )
 ```
