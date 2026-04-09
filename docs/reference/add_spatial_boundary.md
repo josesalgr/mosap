@@ -135,8 +135,8 @@ typically as an undirected relation with optional diagonal entries.
 ## See also
 
 [`add_spatial_relations`](https://josesalgr.github.io/multiscape/reference/add_spatial_relations.md),
-`add_objective_min_fragmentation`,
-`add_objective_min_action_fragmentation`
+[`add_objective_min_fragmentation_pu`](https://josesalgr.github.io/multiscape/reference/add_objective_min_fragmentation_pu.md),
+[`add_objective_min_fragmentation_action`](https://josesalgr.github.io/multiscape/reference/add_objective_min_fragmentation_action.md)
 
 ## Examples
 

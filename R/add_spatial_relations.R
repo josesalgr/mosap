@@ -446,8 +446,8 @@ add_spatial_relations <- function(x,
 #'
 #' @seealso
 #' \code{\link{add_spatial_relations}},
-#' \code{\link{add_objective_min_fragmentation}},
-#' \code{\link{add_objective_min_action_fragmentation}}
+#' \code{\link{add_objective_min_fragmentation_pu}},
+#' \code{\link{add_objective_min_fragmentation_action}}
 #'
 #' @export
 add_spatial_boundary <- function(x,
