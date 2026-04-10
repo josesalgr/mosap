@@ -235,7 +235,7 @@ if (requireNamespace("rcbc", quietly = TRUE)) {
 #> │├─status: .pa_solution_status_inline(st)
 #> │├─objective value: "3"
 #> │├─gap: 0%
-#> │└─runtime: 0.02 sec
+#> │└─runtime: 0 sec
 #> └─selection
 #> │├─planning units: 1 of 4 selected
 #> │├─actions: 1 of 8 selected

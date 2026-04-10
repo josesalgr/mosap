@@ -1,5 +1,9 @@
 # Changelog
 
+## multiscape 1.0.5
+
+- Release candidate for CRAN.
+
 ## multiscape 1.0.4
 
 - First CRAN release of `multiscape`.

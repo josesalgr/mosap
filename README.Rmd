@@ -230,7 +230,7 @@ The minimum-area constraint imposes a lower bound on the amount of land to be se
 ```{r message=TRUE}
 p <- p |>
   set_method_epsilon_constraint(
-    primary = "Total cost",
+    primary = "Total impact",
     n_points = 4,
     mode = "auto",
     lexicographic = TRUE

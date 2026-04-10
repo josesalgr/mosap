@@ -365,7 +365,7 @@ alternatives rather than a single solution.
 ``` r
 p <- p |>
   set_method_epsilon_constraint(
-    primary = "Total cost",
+    primary = "Total impact",
     n_points = 4,
     mode = "auto",
     lexicographic = TRUE
@@ -401,7 +401,7 @@ p
 #> └─model
 #> │├─status: not built yet (will build in solve())
 #> │├─objectives: 2 registered (Total cost, Total impact)
-#> │├─method: epsilon_constraint (primary: Total cost)
+#> │├─method: epsilon_constraint (primary: Total impact)
 #> │├─solver: cbc
 #> │└─checks: ok
 #> # ℹ Use `x$data` to inspect stored tables and model snapshots.

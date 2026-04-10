@@ -1124,14 +1124,14 @@ plot_tradeoff <- function(
   if (isTRUE(label_runs)) {
     if (requireNamespace("ggrepel", quietly = TRUE)) {
       p <- p + ggrepel::geom_text_repel(
-        ggplot2::aes(label = run_label),
+        ggplot2::aes(label = .data$run_label),
         size = text_size,
         max.overlaps = Inf,
         show.legend = FALSE
       )
     } else {
       p <- p + ggplot2::geom_text(
-        ggplot2::aes(label = run_label),
+        ggplot2::aes(label = .data$run_label),
         size = text_size,
         vjust = -0.6,
         show.legend = FALSE

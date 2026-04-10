@@ -16,13 +16,13 @@ Source:
 [`DESCRIPTION`](https://github.com/josesalgr/multiscape/blob/HEAD/DESCRIPTION)
 
 Salgado-Rojas J, Moreno-Faguett M, Aquilué N (2026). *multiscape:
-Multi-Objective Integrated Spatial Planning*. R package version 1.0.4,
+Multi-Objective Integrated Spatial Planning*. R package version 1.0.5,
 <https://josesalgr.github.io/multiscape/>.
 
     @Manual{,
       title = {multiscape: Multi-Objective Integrated Spatial Planning},
       author = {José Salgado-Rojas and Matías Moreno-Faguett and Núria Aquilué},
       year = {2026},
-      note = {R package version 1.0.4},
+      note = {R package version 1.0.5},
       url = {https://josesalgr.github.io/multiscape/},
     }
