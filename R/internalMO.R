@@ -2252,15 +2252,34 @@ add_objective <- function(x, objective) {
   )
 }
 
-
-.pamo_is_infeasible_error <- function(e) {
+.pamo_solver_error_status <- function(e) {
   msg <- conditionMessage(e)
 
-  grepl(
-    "status:\\s*infeasible|status:\\s*infeasible_or_unbounded|\\binfeasible\\b|\\binfeasible_or_unbounded\\b",
+  if (grepl(
+    "status:\\s*infeasible_or_unbounded|\\binfeasible_or_unbounded\\b",
     msg,
     ignore.case = TRUE
-  )
+  )) {
+    return("infeasible_or_unbounded")
+  }
+
+  if (grepl(
+    "status:\\s*infeasible|\\binfeasible\\b",
+    msg,
+    ignore.case = TRUE
+  )) {
+    return("infeasible")
+  }
+
+  if (grepl(
+    "empty solution vector|no solution vector|solution vector is empty|objval:\\s*NA|time limit before first feasible",
+    msg,
+    ignore.case = TRUE
+  )) {
+    return("no_solution")
+  }
+
+  NA_character_
 }
 
 
@@ -2276,21 +2295,24 @@ add_objective <- function(x, objective) {
 }
 
 
-.pamo_solve_one_or_keep_failed <- function(x, spec, stop_on_infeasible = FALSE) {
+.pamo_solve_one_or_keep_failed <- function(
+    x,
+    spec,
+    stop_on_infeasible = FALSE,
+    stop_on_no_solution = FALSE,
+    stop_on_error = TRUE
+) {
   tryCatch(
     .pamo_solve_one(x = x, spec = spec),
     error = function(e) {
       msg <- conditionMessage(e)
+      status <- .pamo_solver_error_status(e)
 
-      if (.pamo_is_infeasible_error(e)) {
+      if (identical(status, "infeasible") ||
+          identical(status, "infeasible_or_unbounded")) {
+
         if (isTRUE(stop_on_infeasible)) {
           stop(e)
-        }
-
-        status <- if (grepl("infeasible_or_unbounded", msg, ignore.case = TRUE)) {
-          "infeasible_or_unbounded"
-        } else {
-          "infeasible"
         }
 
         return(.pamo_failed_run(
@@ -2299,11 +2321,29 @@ add_objective <- function(x, objective) {
         ))
       }
 
-      stop(e)
+      if (identical(status, "no_solution")) {
+
+        if (isTRUE(stop_on_no_solution)) {
+          stop(e)
+        }
+
+        return(.pamo_failed_run(
+          status = status,
+          message = msg
+        ))
+      }
+
+      if (isTRUE(stop_on_error)) {
+        stop(e)
+      }
+
+      .pamo_failed_run(
+        status = "failed",
+        message = msg
+      )
     }
   )
 }
-
 
 
 #' @keywords internal
@@ -3611,6 +3651,8 @@ add_objective <- function(x, objective) {
   messages <- character(n_runs)
 
   stop_on_infeasible <- isTRUE(method$stop_on_infeasible %||% FALSE)
+  stop_on_no_solution <- isTRUE(method$stop_on_no_solution %||% FALSE)
+  stop_on_error <- isTRUE(method$stop_on_error %||% TRUE)
 
   progress_id <- NULL
   if (progress && n_runs > 1L) {
@@ -3642,7 +3684,9 @@ add_objective <- function(x, objective) {
         gap_limit = gap_limit,
         time_limit = time_limit
       ),
-      stop_on_infeasible = stop_on_infeasible
+      stop_on_infeasible = stop_on_infeasible,
+      stop_on_no_solution = stop_on_no_solution,
+      stop_on_error = stop_on_error
     )
 
     solutions[[r]] <- one$solution
@@ -3758,11 +3802,40 @@ add_objective <- function(x, objective) {
     na.rm = TRUE
   )
 
+  n_no_solution <- sum(
+    runs$status %in% c("no_solution"),
+    na.rm = TRUE
+  )
+
+  n_failed <- sum(
+    runs$status %in% c("failed"),
+    na.rm = TRUE
+  )
+
   if (n_infeasible > 0L) {
     warning(
       n_infeasible, " of ", nrow(runs),
       " AUGMECON runs were infeasible and were kept in the SolutionSet with missing objective values. ",
       "Feasible runs were retained.",
+      call. = FALSE,
+      immediate. = TRUE
+    )
+  }
+
+  if (n_no_solution > 0L) {
+    warning(
+      n_no_solution, " of ", nrow(runs),
+      " AUGMECON runs did not return a solution vector and were kept in the SolutionSet with missing objective values. ",
+      "This may indicate infeasibility, numerical issues, or solver termination before finding a feasible solution.",
+      call. = FALSE,
+      immediate. = TRUE
+    )
+  }
+
+  if (n_failed > 0L) {
+    warning(
+      n_failed, " of ", nrow(runs),
+      " AUGMECON runs failed for reasons other than infeasibility/no-solution.",
       call. = FALSE,
       immediate. = TRUE
     )
@@ -3786,9 +3859,11 @@ add_objective <- function(x, objective) {
     diagnostics = list(
       n_design = nrow(design_df),
       n_runs = nrow(runs),
-      n_solutions = length(solutions),
+      n_solutions = sum(vapply(solutions, inherits, logical(1), "Solution")),
       n_optimal = sum(runs$status == "optimal", na.rm = TRUE),
       n_infeasible = sum(runs$status %in% c("infeasible", "infeasible_or_unbounded"), na.rm = TRUE),
+      n_no_solution = sum(runs$status == "no_solution", na.rm = TRUE),
+      n_failed = sum(runs$status == "failed", na.rm = TRUE),
       status_summary = .pa_solutionset_status_summary(runs),
       runtime_range = if ("runtime" %in% names(runs)) .pa_solutionset_range_text(runs$runtime, digits = 3) else "none",
       gap_range = if ("gap" %in% names(runs)) .pa_solutionset_range_text(runs$gap, digits = 4) else "none"
