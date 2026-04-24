@@ -3689,7 +3689,7 @@ add_objective <- function(x, objective) {
       stop_on_error = stop_on_error
     )
 
-    solutions[[r]] <- one$solution
+    solutions[r] <- list(one$solution)
     status[r]  <- as.character(one$status %||% NA_character_)
     runtime[r] <- as.numeric(one$runtime %||% NA_real_)
     gap[r]     <- as.numeric(one$gap %||% NA_real_)
