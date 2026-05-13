@@ -41,44 +41,6 @@ only the benefit component.}
 \description{
 Convenience wrapper around \code{\link{add_effects}} that keeps only positive
 effects, that is, rows with \code{benefit > 0}.
-
-This function is useful when the workflow is focused only on beneficial
-consequences of actions and a gain-only wrapper is more convenient than
-calling \code{add_effects(..., component = "benefit")} directly.  Internally,
-it calls \code{add_effects()} with \code{component = "benefit"}.
-The canonical stored result therefore contains only rows whose effect
-satisfies \eqn{\mathrm{benefit}_{iaf} > 0}.
-
-For backwards compatibility, a mirror table containing only the benefit
-component is also written to \code{x$data$dist_benefit}. The canonical
-filtered representation remains the one stored by \code{add_effects()}.
-}
-\examples{
-pu <- data.frame(id = 1:2, cost = c(1, 2))
-features <- data.frame(id = 1, name = "sp1")
-dist_features <- data.frame(pu = 1:2, feature = 1, amount = c(5, 10))
-
-p <- create_problem(
-  pu = pu,
-  features = features,
-  dist_features = dist_features
-)
-
-p <- add_actions(
-  p,
-  data.frame(id = "restoration")
-)
-
-eff <- data.frame(
-  pu = c(1, 2),
-  action = c("restoration", "restoration"),
-  feature = c(1, 1),
-  delta = c(2, -1)
-)
-
-p <- add_benefits(p, benefits = eff)
-p$data$dist_benefit
-
 }
 \seealso{
 \code{\link{add_effects}},

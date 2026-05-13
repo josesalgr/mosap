@@ -953,9 +953,14 @@ available_to_solve <- function(package = ""){
     de[de$internal_action %in% keep_internal, , drop = FALSE]
   }
 
-  dbm <- .get_dist_benefit_model_from_effects(x, benefit_col = "benefit")
+  dbm <- .get_dist_benefit_model_from_effects(x, benefit_col = "amount_after")
+
   if (is.null(dbm) || nrow(dbm) == 0) {
-    stop("Targets present but no benefit column available in dist_effects.", call. = FALSE)
+    stop(
+      "Targets present but no action feature contributions are available in dist_effects. ",
+      "Run add_effects() first and make sure dist_effects contains 'amount_after'.",
+      call. = FALSE
+    )
   }
 
   if (!("feature" %in% names(dbm))) {
@@ -1868,42 +1873,46 @@ available_to_solve <- function(package = ""){
   }
 
   # -------------------------
-  # 3) Features achieved
-  # -------------------------
-  # -------------------------
   # 3) Features summary
   # -------------------------
   feats <- x$data$features
   de <- x$data$dist_effects_model %||% x$data$dist_effects
 
-  # total available in the landscape (independent of the solution)
-  base_by_feat <- data.frame(
+  # Baseline total in the full landscape.
+  # This is contextual information, not achieved amount.
+  baseline_by_feat <- data.frame(
     internal_feature = integer(0),
-    total_available = numeric(0)
+    baseline_total = numeric(0)
   )
 
-  if (!is.null(df_df) && inherits(df_df, "data.frame") && nrow(df_df) > 0 &&
+  if (!is.null(df_df) &&
+      inherits(df_df, "data.frame") &&
+      nrow(df_df) > 0 &&
       all(c("internal_feature", "amount") %in% names(df_df))) {
 
     df2 <- df_df
     df2$amount <- as.numeric(df2$amount)
 
-    base_by_feat <- stats::aggregate(
-      total_available ~ internal_feature,
+    baseline_by_feat <- stats::aggregate(
+      baseline_total ~ internal_feature,
       data = data.frame(
         internal_feature = as.integer(df2$internal_feature),
-        total_available = as.numeric(df2$amount)
+        baseline_total = as.numeric(df2$amount)
       ),
       FUN = sum
     )
   }
 
-  # map x rows to effects table
+  # Map action-solution values to effect rows.
   de_with_x <- NULL
-  if (!is.null(de) && inherits(de, "data.frame") && nrow(de) > 0 &&
+
+  if (!is.null(de) &&
+      inherits(de, "data.frame") &&
+      nrow(de) > 0 &&
       length(xv) > 0 &&
       all(c("internal_pu", "internal_action", "internal_feature") %in% names(de)) &&
-      inherits(da_out, "data.frame") && nrow(da_out) > 0 &&
+      inherits(da_out, "data.frame") &&
+      nrow(da_out) > 0 &&
       all(c("internal_pu", "internal_action") %in% names(da_out))) {
 
     key_da <- paste0(da_out$internal_pu, ":", da_out$internal_action)
@@ -1916,7 +1925,7 @@ available_to_solve <- function(package = ""){
     if (!all(ok)) {
       warning(
         sum(!ok),
-        " rows in dist_effects have no matching (pu,action) in dist_actions_model and were ignored.",
+        " rows in dist_effects have no matching (pu, action) in dist_actions_model and were ignored.",
         call. = FALSE
       )
       de <- de[ok, , drop = FALSE]
@@ -1939,80 +1948,184 @@ available_to_solve <- function(package = ""){
 
     if (!("benefit" %in% names(de_with_x))) de_with_x$benefit <- 0
     if (!("loss" %in% names(de_with_x))) de_with_x$loss <- 0
+    if (!("amount_after" %in% names(de_with_x))) de_with_x$amount_after <- 0
 
     de_with_x$benefit <- as.numeric(de_with_x$benefit)
     de_with_x$loss <- as.numeric(de_with_x$loss)
+    de_with_x$amount_after <- as.numeric(de_with_x$amount_after)
 
+    de_with_x$benefit[is.na(de_with_x$benefit)] <- 0
+    de_with_x$loss[is.na(de_with_x$loss)] <- 0
+    de_with_x$amount_after[is.na(de_with_x$amount_after)] <- 0
+
+    # Selected effects.
     de_with_x$selected_benefit <- de_with_x$benefit * de_with_x$x_value
     de_with_x$selected_loss <- de_with_x$loss * de_with_x$x_value
     de_with_x$selected_net <- de_with_x$selected_benefit - de_with_x$selected_loss
+    de_with_x$selected_amount_after <- de_with_x$amount_after * de_with_x$x_value
+
+    # Baseline amount in selected action rows.
+    # Since amount_after = baseline + net, then baseline = amount_after - net.
+    de_with_x$baseline_amount <- de_with_x$amount_after - (de_with_x$benefit - de_with_x$loss)
+    de_with_x$baseline_amount[is.na(de_with_x$baseline_amount)] <- 0
+
+    de_with_x$selected_baseline <- de_with_x$baseline_amount * de_with_x$x_value
   }
 
-  benefit_by_feat <- data.frame(
+  # Aggregated selected quantities by feature.
+  selected_baseline_by_feat <- data.frame(
     internal_feature = integer(0),
-    benefit = numeric(0)
+    selected_baseline = numeric(0)
   )
 
-  loss_by_feat <- data.frame(
+  selected_amount_after_by_feat <- data.frame(
     internal_feature = integer(0),
-    loss = numeric(0)
+    selected_amount_after = numeric(0)
   )
 
-  net_by_feat <- data.frame(
+  selected_benefit_by_feat <- data.frame(
     internal_feature = integer(0),
-    net = numeric(0)
+    selected_benefit = numeric(0)
+  )
+
+  selected_loss_by_feat <- data.frame(
+    internal_feature = integer(0),
+    selected_loss = numeric(0)
+  )
+
+  selected_net_by_feat <- data.frame(
+    internal_feature = integer(0),
+    selected_net = numeric(0)
   )
 
   if (!is.null(de_with_x) && nrow(de_with_x) > 0) {
-    benefit_by_feat <- stats::aggregate(
-      benefit ~ internal_feature,
+    selected_baseline_by_feat <- stats::aggregate(
+      selected_baseline ~ internal_feature,
       data = data.frame(
         internal_feature = as.integer(de_with_x$internal_feature),
-        benefit = as.numeric(de_with_x$selected_benefit)
+        selected_baseline = as.numeric(de_with_x$selected_baseline)
       ),
       FUN = sum
     )
 
-    loss_by_feat <- stats::aggregate(
-      loss ~ internal_feature,
+    selected_amount_after_by_feat <- stats::aggregate(
+      selected_amount_after ~ internal_feature,
       data = data.frame(
         internal_feature = as.integer(de_with_x$internal_feature),
-        loss = as.numeric(de_with_x$selected_loss)
+        selected_amount_after = as.numeric(de_with_x$selected_amount_after)
       ),
       FUN = sum
     )
 
-    net_by_feat <- stats::aggregate(
-      net ~ internal_feature,
+    selected_benefit_by_feat <- stats::aggregate(
+      selected_benefit ~ internal_feature,
       data = data.frame(
         internal_feature = as.integer(de_with_x$internal_feature),
-        net = as.numeric(de_with_x$selected_net)
+        selected_benefit = as.numeric(de_with_x$selected_benefit)
+      ),
+      FUN = sum
+    )
+
+    selected_loss_by_feat <- stats::aggregate(
+      selected_loss ~ internal_feature,
+      data = data.frame(
+        internal_feature = as.integer(de_with_x$internal_feature),
+        selected_loss = as.numeric(de_with_x$selected_loss)
+      ),
+      FUN = sum
+    )
+
+    selected_net_by_feat <- stats::aggregate(
+      selected_net ~ internal_feature,
+      data = data.frame(
+        internal_feature = as.integer(de_with_x$internal_feature),
+        selected_net = as.numeric(de_with_x$selected_net)
       ),
       FUN = sum
     )
   }
 
-  # main feature table
+  # Main feature table.
   if (is.null(feats) || !inherits(feats, "data.frame") || nrow(feats) == 0) {
     feat_tbl <- data.frame()
   } else {
     feat_tbl <- data.frame(
       feature = as.integer(feats$internal_id),
-      feature_name = as.character(feats$name),
+      feature_name = if ("name" %in% names(feats)) as.character(feats$name) else as.character(feats$id),
       stringsAsFactors = FALSE
     )
 
-    feat_tbl <- dplyr::left_join(feat_tbl, base_by_feat,    by = c("feature" = "internal_feature"))
-    feat_tbl <- dplyr::left_join(feat_tbl, benefit_by_feat, by = c("feature" = "internal_feature"))
-    feat_tbl <- dplyr::left_join(feat_tbl, loss_by_feat,    by = c("feature" = "internal_feature"))
-    feat_tbl <- dplyr::left_join(feat_tbl, net_by_feat,     by = c("feature" = "internal_feature"))
+    feat_tbl <- dplyr::left_join(
+      feat_tbl,
+      baseline_by_feat,
+      by = c("feature" = "internal_feature")
+    )
 
-    feat_tbl$total_available[is.na(feat_tbl$total_available)] <- 0
-    feat_tbl$benefit[is.na(feat_tbl$benefit)] <- 0
-    feat_tbl$loss[is.na(feat_tbl$loss)] <- 0
-    feat_tbl$net[is.na(feat_tbl$net)] <- 0
+    feat_tbl <- dplyr::left_join(
+      feat_tbl,
+      selected_baseline_by_feat,
+      by = c("feature" = "internal_feature")
+    )
 
-    feat_tbl$total <- feat_tbl$total_available + feat_tbl$net
+    feat_tbl <- dplyr::left_join(
+      feat_tbl,
+      selected_amount_after_by_feat,
+      by = c("feature" = "internal_feature")
+    )
+
+    feat_tbl <- dplyr::left_join(
+      feat_tbl,
+      selected_benefit_by_feat,
+      by = c("feature" = "internal_feature")
+    )
+
+    feat_tbl <- dplyr::left_join(
+      feat_tbl,
+      selected_loss_by_feat,
+      by = c("feature" = "internal_feature")
+    )
+
+    feat_tbl <- dplyr::left_join(
+      feat_tbl,
+      selected_net_by_feat,
+      by = c("feature" = "internal_feature")
+    )
+
+    fill_zero_cols <- c(
+      "baseline_total",
+      "selected_baseline",
+      "selected_amount_after",
+      "selected_benefit",
+      "selected_loss",
+      "selected_net"
+    )
+
+    for (cc in fill_zero_cols) {
+      if (!cc %in% names(feat_tbl)) {
+        feat_tbl[[cc]] <- 0
+      }
+      feat_tbl[[cc]][is.na(feat_tbl[[cc]])] <- 0
+    }
+
+    feat_tbl$selected_fraction_of_baseline <- ifelse(
+      feat_tbl$baseline_total > 0,
+      feat_tbl$selected_amount_after / feat_tbl$baseline_total,
+      NA_real_
+    )
+
+    # Optional backwards-compatible aliases.
+    # You can remove these later if you want a cleaner output.
+    feat_tbl$total_available <- feat_tbl$baseline_total
+    feat_tbl$benefit <- feat_tbl$selected_benefit
+    feat_tbl$loss <- feat_tbl$selected_loss
+    feat_tbl$net <- feat_tbl$selected_net
+    feat_tbl$amount_after <- feat_tbl$selected_amount_after
+
+    # Do NOT compute:
+    # feat_tbl$total <- feat_tbl$total_available + feat_tbl$net
+    #
+    # That would imply that unselected units remain part of the achieved output,
+    # which is not the interpretation used here.
   }
 
   # -------------------------
@@ -2021,33 +2134,38 @@ available_to_solve <- function(package = ""){
   tgt <- x$data$targets
   tgt_out <- NULL
 
-  if (inherits(tgt, "data.frame") && nrow(tgt) > 0 &&
+  if (inherits(tgt, "data.frame") &&
+      nrow(tgt) > 0 &&
       all(c("feature", "type", "target_value") %in% names(tgt)) &&
-      inherits(feat_tbl, "data.frame") && nrow(feat_tbl) > 0) {
+      inherits(feat_tbl, "data.frame") &&
+      nrow(feat_tbl) > 0) {
 
     tgt2 <- tgt
     tgt2$feature <- as.integer(tgt2$feature)
     tgt2$type <- as.character(tgt2$type)
     tgt2$target_value <- as.numeric(tgt2$target_value)
 
-    if (!("subset" %in% names(tgt2))) {
-      tgt2$subset <- NA_character_
+    # Backward compatibility: old code used subset; newer code uses actions.
+    if (!("actions" %in% names(tgt2))) {
+      if ("subset" %in% names(tgt2)) {
+        tgt2$actions <- as.character(tgt2$subset)
+      } else {
+        tgt2$actions <- NA_character_
+      }
     }
-    tgt2$subset <- as.character(tgt2$subset)
+    tgt2$actions <- as.character(tgt2$actions)
 
-    # default achieved = NA
     tgt2$achieved <- NA_real_
 
-    # helper to compute achieved by subset
-    .achieved_for_subset <- function(feature_ids, subset_string) {
+    .achieved_for_actions <- function(feature_ids, actions_string) {
       if (is.null(de_with_x) || nrow(de_with_x) == 0) {
         return(stats::setNames(rep(0, length(feature_ids)), feature_ids))
       }
 
       dd <- de_with_x
 
-      if (!is.na(subset_string) && nzchar(subset_string)) {
-        matched <- .pa_resolve_action_subset(x, strsplit(subset_string, "\\|")[[1]])
+      if (!is.na(actions_string) && nzchar(actions_string)) {
+        matched <- .pa_resolve_action_subset(x, strsplit(actions_string, "\\|")[[1]])
         keep_actions <- as.integer(matched$internal_id)
         dd <- dd[dd$internal_action %in% keep_actions, , drop = FALSE]
       }
@@ -2058,8 +2176,9 @@ available_to_solve <- function(package = ""){
 
       tmp <- data.frame(
         feature = as.integer(dd$internal_feature),
-        achieved = as.numeric(dd$selected_benefit)
+        achieved = as.numeric(dd$selected_amount_after)
       )
+
       agg <- stats::aggregate(achieved ~ feature, data = tmp, FUN = sum)
 
       out <- stats::setNames(rep(0, length(feature_ids)), feature_ids)
@@ -2069,14 +2188,14 @@ available_to_solve <- function(package = ""){
       out
     }
 
-    split_key <- ifelse(is.na(tgt2$subset) | !nzchar(tgt2$subset), "__ALL__", tgt2$subset)
+    split_key <- ifelse(is.na(tgt2$actions) | !nzchar(tgt2$actions), "__ALL__", tgt2$actions)
     idx_split <- split(seq_len(nrow(tgt2)), split_key)
 
     for (nm in names(idx_split)) {
       ii <- idx_split[[nm]]
-      subset_string <- tgt2$subset[ii][1]
+      actions_string <- tgt2$actions[ii][1]
       feats_i <- tgt2$feature[ii]
-      achieved_i <- .achieved_for_subset(feats_i, subset_string)
+      achieved_i <- .achieved_for_actions(feats_i, actions_string)
       tgt2$achieved[ii] <- as.numeric(achieved_i[as.character(feats_i)])
     }
 

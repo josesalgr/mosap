@@ -39,7 +39,7 @@ converting raster values to planning-unit level. Must be one of
 \item{component}{Character string controlling which component of the
 canonical effects table is retained. Must be one of:
 \itemize{
-\item \code{"any"}: keep all non-zero rows,
+\item \code{"any"}: keep all stored effect rows,
 \item \code{"benefit"}: keep only rows with \code{benefit > 0},
 \item \code{"loss"}: keep only rows with \code{loss > 0}.
 }}
@@ -48,9 +48,10 @@ canonical effects table is retained. Must be one of:
 An updated \code{Problem} object containing:
 \describe{
 \item{\code{dist_effects}}{A canonical effects table with columns
-\code{pu}, \code{action}, \code{feature}, \code{benefit}, \code{loss},
-\code{internal_pu}, \code{internal_action}, \code{internal_feature}, and
-optional labels such as \code{feature_name} and \code{action_name}.}
+\code{pu}, \code{action}, \code{feature}, \code{amount_after},
+\code{benefit}, \code{loss}, \code{internal_pu},
+\code{internal_action}, \code{internal_feature}, and optional labels such
+as \code{feature_name} and \code{action_name}.}
 \item{\code{effects_meta}}{Metadata describing how effects were
 interpreted and stored.}
 }
@@ -58,19 +59,21 @@ interpreted and stored.}
 \description{
 Define the effects of management actions on features across planning units.
 
-Effects are stored in a canonical representation in a effects table, with one
-row per \code{(pu, action, feature)} triple and two non-negative columns:
+Effects are stored in a canonical representation in an effects table, with one
+row per \code{(pu, action, feature)} triple and three main effect columns:
 \itemize{
-\item \code{benefit}: the positive component of the effect,
-\item \code{loss}: the magnitude of the negative component of the effect.
+\item \code{amount_after}: the feature amount expected after applying the action,
+\item \code{benefit}: the positive component of the net change,
+\item \code{loss}: the magnitude of the negative component of the net change.
 }
 
-The net effect is therefore interpreted as
+Let \eqn{i} index planning units, \eqn{a} index actions, and \eqn{f} index
+features. Let \eqn{b_{if}} denote the baseline amount of feature \eqn{f} in
+planning unit \eqn{i}, and let \eqn{\Delta_{iaf}} denote the net effect of
+applying action \eqn{a}. The after-action amount is:
 \deqn{
-\Delta_{iaf} = \mathrm{benefit}_{iaf} - \mathrm{loss}_{iaf},
+\mathrm{amount\_after}_{iaf} = b_{if} + \Delta_{iaf}.
 }
-where \eqn{i} indexes planning units, \eqn{a} indexes actions, and
-\eqn{f} indexes features.
 
 Under the semantics adopted by this package, each
 \code{(pu, action, feature)} triple represents a single net effect.
@@ -87,8 +90,8 @@ to feature-level ecological or functional consequences.
 This function provides a unified interface for specifying action effects from
 several input formats while enforcing a single internal representation.
 Regardless of how the user supplies the effects, the stored output always
-follows the same canonical structure based on non-negative
-\code{benefit}/\code{loss} components.
+follows the same canonical structure based on \code{amount_after} and
+non-negative \code{benefit}/\code{loss} components.
 
 Let \eqn{i \in \mathcal{I}} index planning units,
 \eqn{a \in \mathcal{A}} index actions, and
@@ -98,6 +101,10 @@ unit \eqn{i}, as given by the feature-distribution table. Let
 \eqn{\Delta_{iaf}} denote the net change caused by applying action
 \eqn{a} in planning unit \eqn{i} to feature \eqn{f}. The canonical stored
 representation is:
+
+\deqn{
+\mathrm{amount\_after}_{iaf} = b_{if} + \Delta_{iaf},
+}
 
 \deqn{
 \mathrm{benefit}_{iaf} = \max(\Delta_{iaf}, 0),
@@ -111,8 +118,16 @@ Hence:
 \itemize{
 \item if \eqn{\Delta_{iaf} > 0}, then \code{benefit > 0} and \code{loss = 0},
 \item if \eqn{\Delta_{iaf} < 0}, then \code{benefit = 0} and \code{loss > 0},
-\item if \eqn{\Delta_{iaf} = 0}, then both are zero.
+\item if \eqn{\Delta_{iaf} = 0}, then both are zero and
+\code{amount_after} equals the baseline amount.
 }
+
+Thus, \code{benefit} and \code{loss} describe the net change relative to the
+baseline, whereas \code{amount_after} describes the final feature amount under
+the action. This distinction is important for actions that maintain baseline
+values. For example, if an action preserves a feature unchanged, then
+\code{benefit = 0}, \code{loss = 0}, and \code{amount_after} equals the
+baseline amount.
 
 \strong{Why split effects into benefit and loss?}
 
@@ -130,19 +145,35 @@ The \code{effects} argument may be provided in one of the following forms:
 
 \item A \code{data.frame(action, feature, multiplier)}. In this case,
 effects are constructed by multiplying baseline feature amounts by the
-supplied multiplier:
+supplied multiplier. The interpretation depends on \code{effect_type}.
+
+If \code{effect_type = "delta"}, the multiplier represents a relative net
+change:
 \deqn{
-  \Delta_{iaf} = b_{if} \times m_{af},
+  \Delta_{iaf} = b_{if} \times m_{af}.
   }
-where \eqn{m_{af}} is the multiplier associated with action \eqn{a} and
-feature \eqn{f}. This specification is expanded over all feasible
-\code{(pu, action)} pairs.
+
+If \code{effect_type = "after"}, the multiplier represents the
+after-action amount relative to the baseline:
+\deqn{
+  \mathrm{amount\_after}_{iaf} = b_{if} \times m_{af},
+  }
+and the net effect is:
+\deqn{
+  \Delta_{iaf} = \mathrm{amount\_after}_{iaf} - b_{if}
+               = b_{if}(m_{af} - 1).
+  }
+
+Thus, under \code{effect_type = "after"}, a multiplier of \code{1}
+means no change, a multiplier below \code{1} means a loss, and a multiplier
+above \code{1} means a gain. This specification is expanded over all
+feasible \code{(pu, action)} pairs.
 
 \item A \code{data.frame(pu, action, feature, ...)} giving explicit effects
 for individual triples. The table may contain:
 \itemize{
 \item \code{delta} or \code{effect}: interpreted as signed net changes,
-\item \code{after}: interpreted as after-action amounts if
+\item \code{after}: interpreted as after-action amounts and requiring
 \code{effect_type = "after"},
 \item \code{benefit} and/or \code{loss}: explicit non-negative split
 components,
@@ -159,13 +190,26 @@ using \code{effect_aggregation}.
 \strong{Interpretation of \code{effect_type}}
 
 If \code{effect_type = "delta"}, supplied values are interpreted as net
-changes directly.
+changes directly. For explicit \code{delta} or \code{effect} columns, values
+are used as signed changes. For \code{multiplier} inputs, values are
+interpreted as relative net changes:
+
+\deqn{
+\Delta_{iaf} = b_{if} \times m_{af}.
+}
 
 If \code{effect_type = "after"}, supplied values are interpreted as
 after-action amounts and converted internally to net effects using:
 
 \deqn{
 \Delta_{iaf} = \mathrm{after}_{iaf} - b_{if}.
+}
+
+For \code{multiplier} inputs under \code{effect_type = "after"}, the
+after-action amount is computed as \eqn{b_{if} \times m_{af}}, so that:
+
+\deqn{
+\Delta_{iaf} = b_{if}(m_{af} - 1).
 }
 
 Missing baseline values are treated as zero.
@@ -191,12 +235,15 @@ Inputs violating this rule are rejected.
 
 After canonicalization and validation, rows can be restricted to:
 \itemize{
-\item \code{component = "any"}: keep all non-zero effects,
+\item \code{component = "any"}: keep all stored effect rows, including
+neutral effects,
 \item \code{component = "benefit"}: keep only rows with \code{benefit > 0},
 \item \code{component = "loss"}: keep only rows with \code{loss > 0}.
 }
 
-Rows with \code{benefit = 0} and \code{loss = 0} are always removed.
+Zero-effect rows are retained by default because they may encode valid
+neutral effects. They are removed only when using
+\code{component = "benefit"} or \code{component = "loss"}.
 
 \strong{Raster handling}
 
@@ -213,118 +260,6 @@ field.
 
 After defining effects, typical next steps include adding objectives that use
 beneficial or harmful effects, and then solving the configured problem.
-}
-\examples{
-# ------------------------------------------------------
-# Minimal problem with actions
-# ------------------------------------------------------
-pu <- data.frame(
-  id = 1:3,
-  cost = c(1, 2, 3)
-)
-
-features <- data.frame(
-  id = 1:2,
-  name = c("sp1", "sp2")
-)
-
-dist_features <- data.frame(
-  pu = c(1, 1, 2, 3),
-  feature = c(1, 2, 1, 2),
-  amount = c(10, 5, 8, 4)
-)
-
-p <- create_problem(
-  pu = pu,
-  features = features,
-  dist_features = dist_features
-)
-
-actions <- data.frame(
-  id = c("conservation", "restoration"),
-  name = c("Conservation", "Restoration")
-)
-
-p <- add_actions(
-  x = p,
-  actions = actions,
-  cost = c(conservation = 2, restoration = 4)
-)
-
-print(p)
-
-# ------------------------------------------------------
-# 1) Empty effects
-# ------------------------------------------------------
-p0 <- add_effects(p, effects = NULL)
-p0$data$dist_effects
-
-# ------------------------------------------------------
-# 2) Multipliers by action and feature
-# delta = baseline amount * multiplier
-# ------------------------------------------------------
-mult <- data.frame(
-  action = c("conservation", "conservation",
-             "restoration", "restoration"),
-  feature = c("sp1", "sp2", "sp1", "sp2"),
-  multiplier = c(0.10, 0.00, -0.20, 0.25)
-)
-
-p1 <- add_effects(
-  x = p,
-  effects = mult,
-  effect_type = "delta"
-)
-
-p1$data$dist_effects
-
-# ------------------------------------------------------
-# 3) Explicit net effects using signed deltas
-# ------------------------------------------------------
-eff_delta <- data.frame(
-  pu = c(1, 2, 3, 3),
-  action = c("conservation", "restoration", "restoration", "conservation"),
-  feature = c(1, 1, 2, 2),
-  delta = c(2, -3, 1, 0.5)
-)
-
-p2 <- add_effects(
-  x = p,
-  effects = eff_delta
-)
-
-p2$data$dist_effects
-
-# ------------------------------------------------------
-# 4) Explicit after-action amounts
-# delta = after - baseline
-# ------------------------------------------------------
-eff_after <- data.frame(
-  pu = c(1, 2, 3),
-  action = c("conservation", "restoration", "restoration"),
-  feature = c(1, 1, 2),
-  after = c(12, 5, 6)
-)
-
-p3 <- add_effects(
-  x = p,
-  effects = eff_after,
-  effect_type = "after"
-)
-
-p3$data$dist_effects
-
-# ------------------------------------------------------
-# 5) Keep only beneficial effects
-# ------------------------------------------------------
-p4 <- add_effects(
-  x = p,
-  effects = eff_delta,
-  component = "benefit"
-)
-
-p4$data$dist_effects
-
 }
 \seealso{
 \code{\link{add_actions}},

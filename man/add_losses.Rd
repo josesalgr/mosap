@@ -43,43 +43,6 @@ component.}
 \description{
 Convenience wrapper around \code{\link{add_effects}} that keeps only negative
 effects, represented by rows with \code{loss > 0}.
-
-This function is useful when the workflow is focused only on damaging
-consequences of actions and a loss-only wrapper is more convenient than
-calling \code{add_effects(..., component = "loss")} directly. Internally,
-it calls \code{add_effects()} with \code{component = "loss"}.
-The canonical stored result therefore contains only rows whose effect
-satisfies \eqn{\mathrm{loss}_{iaf} > 0}.
-
-In addition, a mirror table containing only the loss component is stored in
-\code{x$data$dist_loss}.
-}
-\examples{
-pu <- data.frame(id = 1:2, cost = c(1, 2))
-features <- data.frame(id = 1, name = "sp1")
-dist_features <- data.frame(pu = 1:2, feature = 1, amount = c(5, 10))
-
-p <- create_problem(
-  pu = pu,
-  features = features,
-  dist_features = dist_features
-)
-
-p <- add_actions(
-  p,
-  data.frame(id = "harvest")
-)
-
-eff <- data.frame(
-  pu = c(1, 2),
-  action = c("harvest", "harvest"),
-  feature = c(1, 1),
-  delta = c(2, -4)
-)
-
-p <- add_losses(p, losses = eff)
-p$data$dist_loss
-
 }
 \seealso{
 \code{\link{add_effects}},

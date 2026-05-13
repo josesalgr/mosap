@@ -68,3 +68,217 @@ test_that("add_effects with after computes delta from baseline amounts", {
   expect_equal(r2$benefit, 0)
   expect_equal(r2$loss, 1)
 })
+
+test_that("multiplier effects respect effect_type = 'after'", {
+  pu <- data.frame(id = 1, cost = 1)
+  features <- data.frame(id = 1, name = "carbon")
+  dist_features <- data.frame(pu = 1, feature = 1, amount = 100)
+
+  p <- create_problem(
+    pu = pu,
+    features = features,
+    dist_features = dist_features
+  )
+
+  p <- add_actions(
+    p,
+    actions = data.frame(id = "harvest")
+  )
+
+  eff <- data.frame(
+    action = "harvest",
+    feature = 1,
+    multiplier = 0.3
+  )
+
+  p2 <- add_effects(
+    p,
+    effects = eff,
+    effect_type = "after"
+  )
+
+  expect_equal(nrow(p2$data$dist_effects), 1)
+  expect_equal(p2$data$dist_effects$benefit, 0)
+  expect_equal(p2$data$dist_effects$loss, 70)
+})
+
+test_that("multiplier effects respect effect_type = 'delta'", {
+  pu <- data.frame(id = 1, cost = 1)
+  features <- data.frame(id = 1, name = "carbon")
+  dist_features <- data.frame(pu = 1, feature = 1, amount = 100)
+
+  p <- create_problem(
+    pu = pu,
+    features = features,
+    dist_features = dist_features
+  )
+
+  p <- add_actions(
+    p,
+    actions = data.frame(id = "restoration")
+  )
+
+  eff <- data.frame(
+    action = "restoration",
+    feature = 1,
+    multiplier = 0.3
+  )
+
+  p2 <- add_effects(
+    p,
+    effects = eff,
+    effect_type = "delta"
+  )
+
+  expect_equal(nrow(p2$data$dist_effects), 1)
+  expect_equal(p2$data$dist_effects$benefit, 30)
+  expect_equal(p2$data$dist_effects$loss, 0)
+})
+
+test_that("after column requires effect_type = 'after'", {
+  pu <- data.frame(id = 1, cost = 1)
+  features <- data.frame(id = 1, name = "carbon")
+  dist_features <- data.frame(pu = 1, feature = 1, amount = 100)
+
+  p <- create_problem(
+    pu = pu,
+    features = features,
+    dist_features = dist_features
+  )
+
+  p <- add_actions(
+    p,
+    actions = data.frame(id = "harvest")
+  )
+
+  eff <- data.frame(
+    pu = 1,
+    action = "harvest",
+    feature = 1,
+    after = 30
+  )
+
+  expect_error(
+    add_effects(
+      p,
+      effects = eff,
+      effect_type = "delta"
+    ),
+    "Column 'after' was provided"
+  )
+})
+
+test_that("explicit after-action amounts are converted to losses", {
+  pu <- data.frame(id = 1, cost = 1)
+  features <- data.frame(id = 1, name = "carbon")
+  dist_features <- data.frame(pu = 1, feature = 1, amount = 100)
+
+  p <- create_problem(
+    pu = pu,
+    features = features,
+    dist_features = dist_features
+  )
+
+  p <- add_actions(
+    p,
+    actions = data.frame(id = "harvest")
+  )
+
+  eff <- data.frame(
+    pu = 1,
+    action = "harvest",
+    feature = 1,
+    after = 30
+  )
+
+  p2 <- add_effects(
+    p,
+    effects = eff,
+    effect_type = "after"
+  )
+
+  expect_equal(p2$data$dist_effects$benefit, 0)
+  expect_equal(p2$data$dist_effects$loss, 70)
+})
+
+
+test_that("after multipliers store amount_after for neutral conservation actions", {
+  pu <- data.frame(id = 1, cost = 1)
+
+  features <- data.frame(id = 1, name = "carbon")
+
+  dist_features <- data.frame(
+    pu = 1,
+    feature = 1,
+    amount = 100
+  )
+
+  p <- create_problem(
+    pu = pu,
+    features = features,
+    dist_features = dist_features
+  )
+
+  p <- add_actions(
+    p,
+    actions = data.frame(id = "conservation")
+  )
+
+  eff <- data.frame(
+    action = "conservation",
+    feature = 1,
+    multiplier = 1
+  )
+
+  p2 <- add_effects(
+    p,
+    effects = eff,
+    effect_type = "after"
+  )
+
+  expect_equal(nrow(p2$data$dist_effects), 1)
+  expect_equal(p2$data$dist_effects$amount_after, 100)
+  expect_equal(p2$data$dist_effects$benefit, 0)
+  expect_equal(p2$data$dist_effects$loss, 0)
+})
+
+
+test_that("after multipliers store amount_after for neutral conservation actions", {
+  pu <- data.frame(id = 1, cost = 1)
+
+  features <- data.frame(id = 1, name = "carbon")
+
+  dist_features <- data.frame(
+    pu = 1,
+    feature = 1,
+    amount = 100
+  )
+
+  p <- create_problem(
+    pu = pu,
+    features = features,
+    dist_features = dist_features
+  )
+
+  p <- add_actions(
+    p,
+    actions = data.frame(id = "conservation")
+  )
+
+  eff <- data.frame(
+    action = "conservation",
+    feature = 1,
+    multiplier = 1
+  )
+
+  p2 <- add_effects(
+    p,
+    effects = eff,
+    effect_type = "after"
+  )
+
+  expect_equal(nrow(p2$data$dist_effects), 1)
+  expect_equal(p2$data$dist_effects$amount_after, 100)
+  expect_equal(p2$data$dist_effects$benefit, 0)
+  expect_equal(p2$data$dist_effects$loss, 0)
+})

@@ -16,53 +16,71 @@ get_features(x, run = NULL)
 \value{
 A \code{data.frame} with one row per feature, or one row per
 feature--run combination when multiple runs are present. The returned table
-always includes the columns \code{total_available}, \code{benefit},
-\code{loss}, \code{net}, and \code{total}.
+includes, when available or derivable, the columns
+\code{baseline_total}, \code{selected_baseline},
+\code{selected_amount_after}, \code{selected_benefit},
+\code{selected_loss}, \code{selected_net}, and
+\code{selected_fraction_of_baseline}.
 }
 \description{
 Extract the per-feature summary table from a \code{Solution} or
 \code{SolutionSet} object returned by \code{\link{solve}}.
 
-The returned table summarizes, for each feature, the total amount available
-in the landscape together with the positive and negative contributions induced
-by the selected actions in the solution.
+The returned table summarizes, for each feature, how much of the feature was
+available in the full baseline landscape and how much is represented by the
+actions selected in the solution.
 }
 \details{
 This function reads the feature summary stored in \code{x$summary$features}.
 It errors if that table is missing.
 
-Let \eqn{B_f} denote the total baseline amount available in the landscape for
-feature \eqn{f}. Let \eqn{G_f} denote the total positive contribution induced
-by selected actions, and let \eqn{L_f} denote the total negative
-contribution. Then the returned table is intended to summarize quantities of
-the form:
+In action-based planning problems, feature summaries distinguish between
+baseline availability in the full landscape and the contribution of the
+selected actions.
+
+Let \eqn{B_f} denote the total baseline amount of feature \eqn{f} available
+in the full landscape. Let \eqn{S_f} denote the baseline amount of feature
+\eqn{f} in planning-unit--action pairs selected by the solution. Let
+\eqn{A_f} denote the after-action amount of feature \eqn{f} contributed by
+those selected actions. Let \eqn{G_f} and \eqn{L_f} denote the positive and
+negative net-change components induced by selected actions. Then:
 
 \deqn{
-\mathrm{net}_f = G_f - L_f,
+\mathrm{selected\_net}_f = G_f - L_f,
 }
+
+and:
 
 \deqn{
-\mathrm{total}_f = B_f + \mathrm{net}_f.
+A_f = S_f + \mathrm{selected\_net}_f.
 }
 
-In the stored summary, these quantities are typically represented by the
-columns:
+The main returned columns are:
 \itemize{
-\item \code{total_available}, corresponding to \eqn{B_f},
-\item \code{benefit}, corresponding to \eqn{G_f},
-\item \code{loss}, corresponding to \eqn{L_f},
-\item \code{net}, corresponding to \eqn{G_f - L_f},
-\item \code{total}, corresponding to \eqn{B_f + G_f - L_f}.
+\item \code{baseline_total}: total baseline amount in the full landscape,
+\item \code{selected_baseline}: baseline amount in selected action rows,
+\item \code{selected_amount_after}: after-action amount contributed by
+selected actions,
+\item \code{selected_benefit}: positive net-change component from selected
+actions,
+\item \code{selected_loss}: negative net-change component from selected
+actions,
+\item \code{selected_net}: net change from selected actions,
+\item \code{selected_fraction_of_baseline}: ratio between
+\code{selected_amount_after} and \code{baseline_total}.
 }
 
-If any of the core numeric columns \code{total_available}, \code{benefit}, or
-\code{loss} are missing, they are created and filled with zero. If
-\code{net} is missing, it is computed as \code{benefit - loss}. If
-\code{total} is missing, it is computed as \code{total_available + net}.
+Importantly, this summary does not assume that planning units without a
+selected action contribute to the achieved feature amount. Therefore, the
+achieved amount for a feature is represented by
+\code{selected_amount_after}, not by a full-landscape total obtained by adding
+net changes to the baseline.
 
-Thus, this function guarantees that the returned table contains the columns
-\code{total_available}, \code{benefit}, \code{loss}, \code{net}, and
-\code{total}, even if some of them were absent from the stored summary.
+For backwards compatibility with older solution objects, if the newer
+selected-action columns are missing, this function attempts to construct them
+from older columns such as \code{total_available}, \code{benefit},
+\code{loss}, \code{net}, and \code{amount_after}. However, the returned table
+is organized using the newer selected-action terminology.
 
 If \code{x} is a \code{SolutionSet} and \code{run} is provided, only rows
 belonging to that run are returned. If the result contains a \code{run_id}
@@ -70,8 +88,7 @@ column but only a single run is present and \code{run} was not requested
 explicitly, the \code{run_id} column is removed for convenience.
 
 This function summarizes feature outcomes in the solution. It is different
-from \code{\link{get_targets}}, which focuses on target achievement rather
-than total feature balance.
+from \code{\link{get_targets}}, which focuses on target achievement.
 }
 \examples{
 \donttest{
@@ -101,8 +118,7 @@ if (requireNamespace("rcbc", quietly = TRUE)) {
     pu = c(1, 2, 3, 4),
     action = "conservation",
     feature = c(1, 1, 2, 2),
-    benefit = c(2, 1, 1, 2),
-    loss = c(0, 0, 0, 0)
+    after = c(5, 0, 2, 1)
   )
 
   p <- create_problem(
@@ -112,7 +128,7 @@ if (requireNamespace("rcbc", quietly = TRUE)) {
     cost = "cost"
   ) |>
     add_actions(actions_df, cost = 0) |>
-    add_effects(effects_df) |>
+    add_effects(effects_df, effect_type = "after") |>
     add_constraint_targets_relative(0.2) |>
     add_objective_min_cost() |>
     set_solver_cbc(time_limit = 10)
